@@ -23,7 +23,7 @@ Source: *Dyson Sphere — Layer A PRD* v1.0 (11 Oct 2026). Founder decisions are
 | 7 | Done (see `services/intelligence/NOTES.md`) |
 | 8 | Done (see `apps/founder-app/NOTES.md`) |
 | 9 | Done (see `integration/NOTES.md`) |
-| 10 | Not started |
+| 10 | Waiting on Founder gates 1 to 6 (see `infra/GATES.md`) |
 
 ## The ten steps
 
