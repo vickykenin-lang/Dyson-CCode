@@ -331,3 +331,22 @@ def test_api(hub, catalog):
         ]
         == "denied"
     )
+
+
+def test_lane_adapter_receives_task_id_and_idempotency_key(hub, catalog, gov):  # LA-IF-02
+    from dyson_toolhub.catalog import LaneAdapter, ToolScope, ToolSpec
+
+    delivered = []
+    catalog.register(
+        ToolSpec(tool_id="t0.lane", connector_id="t0", allowed_callers=frozenset({ORCH}),
+                 scope=ToolScope.RECEPTOR),
+        LaneAdapter(lambda r: delivered.append(r) or {"receipt": "r-1"}),
+    )  # fmt: skip
+    gov.admit("t0.lane")
+    gov.permits.setdefault("T0", set()).add("t0.lane")
+    request = req("t0.lane", receptor="T0", key="task-lane-key-0001")
+    result = hub.call(request, TOKENS[ORCH])
+    assert result.status == "executed" and result.result == {"receipt": "r-1"}
+    (got,) = delivered
+    assert got.task_id == request.task_id and got.idempotency_key == "task-lane-key-0001"
+    assert hub.call(request, TOKENS[ORCH]).status == "duplicate" and len(delivered) == 1

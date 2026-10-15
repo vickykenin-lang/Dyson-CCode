@@ -9,3 +9,8 @@ build/
 dist/
 .env
 .env.*
+
+# local runs (docker-compose.yml)
+local-secrets/
+integration/docker/wheels/*
+!integration/docker/wheels/.keep

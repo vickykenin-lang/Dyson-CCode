@@ -22,7 +22,8 @@ Source: *Dyson Sphere — Layer A PRD* v1.0 (11 Oct 2026). Founder decisions are
 | 6 | Done (see `services/assurance/NOTES.md`) |
 | 7 | Done (see `services/intelligence/NOTES.md`) |
 | 8 | Done (see `apps/founder-app/NOTES.md`) |
-| 9 to 10 | Not started |
+| 9 | Done (see `integration/NOTES.md`) |
+| 10 | Not started |
 
 ## The ten steps
 
@@ -36,7 +37,7 @@ Source: *Dyson Sphere — Layer A PRD* v1.0 (11 Oct 2026). Founder decisions are
 | 6 | Assurance: QA/QC (F), Monitoring (E), Financial (H), Dashboard data (J) | `services/assurance/`, schema `assurance` | 31 | none |
 | 7 | Intelligence: Conversation (B), Model Router (C), Hermes sandbox | `services/intelligence/`, schema `intelligence` | 20 | none (fake models only) |
 | 8 | Founder Interface: App, Entry Gateway, Direct Founder Controls | `apps/founder-app/`, `services/gateway/`, `services/founder-controls/` | 20 | none (auth is pluggable; gate 3 picks the method) |
-| 9 | Internal connection phase plus Test T0 | `integration/`, `receptors/test-t0/`, `docker-compose.yml` | 21 | none |
+| 9 | Internal connection phase plus Test T0 | `integration/` (Test T0 is `integration/src/dyson_integration/t0.py`), schema `integration`, `docker-compose.yml` | 21 | none |
 | 10 | External connection phase on AWS | `infra/` | 26 | gates 1, 2, 3, 4, 5, 6; gate 9 before production |
 
 ### Step 1: Foundation and frozen contracts

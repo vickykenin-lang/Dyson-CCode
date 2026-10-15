@@ -11,6 +11,7 @@ from typing import Any
 from pydantic import JsonValue
 
 from dyson_contracts.common import Component, Contract, NonEmptyStr, ReceptorId, RiskLevel
+from dyson_contracts.toolcalls import ToolCallRequest
 
 
 class ToolScope(StrEnum):
@@ -33,11 +34,19 @@ class ToolSpec(Contract):
 Adapter = Callable[[dict[str, JsonValue]], Any]
 
 
+class LaneAdapter:
+    """An adapter that needs the whole authorized request, not only its arguments: work sent to a
+    Receptor must carry the task ID and idempotency key (LA-IF-02). Added in Step 9."""
+
+    def __init__(self, deliver: Callable[[ToolCallRequest], Any]):
+        self.deliver = deliver
+
+
 class Catalog:
     def __init__(self) -> None:
-        self._tools: dict[str, tuple[ToolSpec, Adapter]] = {}
+        self._tools: dict[str, tuple[ToolSpec, Adapter | LaneAdapter]] = {}
 
-    def register(self, spec: ToolSpec, adapter: Adapter) -> None:
+    def register(self, spec: ToolSpec, adapter: Adapter | LaneAdapter) -> None:
         if spec.scope is ToolScope.RECEPTOR_SUPPORT and not (
             spec.target_receptor and spec.allowed_operations
         ):
@@ -46,7 +55,7 @@ class Catalog:
             raise ValueError("only the Orchestrator and Hermes call tools")
         self._tools[spec.tool_id] = (spec, adapter)
 
-    def get(self, tool_id: str) -> tuple[ToolSpec, Adapter] | None:
+    def get(self, tool_id: str) -> tuple[ToolSpec, Adapter | LaneAdapter] | None:
         return self._tools.get(tool_id)
 
     def specs(self) -> list[ToolSpec]:

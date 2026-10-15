@@ -1,0 +1,28 @@
+# Test overlay for services/intelligence/deploy/hermes.compose.yml (Step 9, LA-HER-01..03).
+# Keeps the real topology and swaps each image for a stub: C and G answer HTTP, a stand-in
+# Governance Core sits on the core network only, and Hermes runs a probe that tries every road.
+services:
+  hermes:
+    image: ${DYSON_TEST_PY_IMAGE:-python:3.12-slim}
+    command: ["python", "-c", "${HERMES_PROBE}"]
+    environment:
+      DYSON_ROUTER_URL: http://model-router:8000
+      DYSON_TOOLHUB_URL: http://tool-hub:8000
+    depends_on: [model-router, tool-hub, governance]
+
+  model-router:
+    image: ${DYSON_TEST_PY_IMAGE:-python:3.12-slim}
+    command: ["python", "-m", "http.server", "8000"]
+
+  tool-hub:
+    image: ${DYSON_TEST_PY_IMAGE:-python:3.12-slim}
+    command: ["python", "-m", "http.server", "8000"]
+
+  governance:
+    image: ${DYSON_TEST_PY_IMAGE:-python:3.12-slim}
+    command: ["python", "-m", "http.server", "8000"]
+    networks: [core_net]
+
+secrets:
+  hermes_caller_token:
+    file: ${HERMES_TOKEN_FILE}

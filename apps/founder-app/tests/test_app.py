@@ -141,3 +141,14 @@ def test_session_cookie_is_protected(app):  # LA-APP-06
                  follow_redirects=False)  # fmt: skip
     set_cookie = r.headers["set-cookie"].lower()
     assert "httponly" in set_cookie and "samesite=strict" in set_cookie
+
+
+def test_resubmitting_the_same_form_is_the_same_command(founder, backend):  # LA-REL-02
+    page = founder.get("/").text
+    mid = re.search(r"name='message_id' value='([0-9a-f-]{36})'", page).group(1)
+    founder.post("/send", data={"text": "Publish it", "message_id": mid})
+    founder.post("/send", data={"text": "Publish it", "message_id": mid})  # retry
+    a, b = backend.messages
+    assert str(a.message_id) == str(b.message_id) == mid
+    fresh = re.search(r"name='message_id' value='([0-9a-f-]{36})'", founder.get("/").text).group(1)
+    assert fresh != mid  # each newly drawn form is a new command

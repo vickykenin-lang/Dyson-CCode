@@ -40,12 +40,14 @@ class GatewayClient:
         *,
         voice: bool = False,
         uncertain: bool = False,
+        message_id: UUID | None = None,
     ) -> dict[str, Any]:
         body = {
             "thread_id": str(thread_id),
             "text": text,
             "modality": "voice" if voice else "text",
             "transcription_uncertain": uncertain,
+            "client_message_id": str(message_id) if message_id else None,
         }
         return self._call("POST", "/messages", token, json=body).json()
 

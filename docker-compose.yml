@@ -1,0 +1,64 @@
+# Layer A, locally (Step 9). Nothing here reaches AWS, a real model or a bank.
+#
+#   mkdir -p local-secrets && openssl rand -hex 16 > local-secrets/postgres_password \
+#     && openssl rand -hex 16 > local-secrets/db_password \
+#     && read -s -p "Founder password: " P && printf %s "$P" > local-secrets/founder_password
+#   chmod 700 local-secrets && chmod 644 local-secrets/*   # the folder stays private to you;
+#   docker compose up --build                             # the container user must read the files
+#
+# Gateway API http://localhost:8080 · Founder app http://localhost:8081
+# Direct Founder Controls http://localhost:8082 (dyson-control) · J read-only http://localhost:8083
+# The Founder's device key for dyson-control is in the secret store file inside the dyson-data
+# volume (core.device_key); copy it to the device yourself. It is never printed.
+services:
+  postgres:
+    image: ${DYSON_POSTGRES_IMAGE:-postgres:16}
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    networks: [core_net]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 2s
+      retries: 30
+
+  layer-a:
+    build:
+      context: .
+      dockerfile: integration/docker/Dockerfile
+      args:
+        BASE_IMAGE: ${DYSON_PYTHON_IMAGE:-python:3.12-slim}
+        PIP_NO_INDEX: ${DYSON_PIP_NO_INDEX:-}
+    image: dyson/layer-a:local
+    depends_on:
+      postgres: {condition: service_healthy}
+    entrypoint: ["sh", "-c", "export DYSON_PG_ADMIN=\"postgresql://postgres:$$(cat /run/secrets/postgres_password)@postgres:5432/postgres\" DYSON_DB_PASSWORD=\"$$(cat /run/secrets/db_password)\" && exec python -m dyson_integration.serve"]
+    environment:
+      DYSON_DB_NAME: dyson
+      DYSON_SECRET_FILE: /data/secrets.json
+      DYSON_FOUNDER_PASSWORD_FILE: /run/secrets/founder_password
+      DYSON_POLICY_DIR: /app/policy
+    secrets: [postgres_password, db_password, founder_password]
+    volumes: [dyson-data:/data]
+    networks: [core_net]
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8081:8081"
+      - "127.0.0.1:8082:8082"
+      - "127.0.0.1:8083:8083"
+
+networks:
+  core_net: {}
+
+volumes:
+  pgdata: {}
+  dyson-data: {}
+
+secrets:
+  postgres_password:
+    file: ./local-secrets/postgres_password
+  db_password:
+    file: ./local-secrets/db_password
+  founder_password:
+    file: ./local-secrets/founder_password

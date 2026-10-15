@@ -20,7 +20,7 @@ from dyson_contracts.control import ControlMode
 from dyson_contracts.integrations import IntegrationStatus
 from dyson_contracts.toolcalls import CheckName, CheckResult, ToolCallDecision, ToolCallRequest
 
-from .catalog import Catalog, ToolScope, ToolSpec
+from .catalog import Catalog, LaneAdapter, ToolScope, ToolSpec
 from .ports import (
     CallerAuthenticator,
     GovernancePort,
@@ -120,7 +120,10 @@ class ToolHub:
                 self._gov.consume_approval(
                     request.approval_id, action_digest(request), category, Component.TOOL_HUB
                 )
-            result = adapter(dict(request.arguments))
+            if isinstance(adapter, LaneAdapter):
+                result = adapter.deliver(request)
+            else:
+                result = adapter(dict(request.arguments))
             outcome = Outcome("executed", result, "")
         except Exception as exc:  # record the failure; never pretend success
             outcome = Outcome("failed", None, f"{type(exc).__name__}: {exc}")

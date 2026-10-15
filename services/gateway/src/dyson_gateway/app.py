@@ -49,6 +49,9 @@ class LoginOut(Contract):
 
 class MessageIn(Contract):
     thread_id: UUID
+    # Set by the client once per message. A network retry resends the same id, so the same
+    # command can never start two tasks (LA-REL-02). Added in Step 9.
+    client_message_id: UUID | None = None
     text: NonEmptyStr = Field(max_length=8000)
     modality: Modality = Modality.TEXT
     language: Language = Language.UNKNOWN
@@ -118,7 +121,7 @@ def create_app(
     @app.post("/messages")
     def message(body: MessageIn, _: Founder) -> MessageOut:
         msg = FounderMessage(
-            message_id=uuid4(),
+            message_id=body.client_message_id or uuid4(),
             thread_id=body.thread_id,
             modality=body.modality,
             text=body.text,

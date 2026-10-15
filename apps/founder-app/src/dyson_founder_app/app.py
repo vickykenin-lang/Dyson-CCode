@@ -98,19 +98,24 @@ def create_app(gateway: GatewayClient, voice: VoicePort, *, secure_cookies: bool
         resp.delete_cookie(SESSION)
         return resp
 
-    def send(request: Request, text: str, voice_msg: bool) -> Response:
+    def send(request: Request, text: str, voice_msg: bool, message_id: str = "") -> Response:
         token = request.cookies.get(SESSION)
         if not token:
             return RedirectResponse("/", status_code=303)
         try:
-            out = gateway.send(token, thread_of(request), text, voice=voice_msg)
+            mid = UUID(message_id) if message_id else None
+        except ValueError:
+            mid = None
+        try:
+            out = gateway.send(token, thread_of(request), text, voice=voice_msg, message_id=mid)
         except NotLoggedIn:
             return page(request)
         return page(request, notice=_ack_notice(out))
 
     @app.post("/send")
-    def send_text(request: Request, text: str = Form()) -> Response:
-        return send(request, text, voice_msg=False)
+    def send_text(request: Request, text: str = Form(), message_id: str = Form("")) -> Response:
+        # message_id is fixed when the form is drawn, so resubmitting it is the same command.
+        return send(request, text, voice_msg=False, message_id=message_id)
 
     @app.post("/voice")
     async def voice_in(request: Request, audio: Annotated[UploadFile, File()]) -> Response:
@@ -125,8 +130,9 @@ def create_app(gateway: GatewayClient, voice: VoicePort, *, secure_cookies: bool
         return send(request, heard.text, voice_msg=True)
 
     @app.post("/voice/confirm")
-    def voice_confirm(request: Request, text: str = Form()) -> Response:
-        return send(request, text, voice_msg=True)  # the Founder confirmed what was heard
+    def voice_confirm(request: Request, text: str = Form(), message_id: str = Form("")) -> Response:
+        # the Founder confirmed what was heard
+        return send(request, text, voice_msg=True, message_id=message_id)
 
     @app.get("/tasks/{task_id}/status")
     def task_status(task_id: UUID, request: Request) -> Response:
@@ -231,6 +237,7 @@ def _conversation(history: list[dict], tasks: list[TaskStatusUpdate], notice: st
     return (
         f"{n}<section><h2>Conversation</h2>{msgs or '<p>Say what you need.</p>'}"
         "<form method='post' action='/send'><textarea name='text' rows='3' required></textarea>"
+        f"<input type='hidden' name='message_id' value='{uuid4()}'>"
         "<button>Send</button></form>"
         "<form method='post' action='/voice' enctype='multipart/form-data'>"
         "<input type='file' name='audio' accept='audio/*'><button>Send voice</button></form>"
@@ -243,6 +250,7 @@ def _confirm_voice(text: str) -> str:
     heard = escape(text) if text.strip() else "(nothing clear)"
     form = (
         "<form method='post' action='/voice/confirm'>"
+        f"<input type='hidden' name='message_id' value='{uuid4()}'>"
         f"<textarea name='text' rows='3' required>{escape(text)}</textarea>"
         "<button>Send as corrected</button></form>"
         if text.strip()

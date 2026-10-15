@@ -138,3 +138,14 @@ def test_session_token_is_not_stored_in_clear(clock):  # LA-GW-01
     store = SessionStore(clock, max_age=timedelta(hours=1), idle_timeout=timedelta(hours=1))
     token = store.issue()
     assert token not in repr(store.__dict__)
+
+
+def test_a_retried_message_keeps_its_id(client, auth, backend):  # LA-REL-02
+    mid = str(uuid4())
+    thread = uuid4()
+    send(client, auth, "Send the report", thread, client_message_id=mid)
+    send(client, auth, "Send the report", thread, client_message_id=mid)  # network retry
+    first, second = backend.messages
+    assert first.message_id == second.message_id == UUID(mid)
+    send(client, auth, "Send the report", thread)
+    assert backend.messages[-1].message_id != first.message_id  # no id: a new message
