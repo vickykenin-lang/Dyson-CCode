@@ -1,6 +1,6 @@
-# Founder decisions on the PRD's open Derived items, taken before Step 1.
+# Founder decisions on the PRD's open Derived items.
 # Recorded 2026-10-15 in the Claude Code session that produced Step 1.
-# These close PRD section 14 open items 1, 2, 3 and 8. They do not change AMD-1..AMD-14.
+# D-001..D-004 close PRD section 14 open items 1, 2, 3 and 8. None of them change AMD-1..AMD-14.
 decisions:
 - id: D-001
   date: '2026-10-15'
@@ -43,3 +43,11 @@ decisions:
   decision: >-
     New repository vickykenin-lang/dyson-ccode, kept separate from earlier work.
     Step 1 is the first commit on main.
+- id: D-007
+  date: '2026-10-15'
+  closes: PRD §9 Derived rows stopped -> running and held -> running
+  topic: Where RESUME sends a task
+  decision: >-
+    RESUME returns a task to the state it was in when STOP or PAUSE hit it. A task paused
+    while waiting for approval returns to approval-needed; it never skips the Founder's
+    approval and runs.

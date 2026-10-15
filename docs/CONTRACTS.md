@@ -38,7 +38,7 @@ The names come from closure §9 (D-001), plus `rejected` (D-003) and `closed` fo
 
 - PAUSE moves any active task to `held` (D-002).
 - STOP moves any active task to `stopped`.
-- **RESUME returns the task to the state it was in when STOP or PAUSE hit it.** For example, a task paused while waiting for approval goes back to `approval-needed`, not straight to `running`. This keeps a resume from skipping a pending approval. The PRD's `stopped → running` row (Derived) is the `running` case of this rule.
+- **RESUME returns the task to the state it was in when STOP or PAUSE hit it (D-007).** For example, a task paused while waiting for approval goes back to `approval-needed`, not straight to `running`. This keeps a resume from skipping a pending approval. The PRD's `stopped → running` row (Derived) is the `running` case of this rule.
 - `rejected` can only move to `closed`. A rejected task never restarts.
 
 ## Changing a contract
