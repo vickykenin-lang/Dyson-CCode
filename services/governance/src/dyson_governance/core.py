@@ -11,8 +11,10 @@ network beyond the database.
 from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 from uuid import UUID, uuid4
 
+import yaml
 from pydantic import JsonValue
 
 from dyson_contracts.approvals import ApprovalDecision, ApprovalDecisionKind, ApprovalRequest
@@ -61,10 +63,28 @@ from .state import GovernanceState, ProposalStatus
 from .store import EventStore
 
 # Operational parameters (AMD-02): set by Founder approval, validated here, never an AMD control.
-# No default values: an unset limit means "no automatic attempts".
+# No code defaults: initial values come from policy/parameters.yaml, each citing a Founder
+# decision; with neither that nor an approved change, a limit is 0 ("no automatic attempts").
 PARAMETERS: dict[str, Callable[[JsonValue], bool]] = {
     "recovery_attempt_limit": lambda v: isinstance(v, int) and not isinstance(v, bool) and v >= 0,
 }
+
+
+def load_initial_parameters(policy_dir: Path) -> dict[str, JsonValue]:
+    """Initial values from policy/parameters.yaml. Each must cite a recorded Founder decision."""
+    params = yaml.safe_load((policy_dir / "parameters.yaml").read_text("utf-8"))["parameters"]
+    decisions = yaml.safe_load((policy_dir / "decisions.yaml").read_text("utf-8"))["decisions"]
+    known = {d["id"] for d in decisions}
+    out: dict[str, JsonValue] = {}
+    for p in params:
+        name, value = p["name"], p["value"]
+        if name not in PARAMETERS or not PARAMETERS[name](value):
+            raise ValueError(f"invalid operational parameter {name}={value!r}")
+        if p.get("decision") not in known:
+            raise ValueError(f"{name} does not cite a recorded Founder decision")
+        out[name] = value
+    return out
+
 
 AuditSink = Callable[[AuditEvent], None]
 ControlListener = Callable[[ControlCommand | None, ControlState], None]
@@ -87,7 +107,9 @@ class GovernanceCore:
         audit_sink: AuditSink | None = None,
         control_listeners: list[ControlListener] | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        initial_parameters: dict[str, JsonValue] | None = None,
     ):
+        self._initial_parameters = dict(initial_parameters or {})
         self._store = store
         self.policy = policy
         self._channel = founder_channel
@@ -400,7 +422,9 @@ class GovernanceCore:
         def build(s: GovernanceState):
             inc = s.incidents.get(incident_id)
             used = inc.attempts if inc else 0
-            limit = int(s.parameters.get("recovery_attempt_limit", 0)) + (inc.allowed if inc else 0)
+            limit = int(self.parameter("recovery_attempt_limit", s) or 0) + (
+                inc.allowed if inc else 0
+            )
             if used >= limit:
                 refused.append(True)
                 if inc and inc.escalated:
@@ -432,6 +456,11 @@ class GovernanceCore:
         )
 
     # Operational parameters vs core amendments (LA-AMD-02) ---------------------------------
+    def parameter(self, name: str, state: GovernanceState | None = None) -> JsonValue | None:
+        """The approved value from the log, else the initial Founder-decided value, else None."""
+        s = state or self.sync()
+        return s.parameters.get(name, self._initial_parameters.get(name))
+
     def propose_parameter(self, name: str, value: JsonValue, requested_by: Component):
         if name not in PARAMETERS:
             raise GovernanceError(

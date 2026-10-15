@@ -72,4 +72,4 @@ def test_planes_use_known_components():
 def test_founder_decisions_recorded():
     decisions = yaml.safe_load((ROOT / "policy" / "decisions.yaml").read_text(encoding="utf-8"))
     ids = [d["id"] for d in decisions["decisions"]]
-    assert ids == [f"D-00{i}" for i in range(1, 8)]
+    assert ids == [f"D-00{i}" for i in range(1, 9)]

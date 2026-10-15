@@ -51,3 +51,11 @@ decisions:
     RESUME returns a task to the state it was in when STOP or PAUSE hit it. A task paused
     while waiting for approval returns to approval-needed; it never skips the Founder's
     approval and runs.
+- id: D-008
+  date: '2026-10-15'
+  closes: Step 3 open parameter (PRD gives no figure for bounded recovery)
+  topic: Recovery attempt limit
+  decision: >-
+    recovery_attempt_limit is 3. Each incident may have 3 recorded recovery attempts; after
+    that it escalates to the Founder, and only a Founder approval allows more. Changing the
+    value later needs a Founder-approved operational-parameter proposal.

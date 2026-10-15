@@ -1,0 +1,7 @@
+# Initial operational parameters (LA-AMD-02). Each value cites the Founder decision that set it.
+# These apply until a Founder-approved parameter proposal replaces them in the governance log.
+# They are operational parameters only; AMD rules never appear here.
+parameters:
+- name: recovery_attempt_limit
+  value: 3
+  decision: D-008

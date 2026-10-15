@@ -49,9 +49,11 @@ The following are also tested:
 - The audit is never blocked by an unreachable I.
 - The HTTP API refuses unsigned or non-Founder commands.
 
-## Founder decision needed: `recovery_attempt_limit`
+## `recovery_attempt_limit` = 3 (Founder decision D-008)
 
-The PRD says recovery is bounded but gives no number, so this step doesn't invent one. Until you approve a value through `propose_parameter`, the limit is **0**: every incident escalates to you straight away.
+The PRD says recovery is bounded but gives no number. You set it to **3** (D-008). The value lives in `policy/parameters.yaml`, which cites D-008. `load_initial_parameters` refuses any value that doesn't cite a recorded Founder decision. Each incident gets 3 recorded attempts, then escalates to you.
+
+To change the value later, approve an operational-parameter proposal. The approved value replaces the file value (`test_founder_decided_recovery_limit_is_three_until_changed`).
 
 ## Left for later steps
 

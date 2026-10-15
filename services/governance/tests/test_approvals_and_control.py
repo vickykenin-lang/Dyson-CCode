@@ -1,6 +1,7 @@
 """Approvals, STOP / PAUSE / RESUME, breaches and recovery."""
 
 from datetime import timedelta
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -13,6 +14,8 @@ from dyson_contracts.control import ControlCommand, ControlCommandType, ControlM
 from dyson_governance.core import GovernanceError
 from dyson_governance.events import BreachKind, ProposalKind
 from dyson_governance.state import ProposalStatus
+
+_POLICY_DIR = Path(__file__).resolve().parents[3] / "policy"
 
 
 def _cmd(kind, scope=ControlScope.MASTER, receptor=None, by=Component.FOUNDER, clock=None):
@@ -267,3 +270,41 @@ def test_safe_continuity_trigger_stays_blocked(core):
     with pytest.raises(GateClosed):
         core.trigger_safe_continuity_automatically()
     assert core.sync().safe_continuity_active is False
+
+
+def test_founder_decided_recovery_limit_is_three_until_changed(policy, channel, clock, founder):
+    from dyson_governance.core import GovernanceCore, load_initial_parameters
+    from dyson_governance.store import InMemoryEventStore
+
+    initial = load_initial_parameters(_POLICY_DIR)
+    assert initial == {"recovery_attempt_limit": 3}  # D-008
+    core = GovernanceCore(
+        InMemoryEventStore(), policy, channel, clock=clock, initial_parameters=initial
+    )
+    incident = uuid4()
+    assert [core.record_recovery_attempt(incident, "R11", False) for _ in range(4)] == [
+        True,
+        True,
+        True,
+        False,
+    ]
+    assert core.sync().incidents[incident].escalated
+    founder.decide(core, core.propose_parameter("recovery_attempt_limit", 1, Component.MONITORING))
+    assert core.parameter("recovery_attempt_limit") == 1  # an approved change replaces it
+
+
+def test_initial_parameters_must_cite_a_founder_decision(tmp_path):
+    import shutil
+
+    from dyson_governance.core import load_initial_parameters
+
+    shutil.copytree(_POLICY_DIR, tmp_path / "p")
+    f = tmp_path / "p" / "parameters.yaml"
+    f.write_text(f.read_text().replace("decision: D-008", "decision: D-999"))
+    with pytest.raises(ValueError):
+        load_initial_parameters(tmp_path / "p")
+    f.write_text(
+        f.read_text().replace("decision: D-999", "decision: D-008").replace("value: 3", "value: -1")
+    )
+    with pytest.raises(ValueError):
+        load_initial_parameters(tmp_path / "p")

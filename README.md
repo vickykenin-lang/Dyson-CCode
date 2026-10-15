@@ -12,6 +12,7 @@ Layer A is the governed core between the Founder and the business Receptors. It 
 | `policy/amd_register.yaml` | AMD-1 to AMD-14 in machine-checkable form, with a lock on AMD-1 to AMD-13 |
 | `policy/decisions.yaml` | Founder decisions on the PRD's open items |
 | `policy/planes.yaml` | AMD-1 plane mapping |
+| `policy/parameters.yaml` | Initial operational parameters, each citing a Founder decision |
 | `docs/traceability/requirements.yaml` | All 174 PRD requirement IDs, each with the one step that proves it |
 | `docs/process/CORE_RD.md` | How Core R&D proposals work |
 | `tools/policy_lock.py` | Computes the AMD-1 to AMD-13 lock hash |
