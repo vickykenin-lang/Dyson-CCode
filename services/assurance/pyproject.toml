@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dyson-assurance"
+version = "0.1.0"
+description = "Dyson Sphere Layer A assurance: QA/QC (F), Monitoring (E), Financial Control (H), Dashboard data (J)"
+requires-python = ">=3.12"
+dependencies = [
+    "dyson-contracts",
+    "psycopg[binary]>=3.2,<4",
+    "fastapi>=0.110",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx>=0.27"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+dyson_assurance = ["migrations/*.sql"]
