@@ -2,7 +2,7 @@
 
 Layer A is the governed core between the Founder and the business Receptors. It covers governance, security, control, intelligence routing, state, execution coordination, monitoring and evidence. "The model proposes; the gateway enforces."
 
-**Status:** Step 1 of 10 (foundation and frozen contracts). Nothing is deployed. See `docs/EXECUTION_PLAN.md`.
+**Status:** Steps 1 and 2 of 10 are done (foundation and contracts; Memory & Evidence Layer). Nothing is deployed. See `docs/EXECUTION_PLAN.md`.
 
 ## Layout
 
@@ -15,15 +15,18 @@ Layer A is the governed core between the Founder and the business Receptors. It 
 | `docs/traceability/requirements.yaml` | All 174 PRD requirement IDs, each with the one step that proves it |
 | `docs/process/CORE_RD.md` | How Core R&D proposals work |
 | `tools/policy_lock.py` | Computes the AMD-1 to AMD-13 lock hash |
+| `services/memory/` | Step 2: Memory & Evidence Layer (card I), schema `memory` (`services/memory/NOTES.md`) |
 | `tests/` | Repository checks: policy, lock, planes, traceability |
 
 ## Run the checks
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
-pip install -e contracts "pyyaml>=6" pytest ruff
+pip install -e contracts -e "services/memory[dev]" "pyyaml>=6" pytest ruff
 ruff check . && ruff format --check .
 pytest -q
 ```
+
+The memory tests need PostgreSQL 16. Set `DYSON_TEST_PG_ADMIN` to a superuser DSN; without it, those tests are skipped.
 
 GitHub is used for source control and CI only. It is never part of Dyson's runtime (LA-SEC-06).

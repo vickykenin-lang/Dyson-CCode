@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dyson-memory"
+version = "0.1.0"
+description = "Dyson Sphere Layer A Memory & Evidence Layer (card I)"
+requires-python = ">=3.12"
+dependencies = [
+    "dyson-contracts",
+    "psycopg[binary]>=3.2,<4",
+    "fastapi>=0.110",
+    "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx>=0.27"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+dyson_memory = ["migrations/*.sql"]

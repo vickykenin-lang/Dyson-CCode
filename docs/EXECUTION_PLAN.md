@@ -10,6 +10,14 @@ Source: *Dyson Sphere — Layer A PRD* v1.0 (11 Oct 2026). Founder decisions are
 4. **One owner per requirement.** Every requirement ID belongs to the step in which it is fully proven (`docs/traceability/requirements.yaml`). Earlier steps may build parts of it.
 5. **Evidence, not claims.** A step is done only on recorded evidence at the right AMD-3 stage. Locally, Steps 2 to 9 reach at most stage 4 (test passed).
 
+## Progress
+
+| Step | Status |
+|---|---|
+| 1 | Done |
+| 2 | Done (see `services/memory/NOTES.md`) |
+| 3 to 10 | Not started |
+
 ## The ten steps
 
 | Step | Builds | Owns | Requirements owned | Founder gates first |
