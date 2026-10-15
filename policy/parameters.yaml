@@ -11,3 +11,6 @@ parameters:
 - name: founder_reminder_interval_minutes
   value: 60
   decision: D-009
+- name: stale_after_hours
+  value: 72
+  decision: D-011

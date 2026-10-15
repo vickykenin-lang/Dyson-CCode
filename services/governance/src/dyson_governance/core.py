@@ -74,6 +74,7 @@ PARAMETERS: dict[str, Callable[[JsonValue], bool]] = {
     "recovery_attempt_limit": _int_at_least(0),
     "repeated_failure_threshold": _int_at_least(1),  # read by E (Step 9)
     "founder_reminder_interval_minutes": _int_at_least(1),  # read by E (Step 9)
+    "stale_after_hours": _int_at_least(1),  # read by E (Step 9)
 }
 
 

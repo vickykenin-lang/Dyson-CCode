@@ -242,3 +242,31 @@ def test_alert_history_is_append_only(monitor, conn):  # D-009
                  "DELETE FROM assurance.alert_events"):  # fmt: skip
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             conn.execute(stmt)
+
+
+def test_founder_parameters_drive_the_monitor(conn, escalations, clock):  # D-009, D-010, D-011
+    from datetime import timedelta
+    from pathlib import Path
+
+    import yaml
+
+    from dyson_assurance.monitoring import Monitor
+
+    root = Path(__file__).resolve().parents[3]
+    params = {p["name"]: p["value"]
+              for p in yaml.safe_load((root / "policy" / "parameters.yaml").read_text())[
+                  "parameters"]}  # fmt: skip
+    monitor = Monitor(conn, escalations,
+                      stale_after=timedelta(hours=params["stale_after_hours"]),
+                      repeated_failure_threshold=params["repeated_failure_threshold"],
+                      reminder_interval=timedelta(
+                          minutes=params["founder_reminder_interval_minutes"]),
+                      clock=clock)  # fmt: skip
+    monitor.ingest(_health())
+    clock.advance(days=3)
+    assert monitor.view(SubjectKind.RECEPTOR, "R11").truth is Truth.REPORTED  # exactly 3 days
+    clock.advance(seconds=1)
+    assert monitor.view(SubjectKind.RECEPTOR, "R11").truth is Truth.UNVERIFIED
+    monitor.sweep(SubjectKind.RECEPTOR, ["R11"])
+    clock.advance(hours=1)
+    assert len(monitor.remind()) == 1

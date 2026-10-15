@@ -6,8 +6,8 @@ is older than the staleness window is "unverified", never silently "healthy" (LA
 
 Every issue E raises becomes a Founder alert. The Founder is reminded at the approved interval
 until the Founder acts on it or puts it on hold (D-009); a subject getting better on its own does
-not close the alert. The repeated-failure threshold is 3 (D-010). The staleness window is still
-open: it is a constructor argument with no default until the Founder sets it.
+not close the alert. The repeated-failure threshold is 3 (D-010) and a subject is stale after
+3 days without a report (D-011). All three come from policy/parameters.yaml, not code defaults.
 """
 
 from collections.abc import Callable

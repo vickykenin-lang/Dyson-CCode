@@ -20,7 +20,7 @@ None of these components can act on a Receptor, move money or reach a bank. Test
 ## E: Monitoring & Health Controller (`monitoring.py`)
 
 - **What it tracks.** Health, KPIs, task counts and failures for each Receptor (from the Monitoring lane) and for models, tools and Core components.
-- **Truthful reporting.** A subject that never reported shows as `unknown`. One whose last report is older than `stale_after` shows as `unknown / unverified`, never "healthy".
+- **Truthful reporting.** A subject that never reported shows as `unknown`. One whose last report is older than `stale_after` (3 days, D-011) shows as `unknown / unverified`, never "healthy".
 - **Escalation.** When a subject turns failing or offline, or after 3 bad reports in a row (D-010), E escalates to A, J and the Founder. `sweep()` does the same for subjects that have gone silent.
 - **Founder alerts (D-009).** Each issue becomes one alert that stays open. Dyson reminds the Founder every hour (`remind()`, run by the worker) until the Founder acts on it or puts it on hold. A subject recovering on its own does not close it; the reminder says how it looks now. While an alert is open or held, the same issue isn't raised again. After the Founder acts, a new occurrence opens a new alert. Only the Founder can close, hold or release an alert, and the alert history is append-only.
 - **No power to act.** E only observes and escalates; A decides.
@@ -76,11 +76,11 @@ The append-only history is tested too (`test_ledger_is_append_only`).
 
 - **D-009:** hourly reminders until the Founder acts or holds.
 - **D-010:** `repeated_failure_threshold` is 3.
+- **D-011:** `stale_after` is 3 days.
 
-Still open before Step 9 wires E and H:
+Still open before Step 9 wires H:
 
-1. **`stale_after`:** how long a Receptor can go without reporting before it counts as silent. The tests use 10 minutes; that is a test value, not a decision.
-2. **Bank statement format.** The prototype format is CSV with `date, direction, amount, currency, reference`. Your bank's real export (column names, debit/credit layout) needs confirming; adapting the parser touches only `parse_statement`.
+1. **Bank statement format.** The prototype format is CSV with `date, direction, amount, currency, reference`. Your bank's real export (column names, debit/credit layout) needs confirming; adapting the parser touches only `parse_statement`.
 
 ## Left for later steps
 

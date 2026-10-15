@@ -76,3 +76,11 @@ decisions:
   decision: >-
     repeated_failure_threshold is 3: three bad health reports in a row count as repeated
     failure. Changing it later needs a Founder-approved operational-parameter proposal.
+- id: D-011
+  date: '2026-10-15'
+  closes: Step 6 open parameter stale_after
+  topic: How long a Receptor may stay silent
+  decision: >-
+    stale_after is 3 days. A Receptor with no health report for 3 days shows as unverified,
+    and that issue goes to the Founder with hourly reminders under D-009. Changing it later
+    needs a Founder-approved operational-parameter proposal.
