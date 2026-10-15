@@ -2,7 +2,7 @@
 
 Layer A is the governed core between the Founder and the business Receptors. It covers governance, security, control, intelligence routing, state, execution coordination, monitoring and evidence. "The model proposes; the gateway enforces."
 
-**Status:** Steps 1 to 7 of 10 are done (foundation and contracts; Memory & Evidence Layer; Governance Core; Governed Tool Hub; Orchestrator; Assurance; Intelligence). Nothing is deployed. See `docs/EXECUTION_PLAN.md`.
+**Status:** Steps 1 to 8 of 10 are done (foundation and contracts; Memory & Evidence Layer; Governance Core; Governed Tool Hub; Orchestrator; Assurance; Intelligence; Founder Interface). Nothing is deployed. See `docs/EXECUTION_PLAN.md`.
 
 ## Layout
 
@@ -22,13 +22,16 @@ Layer A is the governed core between the Founder and the business Receptors. It 
 | `services/orchestrator/` | Step 5: Orchestrator (card D), schema `orchestrator` (`services/orchestrator/NOTES.md`) |
 | `services/assurance/` | Step 6: QA/QC (F), Monitoring (E), Financial Control (H), Dashboard data (J), schema `assurance` (`services/assurance/NOTES.md`) |
 | `services/intelligence/` | Step 7: Conversation Engine (B), Model Router (C), Hermes runtime, schema `intelligence` (`services/intelligence/NOTES.md`) |
+| `services/gateway/` | Step 8: Entry Gateway: Founder login, sessions, rate limiting (`apps/founder-app/NOTES.md`) |
+| `services/founder-controls/` | Step 8: Direct Founder Controls: Approve / Reject, STOP / PAUSE, and the `dyson-control` client (`apps/founder-app/NOTES.md`) |
+| `apps/founder-app/` | Step 8: the Dyson Founder app, text first, voice slot (`apps/founder-app/NOTES.md`) |
 | `tests/` | Repository checks: policy, lock, planes, traceability |
 
 ## Run the checks
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
-pip install -e contracts -e "services/memory[dev]" -e "services/governance[dev]" -e "services/toolhub[dev]" -e "services/orchestrator[dev]" -e "services/assurance[dev]" -e "services/intelligence[dev]" "pyyaml>=6" pytest ruff
+pip install -e contracts -e "services/memory[dev]" -e "services/governance[dev]" -e "services/toolhub[dev]" -e "services/orchestrator[dev]" -e "services/assurance[dev]" -e "services/intelligence[dev]" -e "services/gateway[dev]" -e "services/founder-controls[dev]" -e "apps/founder-app[dev]" "pyyaml>=6" pytest ruff
 ruff check . && ruff format --check .
 pytest -q
 ```

@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dyson-founder-controls"
+version = "0.1.0"
+description = "Dyson Sphere Layer A Direct Founder Controls: Approve / Reject, STOP / PAUSE"
+requires-python = ">=3.12"
+dependencies = [
+    "dyson-contracts",
+    "fastapi>=0.110",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+dyson-control = "dyson_founder_controls.client:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
