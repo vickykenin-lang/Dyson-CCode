@@ -2,7 +2,7 @@
 
 Layer A is the governed core between the Founder and the business Receptors. It covers governance, security, control, intelligence routing, state, execution coordination, monitoring and evidence. "The model proposes; the gateway enforces."
 
-**Status:** Steps 1 to 6 of 10 are done (foundation and contracts; Memory & Evidence Layer; Governance Core; Governed Tool Hub; Orchestrator; Assurance). Nothing is deployed. See `docs/EXECUTION_PLAN.md`.
+**Status:** Steps 1 to 7 of 10 are done (foundation and contracts; Memory & Evidence Layer; Governance Core; Governed Tool Hub; Orchestrator; Assurance; Intelligence). Nothing is deployed. See `docs/EXECUTION_PLAN.md`.
 
 ## Layout
 
@@ -21,13 +21,14 @@ Layer A is the governed core between the Founder and the business Receptors. It 
 | `services/toolhub/` | Step 4: Governed Tool Hub (card G), schema `toolhub` (`services/toolhub/NOTES.md`) |
 | `services/orchestrator/` | Step 5: Orchestrator (card D), schema `orchestrator` (`services/orchestrator/NOTES.md`) |
 | `services/assurance/` | Step 6: QA/QC (F), Monitoring (E), Financial Control (H), Dashboard data (J), schema `assurance` (`services/assurance/NOTES.md`) |
+| `services/intelligence/` | Step 7: Conversation Engine (B), Model Router (C), Hermes runtime, schema `intelligence` (`services/intelligence/NOTES.md`) |
 | `tests/` | Repository checks: policy, lock, planes, traceability |
 
 ## Run the checks
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
-pip install -e contracts -e "services/memory[dev]" -e "services/governance[dev]" -e "services/toolhub[dev]" -e "services/orchestrator[dev]" -e "services/assurance[dev]" "pyyaml>=6" pytest ruff
+pip install -e contracts -e "services/memory[dev]" -e "services/governance[dev]" -e "services/toolhub[dev]" -e "services/orchestrator[dev]" -e "services/assurance[dev]" -e "services/intelligence[dev]" "pyyaml>=6" pytest ruff
 ruff check . && ruff format --check .
 pytest -q
 ```

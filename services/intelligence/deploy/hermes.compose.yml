@@ -1,0 +1,37 @@
+# Hermes isolation (LA-HER-01..03). Merged into the full stack in Step 9; checked by tests now.
+#
+# - hermes sits only on hermes_net, which is internal (no route to the internet) and on which the
+#   only other members are the Model Router (C) and the Governed Tool Hub (G).
+# - No volumes: no path to the audit log, evidence stores, memory or the bank-statement intake.
+# - Its only secret is its own caller credential for C and G, which identifies it as "hermes";
+#   it gets no secret-store access, no database DSN, no model key and no STOP-control address.
+services:
+  hermes:
+    image: dyson/hermes:candidate
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [hermes_net]
+    environment:
+      DYSON_ROUTER_URL: http://model-router:8000
+      DYSON_TOOLHUB_URL: http://tool-hub:8000
+    secrets: [hermes_caller_token]
+
+  model-router:
+    image: dyson/model-router:local
+    networks: [hermes_net, core_net, model_egress]
+
+  tool-hub:
+    image: dyson/tool-hub:local
+    networks: [hermes_net, core_net]
+
+networks:
+  hermes_net:
+    internal: true
+  core_net:
+    internal: true
+  model_egress: {}
+
+secrets:
+  hermes_caller_token:
+    file: ./secrets/hermes_caller_token
