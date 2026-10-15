@@ -17,7 +17,8 @@ Source: *Dyson Sphere — Layer A PRD* v1.0 (11 Oct 2026). Founder decisions are
 | 1 | Done |
 | 2 | Done (see `services/memory/NOTES.md`) |
 | 3 | Done (see `services/governance/NOTES.md`) |
-| 4 to 10 | Not started |
+| 4 | Done (see `services/toolhub/NOTES.md`) |
+| 5 to 10 | Not started |
 
 ## The ten steps
 
