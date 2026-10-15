@@ -1,0 +1,212 @@
+# AMD-1 to AMD-14 in machine-checkable form (LA-GOV-01).
+# Text fields are copied from PRD section 6. 'controls' restate the locked text as values;
+# they add no new rule. effective_from = date of Register v1.0 / Closure (10 Oct 2026).
+# Any edit to AMD-1..AMD-13 text fails CI (policy/amd_register.lock, LA-AMD-05).
+register:
+  name: Dyson Sphere Founder Decision Register (machine-checkable form)
+  version: '1.0'
+  source:
+  - Founder Decision Register AMD-1 to AMD-13 plus the AMD-14 research brief, version 1.0, 10 October
+    2026
+  - AMD-14 Final Architecture Design Closure, 10 October 2026
+  - Dyson Sphere — Layer A PRD v1.0, section 6
+rules:
+- id: AMD-1
+  title: Hybrid Three-Plane Separation
+  status: DESIGN LOCKED
+  version: '1.0'
+  effective_from: '2026-10-10'
+  principle: Governance / control, intelligence and execution stay separate. AI models are replaceable
+    after qualification. Central intelligence cannot bypass security, authorization or financial controls
+  layer_a_meaning: Deciding (A, G), thinking (B, C, Hermes) and acting (D, G, Receptors) live in separate
+    components. No model reaches a tool except through G
+  carried_by: A, B, C, D, G, Hermes
+  controls:
+    tool_access_only_via: G
+    external_model_access_only_via: C
+    intelligence_may_bypass_governance: false
+- id: AMD-2
+  title: Founder Financial Authority
+  status: DESIGN LOCKED
+  version: '1.0'
+  effective_from: '2026-10-10'
+  principle: Every financial or payment action needs Founder approval. Routine non-financial work may
+    run autonomously only inside approved scope. No blanket automatic ad-spend allowance. Prepaid-credit
+    delegation needs separate authorization after testing
+  layer_a_meaning: An approval gate on every money-out action. No payment credentials or bank API inside
+    Dyson. Payments happen outside Dyson
+  carried_by: A, G, H
+  controls:
+    financial_action_requires_founder_approval: true
+    bank_api_inside_dyson: false
+    payment_credentials_inside_dyson: false
+    blanket_automatic_ad_spend_allowance: false
+    prepaid_credit_delegation_requires_separate_authorization: true
+- id: AMD-3
+  title: Evidence Registry and Receptor QA/QC
+  status: DESIGN LOCKED
+  version: '1.0'
+  effective_from: '2026-10-10'
+  principle: Distinct evidence stages; task-specific QA/QC per Receptor; technical success and fitness
+    for purpose checked separately; failures trigger correction and retest; three consecutive failures
+    trigger HOLD and a human reviewer
+  layer_a_meaning: Evidence registry in I with the eight stages; F verifies independently; D holds the
+    task after three consecutive failures
+  carried_by: D, F, I
+  controls:
+    evidence_stage_count: 8
+    qa_consecutive_failure_limit: 3
+    technical_success_and_fitness_checked_separately: true
+- id: AMD-4
+  title: Objective-First Model Selection, Qualification and Fallback
+  status: DESIGN LOCKED
+  version: '1.0'
+  effective_from: '2026-10-10'
+  principle: Task quality over model prestige; models compared and qualified; tested fallback, QC verification,
+    continuity and evidence-backed escalation. Governance stays binding
+  layer_a_meaning: C routes only to qualified, approved models and falls back on failure. No model is
+    preapproved or mandatory
+  carried_by: C, F
+  controls:
+    preapproved_models: []
+    fallback_must_be_tested: true
+- id: AMD-5
+  title: Independent Emergency Safeguards
+  status: DESIGN LOCKED
+  version: '1.0'
+  effective_from: '2026-10-10'
+  principle: Central master STOP plus per-Receptor STOP / PAUSE / RESUME, independent of the AI model.
+    Bounded recovery with incident reporting. No automatic resume after a serious security or financial
+    breach. Repeated failure escalates to Founder or human authorization
+  layer_a_meaning: A red STOP path from A to G, Hermes and all Receptors that needs no LLM. Recovery attempts
+    are bounded and logged. Resuming after a serious breach needs explicit authorization
+  carried_by: A, DFC, G, E
+  controls:
+    stop_requires_llm: false
+    auto_resume_after_serious_breach: false
+    recovery_attempts_bounded: true
+- id: AMD-6
+  title: Independent but Governed Receptors
+  status: DESIGN LOCKED
+  version: '1.0'
+  effective_from: '2026-10-10'
+  principle: Each Receptor is an independent unit under Central Governance, shares a sustainable-profit
+    mission, competes healthily and collaborates under governance. Incentives are judged on verified net
+    profit. Extra paid resources need Founder approval
+  layer_a_meaning: Receptor-to-receptor support only through Governance / Tool Hub, in limited scope.
+    Verified financial data from H feeds performance review
+  carried_by: G, H
+  controls:
+    receptor_to_receptor_only_via:
+    - A
+    - G
+    incentive_basis: verified_net_profit
+    extra_paid_resources_require_founder_approval: true
+- id: AMD-7
+  title: Pause-Archive-Replace Protocol
+  status: DESIGN LOCKED
+  version: '1.0'
+  effective_from: '2026-10-10'
+  principle: An underperforming or risky Receptor may be paused. Its configuration, data, performance
+    and financial records are kept through governed archiving. Permanent closure, archival disposition
+    and replacement are the Founder's final decision
+  layer_a_meaning: PAUSE control in A; archive of the Receptor's records in I; no deletion or replacement
+    without a Founder decision
+  carried_by: A, I
+  controls:
+    receptor_closure_or_replacement_requires_founder_decision: true
+    paused_receptor_records_archived: true
+- id: AMD-8
+  title: Central Information and Shared Knowledge
+  status: DESIGN LOCKED
+  version: '1.0'
+  effective_from: '2026-10-10'
+  principle: Shared learning is centrally governed. Each Receptor's private records, credentials, sensitive
+    data and finances stay isolated. Only governed, verified information is shared
+  layer_a_meaning: Per-Receptor memory isolation in I. Shared learnings need separate approval (Closure
+    §6)
+  carried_by: I
+  controls:
+    per_receptor_isolation: true
+    shared_learning_requires_separate_approval: true
+- id: AMD-9
+  title: Legal and Regulatory Governance
+  status: DESIGN LOCKED
+  version: '1.0'
+  effective_from: '2026-10-10'
+  principle: Receptor-specific compliance controls and records. New legal policies, regulated activities,
+    permissions or activation need Founder authorization. Required legal review is never replaced by an
+    AI guess
+  layer_a_meaning: Legal & Compliance Controls in A. Regulated or unclear cases escalate for Founder authorization
+    and professional or legal review where required
+  carried_by: A
+  controls:
+    regulated_activity_requires_founder_authorization: true
+    ai_may_replace_required_legal_review: false
+- id: AMD-10
+  title: Founder Dashboard / Swarm Visibility
+  status: DESIGN LOCKED
+  version: '1.0'
+  effective_from: '2026-10-10'
+  principle: A centralized view of Receptor activity, status and the wider Swarm. Visibility confers no
+    authority to act. Detailed UI is future work
+  layer_a_meaning: J and the monitoring views are read-only; no action path starts from the dashboard.
+    UX design is deferred
+  carried_by: E, J
+  controls:
+    dashboard_has_action_path: false
+- id: AMD-11
+  title: Bounded Autonomy and Dynamic Limits
+  status: DESIGN LOCKED
+  version: '1.0'
+  effective_from: '2026-10-10'
+  principle: The Founder sets each Receptor's initial permissions, authority and spending limits. Central
+    Governance may recommend changes from verified performance. Only Founder approval changes limits
+  layer_a_meaning: Budget & Permission Controls in A hold the limits. Recommendations and approvals are
+    separate records
+  carried_by: A
+  controls:
+    limit_change_requires_founder_approval: true
+    recommendation_and_approval_are_separate_records: true
+- id: AMD-12
+  title: Founder Continuity / Automatic Safe Mode
+  status: DESIGN LOCKED
+  version: '1.0'
+  effective_from: '2026-10-10'
+  principle: 'After 48 hours of Founder unavailability, Safe Continuity Mode limits work to previously
+    approved low-risk tasks and halts new high-risk or financial decisions. No one else inherits Founder
+    authority. Open sub-point: how presence is detected and verified'
+  layer_a_meaning: Reserve a Safe Continuity mode in A. Do not implement the 48-hour trigger until presence
+    detection is defined and validated
+  carried_by: A (blocked)
+  controls:
+    safe_continuity_mode_reserved: true
+    automatic_48h_trigger_enabled: false
+  open_subpoint: How Founder presence is detected and verified (implementation gate 7).
+- id: AMD-13
+  title: Supply-Chain Security
+  status: DESIGN LOCKED
+  version: '1.0'
+  effective_from: '2026-10-10'
+  principle: Every package, plugin, API, MCP server and integration enters through Central Governance
+    monitoring, security checks and auditable change. High-risk integrations need Founder approval. Suspect
+    ones may be blocked or isolated under AMD-5
+  layer_a_meaning: Supply Chain / Integration Gate in A and a governed registry in G. Anything Hermes
+    installs or calls is in scope
+  carried_by: A, G, Hermes
+  controls:
+    unregistered_integration_callable: false
+    high_risk_integration_requires_founder_approval: true
+- id: AMD-14
+  title: Integrated Intelligence, Voice, Governance, Memory and AWS Execution Architecture
+  status: DESIGN LOCKED
+  version: '1.0'
+  effective_from: '2026-10-10'
+  principle: AWS-hosted, interface-neutral, independently governed Dyson Core; Dyson-owned voice and text;
+    persistent ChatGPT-like memory; Founder-controlled amendments; independent STOP; durable evidence-backed
+    execution; isolated Receptors. Integrates AMD-1 to AMD-13 without amending them
+  layer_a_meaning: This PRD is the Layer A requirements specification for it
+  carried_by: All
+  controls:
+    rule_change_requires_founder_approval: true
+    amends_amd_1_to_13: false

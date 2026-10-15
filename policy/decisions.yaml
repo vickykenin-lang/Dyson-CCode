@@ -1,0 +1,45 @@
+# Founder decisions on the PRD's open Derived items, taken before Step 1.
+# Recorded 2026-10-15 in the Claude Code session that produced Step 1.
+# These close PRD section 14 open items 1, 2, 3 and 8. They do not change AMD-1..AMD-14.
+decisions:
+- id: D-001
+  date: '2026-10-15'
+  closes: PRD §14 open item 1
+  topic: Task state names
+  decision: >-
+    Use the closure (§9) names: accepted, approval-needed, running, held, stopped, failed,
+    completed-verified. Keep closed as the housekeeping end state.
+- id: D-002
+  date: '2026-10-15'
+  closes: PRD §14 open item 2
+  topic: What PAUSE does to a task
+  decision: >-
+    PAUSE moves an active task to held. It waits there until an authorized RESUME
+    or a reviewer / Founder decision.
+- id: D-003
+  date: '2026-10-15'
+  closes: PRD §14 open item 3
+  topic: End state after a Founder Reject
+  decision: >-
+    A rejected approval moves the task to rejected, then closed. A rejected task can never
+    be restarted; a changed mind needs a new instruction.
+- id: D-004
+  date: '2026-10-15'
+  closes: PRD §14 open item 8
+  topic: Plane mapping (AMD-1)
+  decision: Accept the PRD section 6 plane mapping as written. See policy/planes.yaml.
+- id: D-005
+  date: '2026-10-15'
+  closes: Execution plan stack question
+  topic: Technology stack
+  decision: >-
+    Python 3.12+, FastAPI for service endpoints, PostgreSQL 16, pydantic for contracts,
+    pytest for tests, Docker Compose for local runs. App screens are served from Python
+    until Step 8 decides whether voice needs a heavier front end.
+- id: D-006
+  date: '2026-10-15'
+  closes: Execution plan repository question
+  topic: Repository and first branch
+  decision: >-
+    New repository vickykenin-lang/dyson-ccode, kept separate from earlier work.
+    Step 1 is the first commit on main.

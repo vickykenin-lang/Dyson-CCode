@@ -1,0 +1,992 @@
+# Layer A requirement traceability.
+# Source: Dyson Sphere — Layer A PRD v1.0 (11 Oct 2026). Text is copied from the PRD.
+# step = the execution-plan step in which the requirement is fully proven
+# (see docs/EXECUTION_PLAN.md). Every ID has exactly one owner step.
+requirements:
+- id: LA-G-01
+  step: 10
+  section: 2. Goals, non-goals and success criteria
+  basis: Closure §1, §5
+  text: Converse with the Founder in natural Hindi, English and Hinglish, with live voice and text sharing
+    one history and one memory.
+- id: LA-G-02
+  step: 7
+  section: 2. Goals, non-goals and success criteria
+  basis: Closure §1, §4, §7
+  text: Reason independently, challenge assumptions respectfully, understand the constitutional rules
+    and propose improvements or amendments, without ever self-authorizing a constitutional change.
+- id: LA-G-03
+  step: 2
+  section: 2. Goals, non-goals and success criteria
+  basis: Closure §1, §6
+  text: Preserve conversations, project context, decisions, evidence and reasoning across days, sessions,
+    devices and model changes.
+- id: LA-G-04
+  step: 9
+  section: 2. Goals, non-goals and success criteria
+  basis: Closure §1; Register §1
+  text: Direct and monitor separately governed Layer B Receptors, and receive truthful, verified results
+    from them.
+- id: LA-G-05
+  step: 9
+  section: 2. Goals, non-goals and success criteria
+  basis: Closure §1
+  text: Observe, diagnose and take bounded low-risk repair actions inside preapproved policies; escalate
+    or stop within AMD-3 and AMD-5 limits.
+- id: LA-G-06
+  step: 7
+  section: 2. Goals, non-goals and success criteria
+  basis: Closure §1; AMD-1, AMD-4
+  text: 'Stay provider-neutral: losing or replacing a model or voice provider must not destroy task state,
+    Founder decisions or accumulated memory.'
+- id: LA-G-07
+  step: 1
+  section: 2. Goals, non-goals and success criteria
+  basis: Closure §1, §10
+  text: Run independently of any active ChatGPT conversation and without GitHub Actions in the live command-execution
+    path.
+- id: LA-G-08
+  step: 8
+  section: 2. Goals, non-goals and success criteria
+  basis: Register §1
+  text: Spare the Founder from jumping between many tools, models and Receptor dashboards for routine
+    operations.
+- id: LA-G-09
+  step: 8
+  section: 2. Goals, non-goals and success criteria
+  basis: Register §1; Closure §5
+  text: Acknowledge commands fast and show continuously updated activity, without promising zero-latency
+    completion.
+- id: LA-APP-01
+  step: 8
+  section: 7.1.1 Dyson Voice / Chat App (Natural Language Interface)
+  basis: Closure §3, §5
+  text: The app shall be a Dyson-owned, branded conversation environment (Web, with Android as the target)
+    offering near-real-time two-way voice and text on the same authoritative Dyson backend.
+- id: LA-APP-02
+  step: 10
+  section: 7.1.1 Dyson Voice / Chat App (Natural Language Interface)
+  basis: Closure §5, §11
+  text: The app shall accept Hindi, English and mixed Hinglish in voice and text. Quality thresholds are
+    set by benchmark (gate 5).
+- id: LA-APP-03
+  step: 8
+  section: 7.1.1 Dyson Voice / Chat App (Natural Language Interface)
+  basis: Closure §1, §6
+  text: Voice and text shall share one conversation history and one memory.
+- id: LA-APP-04
+  step: 8
+  section: 7.1.1 Dyson Voice / Chat App (Natural Language Interface)
+  basis: Closure §5, §9
+  text: For every command the app shall show an immediate honest acknowledgment ( accepted or approval-needed
+    ), then stream task progress, and show a final result only when verified evidence exists. An acknowledgment
+    shall never be presented as completion.
+- id: LA-APP-05
+  step: 8
+  section: 7.1.1 Dyson Voice / Chat App (Natural Language Interface)
+  basis: Closure §5; Register §3.4
+  text: Ending a voice call shall not erase any task or its history. On reconnect the app shall retrieve
+    task states and relevant conversation context from AWS.
+- id: LA-APP-06
+  step: 8
+  section: 7.1.1 Dyson Voice / Chat App (Natural Language Interface)
+  basis: Diagram
+  text: Access shall be Founder-only, with sessions handled through the Entry Gateway. The app holds no
+    authority of its own.
+- id: LA-APP-07
+  step: 8
+  section: 7.1.1 Dyson Voice / Chat App (Natural Language Interface)
+  basis: Closure §6; Derived
+  text: The app shall flag uncertain speech transcription instead of acting on it silently.
+- id: LA-APP-08
+  step: 10
+  section: 7.1.1 Dyson Voice / Chat App (Natural Language Interface)
+  basis: Closure §5
+  text: The voice technology shall be chosen only after benchmarking GPT-Live / Realtime, Gemini Live
+    and chained STT to LLM to TTS options (including Hindi-oriented providers), and transport such as
+    LiveKit or Pipecat. None is preapproved.
+- id: LA-APP-09
+  step: 8
+  section: 7.1.1 Dyson Voice / Chat App (Natural Language Interface)
+  basis: Closure §3, §5; Register §3.2
+  text: The app shall not be the system of record or a source of authorization. Any other front end, for
+    example a ChatGPT adapter, is optional, later and tested first.
+- id: LA-GW-01
+  step: 8
+  section: 7.1.2 Entry Gateway (Identity, Session, Rate Limiting), on AWS
+  basis: Diagram; Closure §3
+  text: The Gateway shall authenticate the Founder for every session and issue a session token.
+- id: LA-GW-02
+  step: 8
+  section: 7.1.2 Entry Gateway (Identity, Session, Rate Limiting), on AWS
+  basis: Diagram
+  text: The Gateway shall apply rate limiting and abuse protection to all inbound traffic.
+- id: LA-GW-03
+  step: 8
+  section: 7.1.2 Entry Gateway (Identity, Session, Rate Limiting), on AWS
+  basis: Diagram
+  text: The Gateway shall enforce access controls and route authenticated requests to the Dyson Conversation
+    Engine (B).
+- id: LA-GW-04
+  step: 10
+  section: 7.1.2 Entry Gateway (Identity, Session, Rate Limiting), on AWS
+  basis: Diagram; Derived
+  text: The Gateway shall run on AWS and be the only public entry point to Layer A.
+- id: LA-GW-05
+  step: 10
+  section: 7.1.2 Entry Gateway (Identity, Session, Rate Limiting), on AWS
+  basis: Closure §11
+  text: Network exposure, DNS and TLS shall be decided before paid deployment (gate 2).
+- id: LA-DFC-01
+  step: 8
+  section: 7.1.3 Direct Founder Controls
+  basis: Diagram; AMD-5; Closure §5
+  text: Approve / Reject and Emergency STOP / PAUSE shall be reachable on an independently authenticated
+    path that does not pass through the app, the Conversation Engine or any LLM.
+- id: LA-DFC-02
+  step: 8
+  section: 7.1.3 Direct Founder Controls
+  basis: Diagram, rule 3
+  text: Both controls shall connect only to the Governance Core (A).
+- id: LA-DFC-03
+  step: 8
+  section: 7.1.3 Direct Founder Controls
+  basis: Closure §5, §11
+  text: Consequential approvals shall require an independently authenticated Founder confirmation. The
+    method (passkey, hardware key or other), signed-approval semantics, expiry and audit are decided at
+    gate 3.
+- id: LA-DFC-04
+  step: 8
+  section: 7.1.3 Direct Founder Controls
+  basis: AMD-5; Closure §5, §9
+  text: STOP and PAUSE shall work when the voice model, any LLM or the app is unavailable.
+- id: LA-DFC-05
+  step: 8
+  section: 7.1.3 Direct Founder Controls
+  basis: Closure §7; Derived
+  text: An approval shall bind to the exact action or diff shown to the Founder and be recorded with time
+    and approver.
+- id: LA-DFC-06
+  step: 10
+  section: 7.1.3 Direct Founder Controls
+  basis: Closure §9, §11
+  text: How STOP treats operations already running or irreversible shall be documented as a Founder decision
+    before any live write testing (gate 4).
+- id: LA-VLT-01
+  step: 6
+  section: 7.1.4 Bank statement intake (zone 3 into the Financial Controller)
+  basis: Diagram; AMD-2
+  text: The only path from the Founder's bank records into Dyson shall be a Founder-initiated bank statement
+    upload to the Financial Controller (H).
+- id: LA-VLT-02
+  step: 6
+  section: 7.1.4 Bank statement intake (zone 3 into the Financial Controller)
+  basis: Diagram
+  text: Dyson shall have no direct bank API access, bank credentials or payment capability.
+- id: LA-VLT-03
+  step: 6
+  section: 7.1.4 Bank statement intake (zone 3 into the Financial Controller)
+  basis: Diagram; Derived
+  text: The vault's private financial records stay Founder-only. Layer A shall keep only the uploaded
+    statement data needed for reconciliation.
+- id: LA-VLT-04
+  step: 10
+  section: 7.1.4 Bank statement intake (zone 3 into the Financial Controller)
+  basis: Closure §11
+  text: Uploaded statements shall be treated as personal financial data under the classification and retention
+    policy decided at gate 6.
+- id: LA-GOV-01
+  step: 3
+  section: 7.2.1 A. Governance Core (Policy & Control Authority)
+  basis: Diagram; Closure §6; Derived
+  text: The Policy Engine shall hold machine-checkable policy derived from the approved AMD register,
+    with a version and effective date for each rule.
+- id: LA-GOV-02
+  step: 3
+  section: 7.2.1 A. Governance Core (Policy & Control Authority)
+  basis: Diagram; Closure §7
+  text: The Founder Approval Engine shall create, track and close approval requests, accept decisions
+    only from the independently authenticated Founder channel, and refuse approval from any model, agent
+    or Receptor.
+- id: LA-GOV-03
+  step: 3
+  section: 7.2.1 A. Governance Core (Policy & Control Authority)
+  basis: AMD-5; Diagram
+  text: Emergency STOP / PAUSE shall be deterministic control code with no LLM in its path. It shall act
+    on the Tool Hub, Hermes and all Receptors.
+- id: LA-GOV-04
+  step: 3
+  section: 7.2.1 A. Governance Core (Policy & Control Authority)
+  basis: AMD-11
+  text: Budget & Permission Controls shall store each Receptor's permissions, authority and spending limits
+    as set by the Founder, and change them only on Founder approval.
+- id: LA-GOV-05
+  step: 3
+  section: 7.2.1 A. Governance Core (Policy & Control Authority)
+  basis: AMD-2
+  text: Every financial action shall stay blocked until a Founder approval for it exists.
+- id: LA-GOV-06
+  step: 3
+  section: 7.2.1 A. Governance Core (Policy & Control Authority)
+  basis: AMD-13; AMD-5
+  text: The Supply Chain / Integration Gate shall admit each package, plugin, API, MCP server and integration
+    only after security checks and an auditable change record. High-risk items need Founder approval;
+    suspect items can be blocked or isolated.
+- id: LA-GOV-07
+  step: 3
+  section: 7.2.1 A. Governance Core (Policy & Control Authority)
+  basis: AMD-9
+  text: Legal & Compliance Controls shall keep Receptor-specific compliance records and route new legal
+    policies, regulated activities or activation to the Founder. Required legal review is never replaced
+    by an AI guess.
+- id: LA-GOV-08
+  step: 3
+  section: 7.2.1 A. Governance Core (Policy & Control Authority)
+  basis: AMD-5
+  text: After a serious security or financial breach the Core shall not resume automatically.
+- id: LA-GOV-09
+  step: 3
+  section: 7.2.1 A. Governance Core (Policy & Control Authority)
+  basis: AMD-5; Closure §9
+  text: Recovery attempts shall be bounded and recorded one by one, and repeated failure shall escalate
+    for Founder or human authorization.
+- id: LA-GOV-10
+  step: 3
+  section: 7.2.1 A. Governance Core (Policy & Control Authority)
+  basis: AMD-12
+  text: A Safe Continuity mode shall be reserved in the design. The 48-hour automatic trigger shall not
+    be implemented until Founder presence detection is defined and validated.
+- id: LA-CONV-01
+  step: 7
+  section: 7.2.2 B. Dyson Conversation Engine (Understand, Decide, Prepare)
+  basis: Diagram; Closure §1
+  text: B shall interpret each Founder request in Hindi, English or Hinglish and keep the context of the
+    whole thread.
+- id: LA-CONV-02
+  step: 7
+  section: 7.2.2 B. Dyson Conversation Engine (Understand, Decide, Prepare)
+  basis: Diagram
+  text: B shall decide which tools and Receptors a request needs and hand a prepared instruction to the
+    Orchestrator (D). It shall not execute tools itself.
+- id: LA-CONV-03
+  step: 7
+  section: 7.2.2 B. Dyson Conversation Engine (Understand, Decide, Prepare)
+  basis: Diagram
+  text: B shall ask the Founder to clarify an ambiguous request instead of guessing.
+- id: LA-CONV-04
+  step: 7
+  section: 7.2.2 B. Dyson Conversation Engine (Understand, Decide, Prepare)
+  basis: Closure §4
+  text: B shall carry persistent persona and role instructions grounded in the approved AMD register.
+- id: LA-CONV-05
+  step: 7
+  section: 7.2.2 B. Dyson Conversation Engine (Understand, Decide, Prepare)
+  basis: Closure §4
+  text: B shall propose improvements to rules and workflows on its own initiative. It shall never silently
+    rewrite a policy, approve new spend or deploy an unapproved Receptor.
+- id: LA-CONV-06
+  step: 9
+  section: 7.2.2 B. Dyson Conversation Engine (Understand, Decide, Prepare)
+  basis: Diagram
+  text: B shall run policy and approval checks with the Governance Core (A) before it prepares an action,
+    and shall return responses to the Founder through the Entry Gateway.
+- id: LA-CONV-07
+  step: 7
+  section: 7.2.2 B. Dyson Conversation Engine (Understand, Decide, Prepare)
+  basis: Closure §4, §9
+  text: B shall not report an action as complete because a tool answered 200 OK . Completion is reported
+    only after verification.
+- id: LA-RTR-01
+  step: 7
+  section: 7.2.3 C. Model Router & Fallback (Only approved path to external models)
+  basis: Diagram
+  text: C shall be the only approved path from Layer A, including Hermes, to external models. No model
+    access shall exist outside governance.
+- id: LA-RTR-02
+  step: 7
+  section: 7.2.3 C. Model Router & Fallback (Only approved path to external models)
+  basis: Diagram; Closure §4; AMD- 4
+  text: C shall pick, per task, the least expensive approved model that reliably meets the Founder-defined
+    acceptance bar.
+- id: LA-RTR-03
+  step: 7
+  section: 7.2.3 C. Model Router & Fallback (Only approved path to external models)
+  basis: Closure §4; AMD-4
+  text: No model or vendor shall be preapproved or mandatory. Qualification compares real task outcomes,
+    latency and cost.
+- id: LA-RTR-04
+  step: 7
+  section: 7.2.3 C. Model Router & Fallback (Only approved path to external models)
+  basis: Diagram; AMD-4; Closure §1
+  text: C shall fall back to a tested alternative on failure without losing task state or memory.
+- id: LA-RTR-05
+  step: 7
+  section: 7.2.3 C. Model Router & Fallback (Only approved path to external models)
+  basis: Diagram; Closure §2
+  text: C shall enforce cost control and token limits inside approved budgets.
+- id: LA-RTR-06
+  step: 7
+  section: 7.2.3 C. Model Router & Fallback (Only approved path to external models)
+  basis: Closure §4
+  text: Model identities, routes and fallbacks shall be recorded and stay under governance. Changes need
+    approval.
+- id: LA-RTR-07
+  step: 10
+  section: 7.2.3 C. Model Router & Fallback (Only approved path to external models)
+  basis: Closure §11
+  text: Data sent to external models shall follow the redaction rules decided at gate 6.
+- id: LA-ORC-01
+  step: 5
+  section: 7.2.4 D. Dyson Orchestrator (Task Planning & Routing)
+  basis: Diagram; Closure §9
+  text: D shall assign a task ID to every accepted instruction and manage its lifecycle through the durable
+    states in section 9.
+- id: LA-ORC-02
+  step: 5
+  section: 7.2.4 D. Dyson Orchestrator (Task Planning & Routing)
+  basis: Closure §3, §5; Register §3.4
+  text: D shall run tasks from a durable queue so that work continues when the voice session closes.
+- id: LA-ORC-03
+  step: 5
+  section: 7.2.4 D. Dyson Orchestrator (Task Planning & Routing)
+  basis: Closure §9
+  text: D shall attach an idempotency key to every action so that a retry after a network failure cannot
+    duplicate it.
+- id: LA-ORC-04
+  step: 5
+  section: 7.2.4 D. Dyson Orchestrator (Task Planning & Routing)
+  basis: Diagram; AMD-3
+  text: D shall apply retry and escalation logic, and shall move a task to Held after three consecutive
+    QA/QC failures.
+- id: LA-ORC-05
+  step: 5
+  section: 7.2.4 D. Dyson Orchestrator (Task Planning & Routing)
+  basis: Diagram
+  text: D shall route all tool use through the Governed Tool Hub (G) and have no other path to a tool.
+- id: LA-ORC-06
+  step: 5
+  section: 7.2.4 D. Dyson Orchestrator (Task Planning & Routing)
+  basis: Closure §9
+  text: D shall not mark a task completed-verified until the QA/QC Controller has verified the real output.
+- id: LA-ORC-07
+  step: 9
+  section: 7.2.4 D. Dyson Orchestrator (Task Planning & Routing)
+  basis: Diagram
+  text: D shall write task state and evidence references to the Memory & Evidence Layer (I).
+- id: LA-MON-01
+  step: 6
+  section: 7.2.5 E. Receptor Monitoring & Health Controller
+  basis: Diagram
+  text: E shall monitor all Receptors (R11 to Rn) through the Monitoring / Health lane.
+- id: LA-MON-02
+  step: 6
+  section: 7.2.5 E. Receptor Monitoring & Health Controller
+  basis: Diagram
+  text: E shall track task status, KPIs and failures per Receptor.
+- id: LA-MON-03
+  step: 6
+  section: 7.2.5 E. Receptor Monitoring & Health Controller
+  basis: Diagram
+  text: E shall detect repeated-failure and pause conditions and escalate them to the Governance Core
+    and to the Founder Dashboard (J).
+- id: LA-MON-04
+  step: 6
+  section: 7.2.5 E. Receptor Monitoring & Health Controller
+  basis: Diagram; AMD-10
+  text: E shall supply health status and KPI views to the Founder Dashboard as read-only data.
+- id: LA-MON-05
+  step: 6
+  section: 7.2.5 E. Receptor Monitoring & Health Controller
+  basis: Diagram; Derived
+  text: E shall have no authority to act on a Receptor. It observes and escalates; the Governance Core
+    decides.
+- id: LA-MON-06
+  step: 6
+  section: 7.2.5 E. Receptor Monitoring & Health Controller
+  basis: Register §3.4
+  text: Monitoring shall report truthfully when a Receptor, model, tool or the Core itself is offline
+    or unverified.
+- id: LA-QA-01
+  step: 6
+  section: 7.2.6 F. Independent QA/QC Controller
+  basis: Diagram; AMD-3
+  text: F shall define the quality standards for all Receptors and verify their outputs and evidence independently
+    of the Receptor that produced them.
+- id: LA-QA-02
+  step: 6
+  section: 7.2.6 F. Independent QA/QC Controller
+  basis: AMD-3
+  text: F shall check technical success and practical fitness for purpose separately.
+- id: LA-QA-03
+  step: 6
+  section: 7.2.6 F. Independent QA/QC Controller
+  basis: AMD-3; Diagram
+  text: A failure shall trigger correction and retest. After three consecutive failures F shall trigger
+    HOLD and notify a human reviewer / Founder.
+- id: LA-QA-04
+  step: 6
+  section: 7.2.6 F. Independent QA/QC Controller
+  basis: Diagram
+  text: F shall audit task results and logs, and receive escalations from Receptors.
+- id: LA-QA-05
+  step: 6
+  section: 7.2.6 F. Independent QA/QC Controller
+  basis: Closure §9
+  text: F shall accept no Receptor self-certification. Completion needs an independent verification step
+    that proves the intended real output.
+- id: LA-QA-06
+  step: 6
+  section: 7.2.6 F. Independent QA/QC Controller
+  basis: AMD-3
+  text: F shall record evidence in the registry using the eight stages, and shall not accept "connected"
+    or "working" as evidence.
+- id: LA-TOOL-01
+  step: 4
+  section: 7.2.7 G. Governed Tool Hub (All tool use must pass through this hub)
+  basis: Diagram; Closure §3, §9
+  text: G shall authorize each individual tool call by checking identity and permission, Receptor scope,
+    risk and spend limits, approval status and current STOP state.
+- id: LA-TOOL-02
+  step: 4
+  section: 7.2.7 G. Governed Tool Hub (All tool use must pass through this hub)
+  basis: Diagram, rule 2
+  text: G shall be the only path to any tool, API, plugin or MCP connector. Neither the Orchestrator nor
+    Hermes has another path.
+- id: LA-TOOL-03
+  step: 4
+  section: 7.2.7 G. Governed Tool Hub (All tool use must pass through this hub)
+  basis: Closure §9; AMD-13
+  text: G shall keep a governed registry of APIs, plugins and MCP connectors. Nothing is callable until
+    it has passed the Supply Chain / Integration Gate.
+- id: LA-TOOL-04
+  step: 4
+  section: 7.2.7 G. Governed Tool Hub (All tool use must pass through this hub)
+  basis: Closure §10
+  text: 'G shall deny and audit any call that fails a check. First milestone: unauthorized tool execution
+    is denied and audited.'
+- id: LA-TOOL-05
+  step: 9
+  section: 7.2.7 G. Governed Tool Hub (All tool use must pass through this hub)
+  basis: Diagram; Register §3.4
+  text: G shall route work to Receptors, Hermes, QA/QC and Financial Control as needed, within per-tool
+    scope.
+- id: LA-TOOL-06
+  step: 4
+  section: 7.2.7 G. Governed Tool Hub (All tool use must pass through this hub)
+  basis: Register §3.4
+  text: G shall support revocation and kill switches per tool and connector.
+- id: LA-TOOL-07
+  step: 4
+  section: 7.2.7 G. Governed Tool Hub (All tool use must pass through this hub)
+  basis: Closure §3
+  text: 'G shall be deterministic: no LLM sits in its decision path.'
+- id: LA-FIN-01
+  step: 6
+  section: 7.2.8 H. Financial Control & Reconciliation Controller
+  basis: Diagram
+  text: H shall keep a Receptor-wise revenue ledger and track payments for all Receptors.
+- id: LA-FIN-02
+  step: 6
+  section: 7.2.8 H. Financial Control & Reconciliation Controller
+  basis: Diagram
+  text: H shall reconcile Receptor-reported revenue against Founder-uploaded bank statements, and mark
+    revenue final only after a match.
+- id: LA-FIN-03
+  step: 6
+  section: 7.2.8 H. Financial Control & Reconciliation Controller
+  basis: AMD-2; Diagram
+  text: Every money-out action shall require Founder approval. Payments are made outside Dyson.
+- id: LA-FIN-04
+  step: 6
+  section: 7.2.8 H. Financial Control & Reconciliation Controller
+  basis: Diagram
+  text: H shall hold verified receipts derived from bank statements.
+- id: LA-FIN-05
+  step: 9
+  section: 7.2.8 H. Financial Control & Reconciliation Controller
+  basis: Diagram
+  text: Financial data shown on the Founder Financial Dashboard shall originate in H and reach J through
+    the Memory & Evidence Layer (I).
+- id: LA-FIN-06
+  step: 6
+  section: 7.2.8 H. Financial Control & Reconciliation Controller
+  basis: Closure §1; AMD-3
+  text: Revenue and performance claims shall carry separate verified business evidence (AMD-3 stage 8).
+- id: LA-FIN-07
+  step: 6
+  section: 7.2.8 H. Financial Control & Reconciliation Controller
+  basis: AMD-6
+  text: Receptor performance for incentives shall be judged on verified net profit, not on unsupported
+    revenue claims.
+- id: LA-FIN-08
+  step: 6
+  section: 7.2.8 H. Financial Control & Reconciliation Controller
+  basis: AMD-2
+  text: Prepaid-credit delegation and any automatic ad-spend allowance shall not be built or enabled without
+    separate Founder authorization after testing.
+- id: LA-MEM-01
+  step: 2
+  section: 7.2.9 I. Memory & Evidence Layer (Controlled store, not an authority)
+  basis: Closure §6
+  text: I shall archive conversations with dated messages or transcripts, thread IDs, participants, attachments
+    and search. The raw transcript is saved when configured and successfully recorded.
+- id: LA-MEM-02
+  step: 2
+  section: 7.2.9 I. Memory & Evidence Layer (Controlled store, not an authority)
+  basis: Closure §6
+  text: I shall hold long-term memory (facts, preferences, project status, summaries) and retrieve original
+    records with provenance, instead of sending the whole history to each model call.
+- id: LA-MEM-03
+  step: 2
+  section: 7.2.9 I. Memory & Evidence Layer (Controlled store, not an authority)
+  basis: Closure §6
+  text: I shall keep the decision and amendment register with status (PROPOSED, OPEN, DESIGN LOCKED, APPROVED,
+    SUPERSEDED), exact approved text, version, decision date, evidence and authenticated Founder approval.
+- id: LA-MEM-04
+  step: 2
+  section: 7.2.9 I. Memory & Evidence Layer (Controlled store, not an authority)
+  basis: AMD-8; Closure §6
+  text: I shall isolate memory, credentials, financial and customer data by Receptor. Shared verified
+    learnings need separate approval.
+- id: LA-MEM-05
+  step: 10
+  section: 7.2.9 I. Memory & Evidence Layer (Controlled store, not an authority)
+  basis: Closure §6, §10
+  text: PostgreSQL is the proposed transactional store; S3 holds documents and encrypted backups. Backup
+    restoration, access control and memory retrieval shall be tested.
+- id: LA-MEM-06
+  step: 2
+  section: 7.2.9 I. Memory & Evidence Layer (Controlled store, not an authority)
+  basis: Diagram; Closure §9
+  text: The secret store shall hold every credential. None shall appear in prompts, public repositories
+    or conversational memory.
+- id: LA-MEM-07
+  step: 2
+  section: 7.2.9 I. Memory & Evidence Layer (Controlled store, not an authority)
+  basis: Diagram; Derived
+  text: The audit log shall record each consequential action, tool call, approval, STOP event and configuration
+    change, and AI components shall not be able to alter it.
+- id: LA-MEM-08
+  step: 2
+  section: 7.2.9 I. Memory & Evidence Layer (Controlled store, not an authority)
+  basis: Diagram
+  text: I is a controlled store, not an authority. It informs decisions and never grants permission.
+- id: LA-MEM-09
+  step: 2
+  section: 7.2.9 I. Memory & Evidence Layer (Controlled store, not an authority)
+  basis: Closure §6
+  text: Retrieval shall cite the underlying records, flag uncertain speech transcription, and never present
+    an unlocked rule as locked.
+- id: LA-MEM-10
+  step: 9
+  section: 7.2.9 I. Memory & Evidence Layer (Controlled store, not an authority)
+  basis: Closure §6; AMD-1
+  text: Switching LLM or voice vendors shall not delete history or change the authoritative decision register.
+- id: LA-DASH-01
+  step: 6
+  section: 7.2.10 J. Founder Financial Dashboard (Visibility only, no authority)
+  basis: Diagram
+  text: 'J shall show verified financial data: revenue, payments, profitability, Receptor performance,
+    and financial audit / reconciliation status.'
+- id: LA-DASH-02
+  step: 6
+  section: 7.2.10 J. Founder Financial Dashboard (Visibility only, no authority)
+  basis: Diagram; AMD-10
+  text: J shall have no authority to execute actions and no write path into Core controls.
+- id: LA-DASH-03
+  step: 6
+  section: 7.2.10 J. Founder Financial Dashboard (Visibility only, no authority)
+  basis: Diagram
+  text: J shall not connect to the bank directly.
+- id: LA-DASH-04
+  step: 9
+  section: 7.2.10 J. Founder Financial Dashboard (Visibility only, no authority)
+  basis: Diagram
+  text: J shall request data from the Memory & Evidence Layer (I) read-only, and I answers with verified
+    data.
+- id: LA-DASH-05
+  step: 6
+  section: 7.2.10 J. Founder Financial Dashboard (Visibility only, no authority)
+  basis: Closure §9; AMD-10
+  text: The live, Founder-visible observability dashboard is a locked commitment. Its detailed design
+    is deferred to its development stage.
+- id: LA-HER-01
+  step: 7
+  section: '7.2.11 Hermes (zone 4): Isolated Hermes Runtime (Candidate Intelligence Engine)'
+  basis: Diagram; Derived
+  text: Hermes shall run in an isolated environment, with no direct access to secrets, the audit log,
+    evidence stores, the bank path or the STOP controls.
+- id: LA-HER-02
+  step: 7
+  section: '7.2.11 Hermes (zone 4): Isolated Hermes Runtime (Candidate Intelligence Engine)'
+  basis: Diagram
+  text: Hermes shall reach external models only through the Model Router (C).
+- id: LA-HER-03
+  step: 7
+  section: '7.2.11 Hermes (zone 4): Isolated Hermes Runtime (Candidate Intelligence Engine)'
+  basis: Diagram
+  text: Hermes shall reach every tool only through the Governed Tool Hub (G).
+- id: LA-HER-04
+  step: 8
+  section: '7.2.11 Hermes (zone 4): Isolated Hermes Runtime (Candidate Intelligence Engine)'
+  basis: Diagram
+  text: The Founder shall talk only to Dyson, never directly to Hermes.
+- id: LA-HER-05
+  step: 9
+  section: '7.2.11 Hermes (zone 4): Isolated Hermes Runtime (Candidate Intelligence Engine)'
+  basis: Diagram; Derived
+  text: The STOP path from the Governance Core shall reach Hermes, and a stopped Hermes shall not be able
+    to resume itself.
+- id: LA-HER-06
+  step: 7
+  section: '7.2.11 Hermes (zone 4): Isolated Hermes Runtime (Candidate Intelligence Engine)'
+  basis: AMD-13
+  text: Hermes skills, agents, subagents and plugins shall enter through the Supply Chain / Integration
+    Gate.
+- id: LA-HER-07
+  step: 7
+  section: '7.2.11 Hermes (zone 4): Isolated Hermes Runtime (Candidate Intelligence Engine)'
+  basis: Diagram; AMD-4; Derived
+  text: Hermes is a candidate. It shall be qualified against Dyson's governance and acceptance bar before
+    anything relies on it.
+- id: LA-HER-08
+  step: 7
+  section: '7.2.11 Hermes (zone 4): Isolated Hermes Runtime (Candidate Intelligence Engine)'
+  basis: Closure §9; Derived
+  text: Hermes shall not certify its own results. Its outputs are verified by F like any other.
+- id: LA-RD-01
+  step: 1
+  section: 7.3 Core R&D and continuous improvement (separate function)
+  basis: Closure §8
+  text: 'Core R&D shall be an independent function that evaluates and improves the Dyson Core: model routing,
+    safety, runtime, performance, capabilities and future possibilities.'
+- id: LA-RD-02
+  step: 1
+  section: 7.3 Core R&D and continuous improvement (separate function)
+  basis: Closure §8
+  text: Its output shall be researched proposals. It shall never make automatic constitutional changes.
+- id: LA-RD-03
+  step: 1
+  section: 7.3 Core R&D and continuous improvement (separate function)
+  basis: Closure §8
+  text: It shall stay separate from the Layer B Receptor Genesis Engine.
+- id: LA-RD-04
+  step: 9
+  section: 7.3 Core R&D and continuous improvement (separate function)
+  basis: Closure §7, §8
+  text: Its proposals shall enter the Governed Amendment Workflow (7.4) like any other.
+- id: LA-RD-05
+  step: 1
+  section: 7.3 Core R&D and continuous improvement (separate function)
+  basis: Closure §10
+  text: External reviews, for example by Claude or Gemini, are advisory and remain subject to data and
+    permission rules.
+- id: LA-AMD-01
+  step: 3
+  section: 7.4 Governed Amendment Workflow
+  basis: Closure §7
+  text: No model, agent, third-party consultant or Receptor shall self-approve a rule change.
+- id: LA-AMD-02
+  step: 3
+  section: 7.4 Governed Amendment Workflow
+  basis: Closure §7
+  text: Operational parameter changes and core AMD amendments shall have distinct rights and validation
+    paths.
+- id: LA-AMD-03
+  step: 9
+  section: 7.4 Governed Amendment Workflow
+  basis: Closure §7
+  text: Financial controls, per-Receptor scopes, isolation, AMD-5 STOP, AMD-3 QC-failure holds and audit
+    logging shall stay effective at every stage.
+- id: LA-AMD-04
+  step: 2
+  section: 7.4 Governed Amendment Workflow
+  basis: Closure §6, §7
+  text: Each register entry shall show an authoritative status and keep immutable history.
+- id: LA-AMD-05
+  step: 1
+  section: 7.4 Governed Amendment Workflow
+  basis: Closure header
+  text: AMD-1 to AMD-13 stay unchanged by AMD-14 and by this PRD.
+- id: LA-IF-01
+  step: 9
+  section: 8. Layer A to Layer B interface
+  basis: Diagram
+  text: Layer A shall talk to Receptors only through the five lanes above.
+- id: LA-IF-02
+  step: 9
+  section: 8. Layer A to Layer B interface
+  basis: Diagram; Closure §9
+  text: Every task to a Receptor shall pass through G and carry a task ID and an idempotency key.
+- id: LA-IF-03
+  step: 9
+  section: 8. Layer A to Layer B interface
+  basis: AMD-5; Diagram
+  text: STOP / PAUSE / RESUME shall reach every Receptor on the red path and work whatever the AI model
+    does. Resuming after a serious security or financial breach needs explicit authorization.
+- id: LA-IF-04
+  step: 9
+  section: 8. Layer A to Layer B interface
+  basis: Closure §9
+  text: A Receptor's report is not proof. F shall verify the real output independently before D marks
+    a task completed-verified.
+- id: LA-IF-05
+  step: 6
+  section: 8. Layer A to Layer B interface
+  basis: Diagram
+  text: Receptor revenue is not final until H matches it to a Founder-uploaded bank statement.
+- id: LA-IF-06
+  step: 6
+  section: 8. Layer A to Layer B interface
+  basis: Diagram; AMD-2
+  text: Layer A shall never sit in the customer payment flow. Customer payments go by UPI / QR to a bank
+    account outside Dyson.
+- id: LA-IF-07
+  step: 2
+  section: 8. Layer A to Layer B interface
+  basis: AMD-8
+  text: Layer A shall isolate each Receptor's data, credentials, sensitive data and finances. Only governed,
+    verified information is shared.
+- id: LA-IF-08
+  step: 4
+  section: 8. Layer A to Layer B interface
+  basis: Diagram; AMD-6
+  text: Optional receptor-to-receptor support shall be limited in scope and pass through Governance /
+    Tool Hub.
+- id: LA-IF-09
+  step: 3
+  section: 8. Layer A to Layer B interface
+  basis: AMD-11
+  text: A Receptor's permissions, authority and spending limits shall be set by the Founder and held in
+    A.
+- id: LA-IF-10
+  step: 3
+  section: 8. Layer A to Layer B interface
+  basis: AMD-7
+  text: A Receptor may be paused, archived and replaced only on the Founder's final decision, and its
+    records are kept through governed archiving.
+- id: LA-IF-11
+  step: 3
+  section: 8. Layer A to Layer B interface
+  basis: Closure §8
+  text: No real Receptor goes live on AMD-14 alone. Each needs its own activation decision, approved budget,
+    tools, access and acceptance evidence.
+- id: LA-IF-12
+  step: 9
+  section: 8. Layer A to Layer B interface
+  basis: Closure §10
+  text: The first Receptor shall be a synthetic, no-money Test T0 with a planted fault and an independent
+    verifier.
+- id: LA-SEC-01
+  step: 2
+  section: 10. Cross-cutting requirements
+  basis: Closure §9; Diagram
+  text: All credentials shall stay in controlled secret storage, never in prompts, public repositories
+    or conversational memories.
+- id: LA-SEC-02
+  step: 10
+  section: 10. Cross-cutting requirements
+  basis: Closure §2
+  text: IAM shall be least-privilege, with explicit limits and periodic usage review.
+- id: LA-SEC-03
+  step: 8
+  section: 10. Cross-cutting requirements
+  basis: Closure §5, §11
+  text: The Founder shall be authenticated at the Entry Gateway for every session. Consequential approvals
+    need a separate, independently authenticated confirmation.
+- id: LA-SEC-04
+  step: 3
+  section: 10. Cross-cutting requirements
+  basis: AMD-13
+  text: Every package, plugin, API, MCP server and integration shall enter through Central Governance
+    monitoring and an auditable change process.
+- id: LA-SEC-05
+  step: 10
+  section: 10. Cross-cutting requirements
+  basis: Closure §2
+  text: External AI and voice APIs shall be used only behind sanctioned, monitored interfaces and approved
+    budgets.
+- id: LA-SEC-06
+  step: 1
+  section: 10. Cross-cutting requirements
+  basis: Closure §2, §10
+  text: GitHub shall be used for private source control, code review, version history and controlled CI/CD
+    only. It shall not be the live intelligence, conversational runtime, scheduler or command bus, and
+    no pull request or GitHub Action shall sit in the runtime response loop.
+- id: LA-SEC-07
+  step: 10
+  section: 10. Cross-cutting requirements
+  basis: AMD-8; Closure §11
+  text: Data sent to external models shall follow redaction rules, and cross-Receptor isolation rules
+    shall be defined before real data is used (gate 6).
+- id: LA-SAF-01
+  step: 3
+  section: 10. Cross-cutting requirements
+  basis: AMD-5; Closure §9
+  text: The master STOP and per-Receptor STOP / PAUSE / RESUME shall work independently of any LLM or
+    voice provider.
+- id: LA-SAF-02
+  step: 4
+  section: 10. Cross-cutting requirements
+  basis: Diagram; Closure §3
+  text: The Tool Hub shall check the current STOP state on every call.
+- id: LA-SAF-03
+  step: 3
+  section: 10. Cross-cutting requirements
+  basis: AMD-5; Closure §9
+  text: Emergency recovery shall be bounded, recorded per attempt, and escalated after repeated failure.
+- id: LA-SAF-04
+  step: 3
+  section: 10. Cross-cutting requirements
+  basis: AMD-5
+  text: There shall be no automatic resume after a serious security or financial breach.
+- id: LA-SAF-05
+  step: 9
+  section: 10. Cross-cutting requirements
+  basis: Closure §1; AMD-11
+  text: Dyson may take bounded low-risk repair actions only inside preapproved policies. Anything else
+    escalates or stops.
+- id: LA-EVD-01
+  step: 9
+  section: 10. Cross-cutting requirements
+  basis: Closure §9
+  text: No command is called complete until an independent verification step proves the intended real
+    output.
+- id: LA-EVD-02
+  step: 6
+  section: 10. Cross-cutting requirements
+  basis: Closure §1, §4
+  text: A 200 OK from a tool, generated code, a passing superficial test or reassuring language is not
+    evidence of completion.
+- id: LA-EVD-03
+  step: 2
+  section: 10. Cross-cutting requirements
+  basis: AMD-3
+  text: Capability status shall be recorded per capability and provider on the eight AMD-3 stages, with
+    environment, time, expiry and failed or negative evidence.
+- id: LA-EVD-04
+  step: 6
+  section: 10. Cross-cutting requirements
+  basis: Register §3.4
+  text: Reports shall say plainly when something is offline, unverified or uncertain.
+- id: LA-EVD-05
+  step: 6
+  section: 10. Cross-cutting requirements
+  basis: Closure §1
+  text: Revenue and performance claims need separate verified business evidence.
+- id: LA-REL-01
+  step: 5
+  section: 10. Cross-cutting requirements
+  basis: Register §3.4; Closure §5
+  text: Durable tasks shall run on Dyson-controlled infrastructure and not depend on an open voice conversation.
+- id: LA-REL-02
+  step: 5
+  section: 10. Cross-cutting requirements
+  basis: Closure §9
+  text: Task IDs and idempotency keys shall prevent duplicate actions after retries.
+- id: LA-REL-03
+  step: 10
+  section: 10. Cross-cutting requirements
+  basis: Closure §6
+  text: Backups shall be encrypted and a restore shall be tested.
+- id: LA-REL-04
+  step: 9
+  section: 10. Cross-cutting requirements
+  basis: Register §3.4
+  text: 'The design shall be tested against these failure modes: Receptor down, model outage, tool compromise,
+    duplicate or retried action, Founder disconnected, session lost, central server down, approval pending.'
+- id: LA-REL-05
+  step: 10
+  section: 10. Cross-cutting requirements
+  basis: Closure §11
+  text: Disaster recovery objectives shall be defined before production launch (gate 9).
+- id: LA-REL-06
+  step: 9
+  section: 10. Cross-cutting requirements
+  basis: Closure §1
+  text: Losing or replacing a model or voice provider shall not destroy task state, Founder decisions
+    or memory.
+- id: LA-COST-01
+  step: 10
+  section: 10. Cross-cutting requirements
+  basis: Closure §2
+  text: AWS budgets, alarms and explicit spend limits shall exist before any paid deployment.
+- id: LA-COST-02
+  step: 10
+  section: 10. Cross-cutting requirements
+  basis: Closure §2, §10
+  text: The initial planning target is 2 vCPU, 4 GB RAM and 50 to 80 GB persistent disk for a small isolated
+    prototype. It is a hypothesis, not a guaranteed capacity or an approved budget.
+- id: LA-COST-03
+  step: 10
+  section: 10. Cross-cutting requirements
+  basis: Closure §10
+  text: CPU, RAM, database, task throughput, stream latency, model and voice API costs and recovery behavior
+    shall be measured, and resources scaled up only from evidence.
+- id: LA-COST-04
+  step: 10
+  section: 10. Cross-cutting requirements
+  basis: Closure §2
+  text: Free-tier eligibility and prices shall be verified against the Founder's actual AWS account.
+- id: LA-PERF-01
+  step: 8
+  section: 10. Cross-cutting requirements
+  basis: Register §1; Closure §5
+  text: Command acknowledgment shall be fast and honest. Completion latency is not promised.
+- id: LA-PERF-02
+  step: 10
+  section: 10. Cross-cutting requirements
+  basis: Closure §11
+  text: Acceptable spoken-response latency and Hindi / Hinglish quality thresholds shall be set by benchmark
+    before a voice vendor is chosen (gate 5).
+- id: LA-PERF-03
+  step: 9
+  section: 10. Cross-cutting requirements
+  basis: Register §1; Closure §5
+  text: Task status shall stream continuously while a task runs.
+- id: LA-PRIV-01
+  step: 10
+  section: 10. Cross-cutting requirements
+  basis: Closure §6, §11
+  text: Retention period, deletion controls, voice audio retention and data sharing shall be approved
+    as implementation-level policy (gate 6).
+- id: LA-PRIV-02
+  step: 10
+  section: 10. Cross-cutting requirements
+  basis: Closure §11
+  text: Personal-data classification shall be defined before real data is used (gate 6).
+- id: LA-PRIV-03
+  step: 2
+  section: 10. Cross-cutting requirements
+  basis: Closure §6
+  text: Existing ChatGPT conversations shall not migrate automatically. Any import needs an explicit,
+    separately approved data transfer.
+- id: LA-DEP-01
+  step: 10
+  section: 12. Deployment on AWS
+  basis: Diagram; Derived
+  text: The Hermes runtime shall be deployed as an isolated environment, separate from the Governance
+    Core, Tool Hub, Memory & Evidence Layer and secret store, with network paths limited to the Model
+    Router and the Tool Hub.
+- id: LA-DEP-02
+  step: 10
+  section: 12. Deployment on AWS
+  basis: AMD-5; Derived
+  text: The STOP path shall be deployed so that it keeps working when the Conversation Engine, Model Router
+    and Hermes are down.
+- id: LA-DEP-03
+  step: 10
+  section: 12. Deployment on AWS
+  basis: Diagram; Derived
+  text: Direct Founder Controls shall be a separately authenticated endpoint from the app.
+- id: LA-DEP-04
+  step: 10
+  section: 12. Deployment on AWS
+  basis: Closure §6; Derived
+  text: Encrypted S3 backups shall sit under keys and permissions that the application runtime cannot
+    use to delete or alter them.
+- id: LA-DEP-05
+  step: 10
+  section: 12. Deployment on AWS
+  basis: Closure §2; Derived
+  text: A deployment shall be reproducible from private source control and shall have a rollback artifact.

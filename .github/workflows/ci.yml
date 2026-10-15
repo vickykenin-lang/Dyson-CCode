@@ -1,0 +1,30 @@
+# Continuous integration only: lint and tests on every push and pull request.
+# GitHub is source control and CI, never part of Dyson's runtime (LA-SEC-06, LA-G-07).
+# No deploy, no secrets, no scheduled jobs here.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e contracts "pyyaml>=6" pytest ruff
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Test
+        run: pytest -q

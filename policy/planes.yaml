@@ -1,0 +1,18 @@
+# AMD-1 plane mapping, from PRD section 6 ("Plane mapping"). Accepted by the Founder (D-004).
+# Component names are dyson_contracts.common.Component members.
+# A component may only act within its plane's responsibility.
+planes:
+- name: governance
+  responsibility: Decide what may happen, and stop it
+  components: [GOVERNANCE_CORE, DIRECT_FOUNDER_CONTROLS, ENTRY_GATEWAY, TOOL_HUB]
+  note: TOOL_HUB sits here for its per-call checks.
+- name: intelligence
+  responsibility: Understand, reason, propose
+  components: [CONVERSATION_ENGINE, MODEL_ROUTER, HERMES, CORE_RD]
+- name: execution
+  responsibility: Carry out approved work
+  components: [ORCHESTRATOR, TOOL_HUB, RECEPTOR]
+  note: TOOL_HUB sits here for tool execution.
+- name: assurance
+  responsibility: Verify, record, report (cross-plane)
+  components: [MONITORING, QA_QC, FINANCIAL_CONTROL, MEMORY_EVIDENCE, FINANCIAL_DASHBOARD]
