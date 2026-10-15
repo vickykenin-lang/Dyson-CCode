@@ -6,7 +6,7 @@ import psycopg
 import pytest
 from assurance_testkit import NOW
 
-from dyson_assurance.monitoring import SubjectKind, Truth
+from dyson_assurance.monitoring import AlertError, AlertState, SubjectKind, Truth
 from dyson_assurance.qa import Check, CheckKind, QAError, QualityStandard, superficial
 from dyson_contracts.common import Component
 from dyson_contracts.evidence import EvidenceOutcome, EvidenceStage
@@ -150,13 +150,13 @@ def test_silence_is_reported_as_unknown_or_unverified_never_healthy(monitor, clo
 
 def test_failure_and_repeated_failure_escalate_to_governance_and_dashboard(monitor, escalations):
     monitor.ingest(_health(status=HealthStatus.FAILING, failures=("db down",)))
-    assert {e[0] for e in escalations} == {"governance", "founder_dashboard"}
+    assert {e[0] for e in escalations} == {"governance", "founder_dashboard", "founder"}
     monitor.ingest(_health(status=HealthStatus.FAILING, failures=("db down",)))
     monitor.ingest(_health(status=HealthStatus.OFFLINE))
     repeated = [e for e in escalations if "repeated failure" in e[2]]
-    assert len(repeated) == 2  # once to A, once to J
+    assert len(repeated) == 3  # once each to A, J and the Founder
     monitor.ingest(_health(status=HealthStatus.OFFLINE))
-    assert len([e for e in escalations if "repeated failure" in e[2]]) == 2  # not spammed
+    assert len([e for e in escalations if "repeated failure" in e[2]]) == 3  # not spammed
 
 
 def test_models_tools_and_core_are_monitored_too(monitor):
@@ -172,4 +172,73 @@ def test_monitor_has_no_way_to_act():
     from dyson_assurance.monitoring import Monitor
 
     public = {n for n in dir(Monitor) if not n.startswith("_")}
-    assert public == {"ingest", "report_component", "view", "overview", "expected", "sweep"}
+    assert public == {"ingest", "report_component", "view", "overview", "expected", "sweep",
+                      "alerts", "remind", "founder_acted", "hold", "release_hold"}  # fmt: skip
+    # The alert methods change only alert records; none reaches a Receptor, tool or money.
+
+
+# Founder alerts and reminders (D-009, D-010) --------------------------------------------
+def _founder_msgs(escalations):
+    return [e[2] for e in escalations if e[0] == "founder"]
+
+
+def test_founder_is_reminded_hourly_until_acting(monitor, clock, escalations):  # D-009
+    monitor.ingest(_health(status=HealthStatus.FAILING, failures=("db down",)))
+    (alert,) = monitor.alerts()
+    assert _founder_msgs(escalations) == ["receptor R11 is failing"]
+    clock.advance(minutes=59)
+    assert monitor.remind() == []
+    clock.advance(minutes=1)
+    assert len(monitor.remind()) == 1
+    assert monitor.remind() == []  # not again within the hour
+    clock.advance(hours=1)
+    monitor.ingest(_health(at=clock()))  # it recovered on its own: still the Founder's call
+    assert len(monitor.remind()) == 1
+    assert "now healthy" in _founder_msgs(escalations)[-1]
+    monitor.founder_acted(alert.alert_id, Component.FOUNDER, "restarted the database")
+    clock.advance(hours=5)
+    assert monitor.remind() == [] and monitor.alerts() == []
+    closed = monitor.alerts(include_closed=True)[0]
+    assert closed.state is AlertState.ACTED and closed.reminders == 2
+
+
+def test_hold_stops_reminders_until_released(monitor, clock, escalations):  # D-009
+    monitor.sweep(SubjectKind.RECEPTOR, ["R12"])  # never reported
+    (alert,) = monitor.alerts()
+    monitor.hold(alert.alert_id, Component.FOUNDER, "R12 launches next month")
+    clock.advance(hours=10)
+    assert monitor.remind() == []
+    monitor.sweep(SubjectKind.RECEPTOR, ["R12"])  # still silent: no new alert while held
+    assert len(monitor.alerts()) == 1
+    monitor.release_hold(alert.alert_id, Component.FOUNDER)
+    clock.advance(hours=1)
+    assert len(monitor.remind()) == 1
+
+
+def test_only_the_founder_closes_or_holds_an_alert(monitor):  # D-009
+    monitor.ingest(_health(status=HealthStatus.OFFLINE))
+    (alert,) = monitor.alerts()
+    for who in (Component.MONITORING, Component.GOVERNANCE_CORE, Component.CONVERSATION_ENGINE):
+        with pytest.raises(AlertError):
+            monitor.founder_acted(alert.alert_id, who)
+        with pytest.raises(AlertError):
+            monitor.hold(alert.alert_id, who)
+    assert monitor.alerts()[0].state is AlertState.OPEN
+
+
+def test_a_new_occurrence_after_action_is_a_new_alert(monitor, clock):  # D-009
+    monitor.ingest(_health(status=HealthStatus.OFFLINE))
+    (first,) = monitor.alerts()
+    monitor.founder_acted(first.alert_id, Component.FOUNDER)
+    monitor.ingest(_health(at=clock()))
+    monitor.ingest(_health(status=HealthStatus.OFFLINE, at=clock()))
+    (second,) = monitor.alerts()
+    assert second.alert_id != first.alert_id
+
+
+def test_alert_history_is_append_only(monitor, conn):  # D-009
+    monitor.ingest(_health(status=HealthStatus.OFFLINE))
+    for stmt in ("UPDATE assurance.alert_events SET note = 'x'",
+                 "DELETE FROM assurance.alert_events"):  # fmt: skip
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            conn.execute(stmt)

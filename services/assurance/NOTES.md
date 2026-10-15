@@ -21,7 +21,8 @@ None of these components can act on a Receptor, move money or reach a bank. Test
 
 - **What it tracks.** Health, KPIs, task counts and failures for each Receptor (from the Monitoring lane) and for models, tools and Core components.
 - **Truthful reporting.** A subject that never reported shows as `unknown`. One whose last report is older than `stale_after` shows as `unknown / unverified`, never "healthy".
-- **Escalation.** When a subject turns failing or offline, or after `repeated_failure_threshold` bad reports in a row, E escalates to A and J. A repeat failure doesn't trigger a new alert each time. `sweep()` escalates subjects that have gone silent.
+- **Escalation.** When a subject turns failing or offline, or after 3 bad reports in a row (D-010), E escalates to A, J and the Founder. `sweep()` does the same for subjects that have gone silent.
+- **Founder alerts (D-009).** Each issue becomes one alert that stays open. Dyson reminds the Founder every hour (`remind()`, run by the worker) until the Founder acts on it or puts it on hold. A subject recovering on its own does not close it; the reminder says how it looks now. While an alert is open or held, the same issue isn't raised again. After the Founder acts, a new occurrence opens a new alert. Only the Founder can close, hold or release an alert, and the alert history is append-only.
 - **No power to act.** E only observes and escalates; A decides.
 
 ## H: Financial Control & Reconciliation (`finance.py`)
@@ -54,7 +55,7 @@ GET-only endpoints: ledger, receipts, reconciliation status, performance, health
 | LA-QA-05 | `test_receptor_self_certification_never_passes`, `test_no_observation_means_no_verdict` |
 | LA-QA-06, LA-EVD-02 | `test_superficial_answers_are_not_evidence`, `test_passes_only_when_technical_and_fitness_both_pass` |
 | LA-MON-01, LA-MON-02 | `test_tracks_status_kpis_and_failures_per_receptor` |
-| LA-MON-03 | `test_failure_and_repeated_failure_escalate_to_governance_and_dashboard`, `test_silence_is_reported_as_unknown_or_unverified_never_healthy` |
+| LA-MON-03 | `test_failure_and_repeated_failure_escalate_to_governance_and_dashboard`, `test_silence_is_reported_as_unknown_or_unverified_never_healthy`, `test_founder_is_reminded_hourly_until_acting`, `test_hold_stops_reminders_until_released`, `test_only_the_founder_closes_or_holds_an_alert`, `test_a_new_occurrence_after_action_is_a_new_alert`, `test_alert_history_is_append_only` |
 | LA-MON-04 | `test_dashboard_is_read_only_and_shows_verified_data` (`/health`) |
 | LA-MON-05 | `test_monitor_has_no_way_to_act` |
 | LA-MON-06, LA-EVD-04 | `test_silence_is_reported_as_unknown_or_unverified_never_healthy`, `test_models_tools_and_core_are_monitored_too` |
@@ -71,13 +72,15 @@ GET-only endpoints: ledger, receipts, reconciliation status, performance, health
 
 The append-only history is tested too (`test_ledger_is_append_only`).
 
-## Founder decisions needed before Step 9 wires E and H
+## Founder decisions
 
-1. **`stale_after`:** how long a Receptor can go without reporting before it shows as unverified.
-2. **`repeated_failure_threshold`:** how many bad health reports in a row count as "repeated failure".
-3. **Bank statement format.** The prototype format is CSV with `date, direction, amount, currency, reference`. Your bank's real export (column names, debit/credit layout) needs confirming; adapting the parser touches only `parse_statement`.
+- **D-009:** hourly reminders until the Founder acts or holds.
+- **D-010:** `repeated_failure_threshold` is 3.
 
-The PRD gives no numbers for 1 and 2, so none were invented. The tests use 10 minutes and 3.
+Still open before Step 9 wires E and H:
+
+1. **`stale_after`:** how long a Receptor can go without reporting before it counts as silent. The tests use 10 minutes; that is a test value, not a decision.
+2. **Bank statement format.** The prototype format is CSV with `date, direction, amount, currency, reference`. Your bank's real export (column names, debit/credit layout) needs confirming; adapting the parser touches only `parse_statement`.
 
 ## Left for later steps
 

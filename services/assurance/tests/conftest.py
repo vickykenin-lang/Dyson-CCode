@@ -116,8 +116,10 @@ def qa(conn, probe, evidence, escalations, clock):
 
 @pytest.fixture
 def monitor(conn, escalations, clock):
+    # stale_after is a test value until the Founder sets it; the other two are D-010 and D-009.
     return Monitor(conn, escalations, stale_after=timedelta(minutes=10),
-                   repeated_failure_threshold=3, clock=clock)  # fmt: skip
+                   repeated_failure_threshold=3, reminder_interval=timedelta(hours=1),
+                   clock=clock)  # fmt: skip
 
 
 @pytest.fixture

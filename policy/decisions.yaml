@@ -59,3 +59,20 @@ decisions:
     recovery_attempt_limit is 3. Each incident may have 3 recorded recovery attempts; after
     that it escalates to the Founder, and only a Founder approval allows more. Changing the
     value later needs a Founder-approved operational-parameter proposal.
+- id: D-009
+  date: '2026-10-15'
+  closes: Step 6 open item (how a silent or failing Receptor is followed up)
+  topic: Founder alerts and reminders from Monitoring
+  decision: >-
+    Every issue Monitoring raises (silent, unverified, failing or repeatedly failing) is brought
+    to the Founder and stays open. Dyson reminds the Founder every hour until the Founder acts
+    on it or says to keep it on hold. A Receptor recovering on its own does not close the
+    alert. How long a Receptor may stay silent before it counts as unverified (stale_after) is
+    still to be set.
+- id: D-010
+  date: '2026-10-15'
+  closes: Step 6 open parameter repeated_failure_threshold
+  topic: Repeated failure threshold
+  decision: >-
+    repeated_failure_threshold is 3: three bad health reports in a row count as repeated
+    failure. Changing it later needs a Founder-approved operational-parameter proposal.

@@ -62,11 +62,18 @@ from .policy import PolicyEngine
 from .state import GovernanceState, ProposalStatus
 from .store import EventStore
 
+
 # Operational parameters (AMD-02): set by Founder approval, validated here, never an AMD control.
 # No code defaults: initial values come from policy/parameters.yaml, each citing a Founder
 # decision; with neither that nor an approved change, a limit is 0 ("no automatic attempts").
+def _int_at_least(n: int) -> Callable[[JsonValue], bool]:
+    return lambda v: isinstance(v, int) and not isinstance(v, bool) and v >= n
+
+
 PARAMETERS: dict[str, Callable[[JsonValue], bool]] = {
-    "recovery_attempt_limit": lambda v: isinstance(v, int) and not isinstance(v, bool) and v >= 0,
+    "recovery_attempt_limit": _int_at_least(0),
+    "repeated_failure_threshold": _int_at_least(1),  # read by E (Step 9)
+    "founder_reminder_interval_minutes": _int_at_least(1),  # read by E (Step 9)
 }
 
 
