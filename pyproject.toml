@@ -7,7 +7,7 @@ target-version = "py312"
 select = ["E", "F", "W", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
-testpaths = ["contracts/tests", "tests", "services/memory/tests"]
+testpaths = ["contracts/tests", "tests", "services/memory/tests", "services/governance/tests"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["dyson_contracts", "dyson_memory"]
+known-first-party = ["dyson_contracts", "dyson_memory", "dyson_governance"]

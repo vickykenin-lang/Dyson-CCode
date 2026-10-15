@@ -2,7 +2,7 @@
 
 Layer A is the governed core between the Founder and the business Receptors. It covers governance, security, control, intelligence routing, state, execution coordination, monitoring and evidence. "The model proposes; the gateway enforces."
 
-**Status:** Steps 1 and 2 of 10 are done (foundation and contracts; Memory & Evidence Layer). Nothing is deployed. See `docs/EXECUTION_PLAN.md`.
+**Status:** Steps 1 to 3 of 10 are done (foundation and contracts; Memory & Evidence Layer; Governance Core). Nothing is deployed. See `docs/EXECUTION_PLAN.md`.
 
 ## Layout
 
@@ -16,17 +16,18 @@ Layer A is the governed core between the Founder and the business Receptors. It 
 | `docs/process/CORE_RD.md` | How Core R&D proposals work |
 | `tools/policy_lock.py` | Computes the AMD-1 to AMD-13 lock hash |
 | `services/memory/` | Step 2: Memory & Evidence Layer (card I), schema `memory` (`services/memory/NOTES.md`) |
+| `services/governance/` | Step 3: Governance Core (card A), schema `governance` (`services/governance/NOTES.md`) |
 | `tests/` | Repository checks: policy, lock, planes, traceability |
 
 ## Run the checks
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
-pip install -e contracts -e "services/memory[dev]" "pyyaml>=6" pytest ruff
+pip install -e contracts -e "services/memory[dev]" -e "services/governance[dev]" "pyyaml>=6" pytest ruff
 ruff check . && ruff format --check .
 pytest -q
 ```
 
-The memory tests need PostgreSQL 16. Set `DYSON_TEST_PG_ADMIN` to a superuser DSN; without it, those tests are skipped.
+The memory and governance tests need PostgreSQL 16. Set `DYSON_TEST_PG_ADMIN` to a superuser DSN; without it, those tests are skipped.
 
 GitHub is used for source control and CI only. It is never part of Dyson's runtime (LA-SEC-06).
