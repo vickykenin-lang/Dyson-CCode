@@ -2,7 +2,7 @@
 
 `contracts/` (package `dyson_contracts`) holds every message and state that crosses a component boundary. Steps 2 to 8 build components that depend **only** on these contracts, never on each other. That is what lets each step finish in one go without clashing with another.
 
-## What is in v1.0.0
+## What is in v1.1.0
 
 | Module | Holds | PRD source |
 |---|---|---|
@@ -18,6 +18,7 @@
 | `receptor` | `ReceptorManifest` | §8 minimum obligations |
 | `interface` | `FounderMessage`, `CommandAcknowledgment`, `TaskStatusUpdate` | LA-APP |
 | `integrations` | `IntegrationRecord` | AMD-13 |
+| `digests` (v1.1.0) | `canonical_digest`, `external_action_digest`, `tool_action_payload`, `signing_bytes`: the one definition of what an approval binds to and what a Founder-channel proof signs | LA-DFC-05, LA-GOV-02 |
 
 ## Rules that live in the contracts themselves
 
@@ -48,3 +49,7 @@ Contracts are frozen inside Steps 2 to 8. If a step finds it needs a change:
 1. Record the need in that step's notes. Do not edit `contracts/` inside the step.
 2. Raise a separate contract-change PR that bumps `CONTRACTS_VERSION` (minor for an additive change, major for a breaking one) and updates the tests.
 3. Apply all such changes before Step 9 connects the components.
+
+## Change log
+
+- **1.1.0 (before Step 9, additive).** Added `digests`. A, G, D, C and Direct Founder Controls had identical private copies of these functions; they now import the shared ones, so approval digests and channel proofs cannot drift apart. Existing digests are unchanged (pinned by `contracts/tests/test_digests.py`). The other shapes the step notes listed (model-call shapes, B's reply, D's plan) stay inside their components: Step 9's adapters translate them, and none crosses a component boundary unconverted.

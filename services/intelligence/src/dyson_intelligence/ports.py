@@ -4,8 +4,6 @@ Note what is absent: no port lets B or C approve anything, run a tool, read a se
 evidence or touch the STOP controls. Hermes has its own, narrower ports (hermes/runtime.py).
 """
 
-import hashlib
-import json
 from typing import Any, Protocol
 from uuid import UUID
 
@@ -76,10 +74,3 @@ class ToolCatalogPort(Protocol):
         Only tools G's registry currently admits are listed.
         """
         ...
-
-
-def external_action_digest(payload: dict[str, Any]) -> str:
-    """Same canonical digest as the Governance Core (moves into dyson_contracts before Step 9)."""
-    value = {"kind": "external_action", "payload": payload}
-    blob = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str)
-    return hashlib.sha256(blob.encode("utf-8")).hexdigest()

@@ -23,6 +23,7 @@ from psycopg.types.json import Jsonb
 from dyson_contracts.approvals import ApprovalCategory
 from dyson_contracts.common import Component, Contract, RiskLevel
 from dyson_contracts.control import ControlMode, ControlScope, ControlState
+from dyson_contracts.digests import tool_action_payload
 from dyson_contracts.tasks import (
     ACTIVE_STATES,
     QA_CONSECUTIVE_FAILURE_LIMIT,
@@ -66,15 +67,8 @@ class OrchestratorError(Exception):
 
 
 def action_payload(plan: TaskPlan) -> dict[str, Any]:
-    """The exact action an approval names. Matches the Tool Hub's action payload (Step 9 test)."""
-    spend = plan.estimated_spend
-    return {
-        "tool_id": plan.tool_id,
-        "receptor_id": plan.receptor_id,
-        "arguments": plan.arguments,
-        "amount": str(spend.amount) if spend else "0",
-        "currency": spend.currency if spend else None,
-    }
+    """The exact action an approval names: the same payload G checks (dyson_contracts.digests)."""
+    return tool_action_payload(plan.tool_id, plan.receptor_id, plan.arguments, plan.estimated_spend)
 
 
 def approval_needed(plan: TaskPlan) -> ApprovalCategory | None:

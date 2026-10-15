@@ -4,10 +4,8 @@ The log is the durable record: current state is rebuilt from it after a restart,
 forwards it to the audit log in I.
 """
 
-import hashlib
-import json
 from enum import StrEnum
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import Field, JsonValue, TypeAdapter
@@ -15,14 +13,11 @@ from pydantic import Field, JsonValue, TypeAdapter
 from dyson_contracts.approvals import ApprovalCategory, ApprovalDecision, ApprovalRequest
 from dyson_contracts.common import Component, Contract, Money, NonEmptyStr, ReceptorId, Timestamp
 from dyson_contracts.control import ControlCommand, ControlScope
+from dyson_contracts.digests import canonical_digest as contracts_canonical_digest
 from dyson_contracts.integrations import IntegrationRecord
 from dyson_contracts.receptor import ReceptorManifest
 
-
-def canonical_digest(value: Any) -> str:
-    """sha256 of canonical JSON. Binds an approval to the exact proposal shown (LA-DFC-05)."""
-    blob = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str)
-    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+canonical_digest = contracts_canonical_digest  # shared since contracts v1.1.0
 
 
 class ProposalKind(StrEnum):

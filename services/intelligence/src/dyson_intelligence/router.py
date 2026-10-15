@@ -21,6 +21,7 @@ from psycopg.types.json import Jsonb
 
 from dyson_contracts.approvals import ApprovalCategory
 from dyson_contracts.common import Component
+from dyson_contracts.digests import external_action_digest
 from dyson_contracts.integrations import IntegrationKind
 
 from .models import (
@@ -33,7 +34,7 @@ from .models import (
     Qualification,
     RoutedResponse,
 )
-from .ports import GovernancePort, ModelAdapter, external_action_digest
+from .ports import GovernancePort, ModelAdapter
 
 # Who may ask C for a model. D, G, F, H and the Receptors have no reason to; A must not use one.
 CALLERS = frozenset({Component.CONVERSATION_ENGINE, Component.HERMES})

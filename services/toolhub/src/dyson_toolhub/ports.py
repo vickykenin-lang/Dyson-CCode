@@ -4,13 +4,13 @@ Every port call that fails or raises makes the check fail: G fails closed.
 """
 
 import hashlib
-import json
 from decimal import Decimal
 from typing import Any, Protocol
 
 from dyson_contracts.approvals import ApprovalCategory
 from dyson_contracts.common import Component, Money
 from dyson_contracts.control import ControlMode
+from dyson_contracts.digests import external_action_digest, tool_action_payload
 from dyson_contracts.integrations import IntegrationRecord
 from dyson_contracts.toolcalls import ToolCallRequest
 
@@ -55,21 +55,9 @@ class StaticTokens:
 
 def action_payload(request: ToolCallRequest) -> dict[str, Any]:
     """The exact action a Founder approval must name: tool, scope, arguments and spend."""
-    spend = request.estimated_spend
-    return {
-        "tool_id": request.tool_id,
-        "receptor_id": request.receptor_id,
-        "arguments": request.arguments,
-        "amount": str(spend.amount) if spend else "0",
-        "currency": spend.currency if spend else None,
-    }
-
-
-def external_action_digest(payload: dict[str, Any]) -> str:
-    """Same canonical form as the Governance Core's external-action digest (checked in Step 9)."""
-    value = {"kind": "external_action", "payload": payload}
-    blob = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str)
-    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+    return tool_action_payload(
+        request.tool_id, request.receptor_id, request.arguments, request.estimated_spend
+    )
 
 
 def action_digest(request: ToolCallRequest) -> str:

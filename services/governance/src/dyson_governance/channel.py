@@ -7,15 +7,11 @@ with an HMAC implementation for development and tests.
 
 import hashlib
 import hmac
-import json
-from typing import Any, Protocol
+from typing import Protocol
 
 from pydantic import BaseModel
 
-
-def signing_bytes(message: BaseModel) -> bytes:
-    data: Any = message.model_dump(mode="json")
-    return json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
+from dyson_contracts.digests import signing_bytes
 
 
 class ChannelVerifier(Protocol):

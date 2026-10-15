@@ -2,13 +2,13 @@
 
 import hashlib
 import hmac
-import json
-from typing import Any, Protocol
+from typing import Protocol
 
 from pydantic import BaseModel
 
 from dyson_contracts.approvals import ApprovalDecision, ApprovalRequest
 from dyson_contracts.control import ControlCommand, ControlScope, ControlState
+from dyson_contracts.digests import signing_bytes
 
 
 class GovernancePort(Protocol):
@@ -23,12 +23,6 @@ class GovernancePort(Protocol):
 
 class AuditPort(Protocol):
     def record(self, event: str, detail: dict) -> None: ...
-
-
-def signing_bytes(message: BaseModel) -> bytes:
-    """Same canonical bytes A verifies (dyson_governance.channel; moves to contracts in Step 9)."""
-    data: Any = message.model_dump(mode="json")
-    return json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
 class HmacChannelSigner:
