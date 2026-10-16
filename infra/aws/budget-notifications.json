@@ -1,0 +1,92 @@
+[
+ {
+  "Notification": {
+   "NotificationType": "ACTUAL",
+   "ComparisonOperator": "GREATER_THAN",
+   "Threshold": 25,
+   "ThresholdType": "ABSOLUTE_VALUE"
+  },
+  "Subscribers": [
+   {
+    "SubscriptionType": "EMAIL",
+    "Address": "dyson.vickykenin@gmail.com"
+   },
+   {
+    "SubscriptionType": "EMAIL",
+    "Address": "vickykenin@gmail.com"
+   }
+  ]
+ },
+ {
+  "Notification": {
+   "NotificationType": "ACTUAL",
+   "ComparisonOperator": "GREATER_THAN",
+   "Threshold": 50,
+   "ThresholdType": "ABSOLUTE_VALUE"
+  },
+  "Subscribers": [
+   {
+    "SubscriptionType": "EMAIL",
+    "Address": "dyson.vickykenin@gmail.com"
+   },
+   {
+    "SubscriptionType": "EMAIL",
+    "Address": "vickykenin@gmail.com"
+   }
+  ]
+ },
+ {
+  "Notification": {
+   "NotificationType": "ACTUAL",
+   "ComparisonOperator": "GREATER_THAN",
+   "Threshold": 75,
+   "ThresholdType": "ABSOLUTE_VALUE"
+  },
+  "Subscribers": [
+   {
+    "SubscriptionType": "EMAIL",
+    "Address": "dyson.vickykenin@gmail.com"
+   },
+   {
+    "SubscriptionType": "EMAIL",
+    "Address": "vickykenin@gmail.com"
+   }
+  ]
+ },
+ {
+  "Notification": {
+   "NotificationType": "ACTUAL",
+   "ComparisonOperator": "GREATER_THAN",
+   "Threshold": 90,
+   "ThresholdType": "ABSOLUTE_VALUE"
+  },
+  "Subscribers": [
+   {
+    "SubscriptionType": "EMAIL",
+    "Address": "dyson.vickykenin@gmail.com"
+   },
+   {
+    "SubscriptionType": "EMAIL",
+    "Address": "vickykenin@gmail.com"
+   }
+  ]
+ },
+ {
+  "Notification": {
+   "NotificationType": "ACTUAL",
+   "ComparisonOperator": "GREATER_THAN",
+   "Threshold": 95,
+   "ThresholdType": "ABSOLUTE_VALUE"
+  },
+  "Subscribers": [
+   {
+    "SubscriptionType": "EMAIL",
+    "Address": "dyson.vickykenin@gmail.com"
+   },
+   {
+    "SubscriptionType": "EMAIL",
+    "Address": "vickykenin@gmail.com"
+   }
+  ]
+ }
+]
