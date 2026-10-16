@@ -84,3 +84,14 @@ decisions:
     stale_after is 3 days. A Receptor with no health report for 3 days shows as unverified,
     and that issue goes to the Founder with hourly reminders under D-009. Changing it later
     needs a Founder-approved operational-parameter proposal.
+- id: D-012
+  date: '2026-10-16'
+  closes: Implementation gate 1 (AWS account verification and spend cap)
+  topic: AWS account for Step 10
+  decision: >-
+    A fresh AWS account named Dyson Sphere on the AWS Free plan, region ap-southeast-2
+    (Sydney). Total spend for the first phase is capped at the plan's 100.00 USD of credits,
+    which end after 180 days (12 Apr 2027); AWS access stops when the credits are used up or
+    the period ends, whichever comes first. The Founder will top up after the free period,
+    expecting revenue to fund infrastructure from about six months on. Until then nothing
+    may be provisioned that cannot run inside these credits.

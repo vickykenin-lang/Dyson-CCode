@@ -4,33 +4,34 @@ Step 10 connects Layer A to AWS, real model APIs and (later) a voice vendor. The
 
 Each gate has a **recommendation**. It is a proposal only, not a decision, and no value in it is used until you confirm or change it.
 
-## Gate 1: AWS account (before any provisioning)
+## Gate 1: AWS account (decided: D-012)
 
-You provide:
-- account plan (free or paid);
-- any credits and their expiry;
-- the maximum monthly spend you approve.
+- **Account:** a fresh account named Dyson Sphere, on the AWS Free plan.
+- **Region:** `ap-southeast-2` (Sydney).
+- **Spending cap:** the plan's 100.00 USD of credits, available for 180 days, until 12 Apr 2027. AWS access stops when either runs out.
+- **Later:** you top up after the free period, expecting revenue from about month six.
 
-Recommendation:
-- **Region:** `ap-south-1` (Mumbai), for latency to you and Indian data residency.
-- **Billing alarms:** at 50%, 80% and 100% of your cap.
-- **Hard stop at 100%:** a budget action stops compute when the cap is reached.
+What this means for Step 10:
+- **Budget:** a budget of 100 USD over the period, with alerts as it is used.
+- **Hard limit:** no resource whose running cost could pass the credits in the period.
+- **No reserved or prepaid purchases.**
 
 ## Gate 2: compute, network, database, backups, IAM, secrets
 
-Recommendation (matching the PRD's 2 vCPU / 4 GB / 50 to 80 GB hypothesis):
+Recommendation, revised to fit 100 USD over 180 days (D-012):
 
-- **Compute.** One small ARM instance (`t4g.medium`: 2 vCPU, 4 GB, 60 GB encrypted disk) running the same containers as `docker-compose.yml`. Scale only after measurement (LA-COST-03).
+- **Compute.** One small fixed-price instance (Lightsail or a small EC2 instance, whichever the current price page shows is cheapest for about 2 vCPU and 2 to 4 GB) running the same containers as `docker-compose.yml`. That includes Postgres in its own container on an encrypted disk: a managed database (RDS) would use most of the credits on its own.
   - Direct Founder Controls runs as its own container with its own key.
-  - Hermes runs as its own container on an internal-only network (LA-DEP-01..03).
-- **Database.** PostgreSQL 16 on RDS (smallest instance), private subnet only, encrypted, with automated backups.
+  - Hermes runs on an internal-only network (LA-DEP-01..03).
+  - Prices are checked on your account before anything is created (LA-COST-04).
 - **Network.**
   - Only the Gateway and Direct Founder Controls are public, behind TLS on two separate subnames of a domain you own (LA-GW-04, LA-GW-05).
-  - Everything else is private.
-- **Backups.** Nightly encrypted exports to an S3 bucket with Object Lock, which the runtime role cannot delete or alter (LA-DEP-04). A restore is tested before launch (LA-REL-03).
-- **IAM.** One least-privilege role per component, no long-lived keys on the server, and a monthly usage review (LA-SEC-02).
-- **Secrets.** AWS Secrets Manager, one namespace per component and per Receptor.
-- **Deployment.** Infrastructure as code (OpenTofu), deployed from this private repository. Each release keeps a rollback image (LA-DEP-05).
+  - Everything else is reachable only inside the instance.
+- **Backups.** Nightly encrypted database dumps to an S3 bucket with versioning and Object Lock, under a role the running application cannot use to delete them (LA-DEP-04). A restore is tested before launch (LA-REL-03).
+- **IAM.** One least-privilege role for the instance, no long-lived keys on the server, and a monthly usage review (LA-SEC-02).
+- **Secrets.** Kept encrypted on the instance (SSM Parameter Store, standard tier), behind the existing secret-store interface.
+- **Scaling.** Moving to managed services and separate hosts waits for the top-up and measured need (LA-COST-03).
+- **Deployment.** Infrastructure as code, deployed from this private repository. Each release keeps a rollback image (LA-DEP-05).
 
 You provide: the domain name to use.
 
