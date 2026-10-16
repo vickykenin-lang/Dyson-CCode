@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "RegisterAndRunOnTheServer",
+      "Effect": "Allow",
+      "Action": ["ssm:CreateActivation", "ssm:DescribeActivations", "ssm:DeleteActivation",
+                 "ssm:DescribeInstanceInformation", "ssm:SendCommand", "ssm:GetCommandInvocation",
+                 "ssm:ListCommandInvocations", "ssm:ListCommands"],
+      "Resource": "*",
+      "Condition": {"StringEquals": {"aws:RequestedRegion": "ap-southeast-2"}}
+    },
+    {
+      "Sid": "ShipReleasesToDysonBuckets",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject"],
+      "Resource": "arn:aws:s3:::dyson-*/*"
+    },
+    {
+      "Sid": "ReadDysonRolePolicies",
+      "Effect": "Allow",
+      "Action": ["iam:ListRolePolicies", "iam:GetRolePolicy", "iam:ListAttachedRolePolicies"],
+      "Resource": "arn:aws:iam::*:role/dyson-*"
+    }
+  ]
+}

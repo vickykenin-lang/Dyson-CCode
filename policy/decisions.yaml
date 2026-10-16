@@ -149,3 +149,14 @@ decisions:
     Founder's request. No voice audio is stored. From bank statements only the parsed fields
     are kept, never the file. Personal and financial data never goes to an outside model.
     Only Test T0 runs on AWS until a real Receptor is approved.
+- id: D-018
+  date: '2026-10-16'
+  closes: Server size for Step 10 (amends the 60 USD infrastructure cap in D-013)
+  topic: Server above the infrastructure cap
+  decision: >-
+    One Lightsail server with 2 vCPU, 4 GB memory and 80 GB disk in ap-southeast-2. Spend may
+    pass the 60 USD infrastructure cap and the 100 USD of credits; the Founder covers it with
+    further AWS credits or a top-up. It has a public IPv4 address because an IPv6-only server
+    cannot reach GitHub or be managed from the deployment session. It registers with Systems
+    Manager, so it gets short-lived role credentials and no long-lived keys are kept on it.
+    The budget alerts of D-013 stay as they are.
