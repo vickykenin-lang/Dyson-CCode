@@ -1,0 +1,63 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadPricesBillingAndQuotas",
+      "Effect": "Allow",
+      "Action": ["pricing:*", "ce:Get*", "ce:Describe*", "servicequotas:Get*", "servicequotas:List*",
+                 "sts:GetCallerIdentity"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "BudgetsAndAlarms",
+      "Effect": "Allow",
+      "Action": ["budgets:*", "sns:CreateTopic", "sns:Subscribe", "sns:SetTopicAttributes",
+                 "sns:GetTopicAttributes", "sns:ListTopics", "sns:ListSubscriptionsByTopic",
+                 "cloudwatch:PutMetricAlarm", "cloudwatch:DescribeAlarms"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ComputeInSydneyOnly",
+      "Effect": "Allow",
+      "Action": ["lightsail:*", "ec2:Describe*", "ec2:RunInstances", "ec2:StartInstances",
+                 "ec2:StopInstances", "ec2:CreateTags", "ec2:CreateSecurityGroup",
+                 "ec2:AuthorizeSecurityGroupIngress", "ec2:RevokeSecurityGroupIngress",
+                 "ec2:CreateKeyPair", "ec2:AllocateAddress", "ec2:AssociateAddress"],
+      "Resource": "*",
+      "Condition": {"StringEquals": {"aws:RequestedRegion": "ap-southeast-2"}}
+    },
+    {
+      "Sid": "BackupBucketAndSecrets",
+      "Effect": "Allow",
+      "Action": ["s3:CreateBucket", "s3:PutBucket*", "s3:GetBucket*", "s3:PutObjectLockConfiguration",
+                 "s3:GetObjectLockConfiguration", "s3:PutEncryptionConfiguration",
+                 "s3:GetEncryptionConfiguration", "s3:ListBucket",
+                 "ssm:PutParameter", "ssm:GetParameter*", "ssm:DescribeParameters",
+                 "ssm:AddTagsToResource"],
+      "Resource": "*",
+      "Condition": {"StringEquals": {"aws:RequestedRegion": "ap-southeast-2"}}
+    },
+    {
+      "Sid": "ModelAccessCheck",
+      "Effect": "Allow",
+      "Action": ["bedrock:List*", "bedrock:Get*", "bedrock:InvokeModel"],
+      "Resource": "*",
+      "Condition": {"StringEquals": {"aws:RequestedRegion": "ap-southeast-2"}}
+    },
+    {
+      "Sid": "OnlyDysonServerRoles",
+      "Effect": "Allow",
+      "Action": ["iam:CreateRole", "iam:PutRolePolicy", "iam:AttachRolePolicy", "iam:GetRole",
+                 "iam:CreateInstanceProfile", "iam:AddRoleToInstanceProfile", "iam:PassRole",
+                 "iam:TagRole"],
+      "Resource": ["arn:aws:iam::*:role/dyson-*", "arn:aws:iam::*:instance-profile/dyson-*"]
+    },
+    {
+      "Sid": "NeverDeleteBackupsOrTouchBilling",
+      "Effect": "Deny",
+      "Action": ["s3:DeleteBucket", "s3:DeleteObject*", "s3:PutBucketObjectLockConfiguration",
+                 "aws-portal:Modify*", "account:*", "iam:CreateUser", "iam:CreateAccessKey"],
+      "Resource": "*"
+    }
+  ]
+}
