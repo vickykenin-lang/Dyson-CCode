@@ -95,3 +95,57 @@ decisions:
     the period ends, whichever comes first. The Founder will top up after the free period,
     expecting revenue to fund infrastructure from about six months on. Until then nothing
     may be provisioned that cannot run inside these credits.
+- id: D-013
+  date: '2026-10-16'
+  closes: Implementation gate 2 (compute, network, database, backups, IAM, secrets)
+  topic: AWS infrastructure within the free-plan credits
+  decision: >-
+    One small fixed-price server in ap-southeast-2 (about 2 vCPU and 2 to 4 GB; Lightsail or
+    EC2, whichever the price page shows is cheaper) runs Layer A, Postgres, Direct Founder
+    Controls and Hermes as separate containers; no managed database for now. Of the 100 USD:
+    infrastructure at most 60 USD for the 180 days, model calls at most 30 USD in total
+    (enforced by the Model Router's budget), 10 USD in reserve; if the cheapest suitable
+    server would pass 60 USD, stop and ask the Founder before creating it. Budget alerts at
+    25, 50, 75 and 90 USD used; at 95 USD everything stops except backups. Only the Gateway
+    and Direct Founder Controls are public, with TLS, at dyson.designinfra.in and
+    control.designinfra.in; DNS for designinfra.in is managed at GoDaddy. Nightly encrypted
+    database dumps go to one S3 bucket with versioning and Object Lock that the application
+    cannot delete; a restore is tested before launch. One least-privilege role for the
+    server, no long-lived keys on it, secrets in SSM Parameter Store (standard tier), and a
+    monthly usage review. Models: Amazon Bedrock in ap-southeast-2 behind the Model Router,
+    the cheapest model that passes the Founder's bar on real Dyson tasks chosen by benchmark,
+    with the stand-in model kept as the fallback.
+- id: D-014
+  date: '2026-10-16'
+  closes: Implementation gate 3 (step-up authentication and signed approvals)
+  topic: Founder confirmation method and approval expiry
+  decision: >-
+    A passkey on the Founder's phone confirms every approval, rejection, STOP, PAUSE and
+    resume request on Direct Founder Controls, with a second passkey kept as backup. An
+    unanswered approval expires after 24 hours and must be asked again; the Founder is
+    reminded hourly while it waits.
+- id: D-015
+  date: '2026-10-16'
+  closes: Implementation gate 4 (STOP for running actions; high-risk classification)
+  topic: STOP handling and high-risk actions
+  decision: >-
+    STOP blocks every new tool call at once. A call already sent may finish, but its result
+    waits for the Founder's review; nothing continues or rolls back on its own. High risk,
+    always needing Founder approval: spending money, publishing outside Dyson, contacting a
+    customer, deleting data, changing a Receptor's limits.
+- id: D-016
+  date: '2026-10-16'
+  closes: Implementation gate 5 for this phase (voice)
+  topic: Voice deferred
+  decision: >-
+    No voice in this phase. Layer A runs text only on AWS; the voice benchmark runs after the
+    account is topped up.
+- id: D-017
+  date: '2026-10-16'
+  closes: Implementation gate 6 (retention, classification, isolation, redaction)
+  topic: Data policy for the first AWS phase
+  decision: >-
+    Conversations, decisions and evidence are kept permanently and deleted only on the
+    Founder's request. No voice audio is stored. From bank statements only the parsed fields
+    are kept, never the file. Personal and financial data never goes to an outside model.
+    Only Test T0 runs on AWS until a real Receptor is approved.

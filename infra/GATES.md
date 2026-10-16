@@ -80,11 +80,11 @@ Recommendation:
 - **Isolation:** each Receptor sees only its own data (already enforced in memory).
 - **Until gate 6 closes:** only the synthetic Test T0 runs on AWS.
 
-## Final proposal for approval (gates 2 to 6, fitted to D-012)
+## Approved: gates 2 to 6 (D-013 to D-017, 16 Oct 2026)
 
-When approved, each line below is recorded as a Founder decision (D-013 onwards).
+The Founder approved this table as final. Domain: `designinfra.in`, DNS at GoDaddy; public names `dyson.designinfra.in` (app and Gateway) and `control.designinfra.in` (Direct Founder Controls).
 
-| Gate | Proposed decision |
+| Gate | Decision |
 |---|---|
 | 2: Compute | One small fixed-price server in ap-southeast-2, about 2 vCPU and 2 to 4 GB, Lightsail or EC2, whichever the price page shows is cheaper. It runs Layer A, Postgres, Direct Founder Controls and Hermes as separate containers. No managed database for now. |
 | 2: Budget split of the 100 USD | Infrastructure at most 60 USD for the 180 days. Model calls at most 30 USD in total, enforced by C's budget (about 0.16 USD a day). 10 USD held in reserve. If the cheapest suitable server would pass 60 USD, I stop and ask before creating it. |
@@ -99,7 +99,6 @@ When approved, each line below is recorded as a Founder decision (D-013 onwards)
 | 5: Voice | Not in this phase. Text only on AWS; the voice benchmark runs after the top-up. |
 | 6: Data | Conversations, decisions and evidence kept permanently (deleted only on your request). No voice audio stored. Bank statements: only the parsed fields, never the file. Personal and financial data never goes to an outside model. Only Test T0 runs on AWS until a real Receptor is approved. |
 
-Still needed from you: **the domain name** (and who manages its DNS, for example Cloudflare).
 
 ## What Step 10 then builds, in order
 
