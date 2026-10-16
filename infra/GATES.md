@@ -80,6 +80,27 @@ Recommendation:
 - **Isolation:** each Receptor sees only its own data (already enforced in memory).
 - **Until gate 6 closes:** only the synthetic Test T0 runs on AWS.
 
+## Final proposal for approval (gates 2 to 6, fitted to D-012)
+
+When approved, each line below is recorded as a Founder decision (D-013 onwards).
+
+| Gate | Proposed decision |
+|---|---|
+| 2: Compute | One small fixed-price server in ap-southeast-2, about 2 vCPU and 2 to 4 GB, Lightsail or EC2, whichever the price page shows is cheaper. It runs Layer A, Postgres, Direct Founder Controls and Hermes as separate containers. No managed database for now. |
+| 2: Budget split of the 100 USD | Infrastructure at most 60 USD for the 180 days. Model calls at most 30 USD in total, enforced by C's budget (about 0.16 USD a day). 10 USD held in reserve. If the cheapest suitable server would pass 60 USD, I stop and ask before creating it. |
+| 2: Alerts | AWS budget alerts at 25, 50, 75 and 90 USD of credits used; at 95 USD everything stops except backups. |
+| 2: Network | Only the Gateway and Direct Founder Controls are public, with TLS on two names under your domain. Everything else stays inside the server. |
+| 2: Backups | Nightly encrypted database dumps to one S3 bucket with versioning and Object Lock; the app cannot delete them. A restore is tested before launch. |
+| 2: IAM and secrets | One least-privilege role for the server, no long-lived keys on it, secrets in SSM Parameter Store (standard tier), monthly usage review. |
+| 2: Models | Amazon Bedrock in ap-southeast-2 behind C. The cheapest model that passes your bar on real Dyson tasks is picked by benchmark; the stand-in model stays as the fallback. |
+| 3: Approvals | Passkey on your phone for every approval, rejection, STOP, PAUSE and resume request. An unanswered approval expires after 24 hours and must be asked again; you are reminded hourly while it waits. A second passkey is kept as backup. |
+| 4: STOP | Blocks every new tool call at once. A call already sent may finish, but its result waits for your review; nothing continues or rolls back on its own. |
+| 4: High risk | Spending money, publishing outside Dyson, contacting a customer, deleting data, changing a Receptor's limits. Each always needs your approval. |
+| 5: Voice | Not in this phase. Text only on AWS; the voice benchmark runs after the top-up. |
+| 6: Data | Conversations, decisions and evidence kept permanently (deleted only on your request). No voice audio stored. Bank statements: only the parsed fields, never the file. Personal and financial data never goes to an outside model. Only Test T0 runs on AWS until a real Receptor is approved. |
+
+Still needed from you: **the domain name** (and who manages its DNS, for example Cloudflare).
+
 ## What Step 10 then builds, in order
 
 1. Budgets, alarms and IAM, before any paid resource (LA-COST-01).
