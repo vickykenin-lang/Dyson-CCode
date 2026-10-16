@@ -82,7 +82,7 @@ Recommendation:
 
 ## Approved: gates 2 to 6 (D-013 to D-017, 16 Oct 2026)
 
-The Founder approved this table as final. Domain: `designinfra.in`, DNS at GoDaddy; public names `dyson.designinfra.in` (app and Gateway) and `control.designinfra.in` (Direct Founder Controls).
+The Founder approved this table as final. Domain: `designinfra.in` (registered at GoDaddy; DNS moved to Cloudflare on 16 Oct 2026, nameservers `alberto.ns.cloudflare.com` and `brianna.ns.cloudflare.com`); public names `dyson.designinfra.in` (app and Gateway) and `control.designinfra.in` (Direct Founder Controls).
 
 | Gate | Decision |
 |---|---|
