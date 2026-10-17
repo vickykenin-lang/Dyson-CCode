@@ -1,16 +1,66 @@
 {
   "Version": "2012-10-17",
   "Statement": [
-    {"Sid": "ReadReleases", "Effect": "Allow", "Action": ["s3:GetObject"],
-     "Resource": "arn:aws:s3:::dyson-releases-501430758577/*"},
-    {"Sid": "WriteBackupsOnly", "Effect": "Allow", "Action": ["s3:PutObject"],
-     "Resource": "arn:aws:s3:::dyson-backups-501430758577/*"},
-    {"Sid": "ReadOwnSecrets", "Effect": "Allow", "Action": ["ssm:GetParameter", "ssm:GetParameters"],
-     "Resource": "arn:aws:ssm:ap-southeast-2:501430758577:parameter/dyson/*"},
-    {"Sid": "CallModelsInSydney", "Effect": "Allow", "Action": ["bedrock:InvokeModel"],
-     "Resource": "*", "Condition": {"StringEquals": {"aws:RequestedRegion": "ap-southeast-2"}}},
-    {"Sid": "NeverDelete", "Effect": "Deny",
-     "Action": ["s3:DeleteObject*", "s3:DeleteBucket", "s3:BypassGovernanceRetention", "s3:PutBucket*"],
-     "Resource": "*"}
+    {
+      "Sid": "ReadReleases",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": "arn:aws:s3:::dyson-releases-501430758577/*"
+    },
+    {
+      "Sid": "WriteBackupsOnly",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::dyson-backups-501430758577/*"
+    },
+    {
+      "Sid": "ReadBackupsForRestoreTests",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::dyson-backups-501430758577",
+        "arn:aws:s3:::dyson-backups-501430758577/*"
+      ]
+    },
+    {
+      "Sid": "ReadOwnSecrets",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters"
+      ],
+      "Resource": "arn:aws:ssm:ap-southeast-2:501430758577:parameter/dyson/*"
+    },
+    {
+      "Sid": "CallModelsInSydney",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "NeverDelete",
+      "Effect": "Deny",
+      "Action": [
+        "s3:DeleteObject*",
+        "s3:DeleteBucket",
+        "s3:BypassGovernanceRetention",
+        "s3:PutBucket*"
+      ],
+      "Resource": "*"
+    }
   ]
 }
