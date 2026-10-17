@@ -11,6 +11,7 @@ Environment:
   DYSON_SECRET_FILE     secret store file (created, private, if missing)
   DYSON_FOUNDER_PASSWORD_FILE  file holding the Founder's login password
   DYSON_POLICY_DIR      policy/ directory
+  DYSON_SECURE_COOKIES  1 when served over HTTPS (session cookies get the Secure flag)
 """
 
 import asyncio
@@ -91,8 +92,10 @@ def main() -> None:
 
     threading.Thread(target=work, daemon=True).start()
     app = create_founder_app(
-        GatewayClient(TestClient(layer.gateway)), NoVoice(), secure_cookies=False
-    )  # local http only
+        GatewayClient(TestClient(layer.gateway)),
+        NoVoice(),
+        secure_cookies=env.get("DYSON_SECURE_COOKIES") == "1",  # 0 for local http
+    )
     print("Layer A is up: gateway 8080, app 8081, controls 8082, dashboard 8083", flush=True)
     asyncio.run(
         _serve(

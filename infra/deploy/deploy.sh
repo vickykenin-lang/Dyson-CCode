@@ -18,6 +18,6 @@ for n in postgres_password db_password founder_password; do
     --query Parameter.Value --output text | tr -d '\n' > "local-secrets/$n"
   chmod 644 "local-secrets/$n"
 done
-docker compose -p dyson up -d --build
+DYSON_SECURE_COOKIES=1 docker compose -p dyson up -d --build
 ln -sfn "/opt/dyson/releases/$REL" /opt/dyson/current
 docker compose -p dyson ps --format '{{.Service}} {{.State}} {{.Status}}'

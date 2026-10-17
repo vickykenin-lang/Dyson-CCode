@@ -39,6 +39,7 @@ services:
       DYSON_SECRET_FILE: /data/secrets.json
       DYSON_FOUNDER_PASSWORD_FILE: /run/secrets/founder_password
       DYSON_POLICY_DIR: /app/policy
+      DYSON_SECURE_COOKIES: ${DYSON_SECURE_COOKIES:-0}
     secrets: [postgres_password, db_password, founder_password]
     volumes: [dyson-data:/data]
     networks: [core_net]
