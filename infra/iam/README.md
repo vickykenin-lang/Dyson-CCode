@@ -7,7 +7,7 @@ create it; the keys never go into chat or into this repository.
 2. Attach `dyson-deployer-policy.json` (this folder) as an inline policy. It allows only what
    Step 10 needs, only in ap-southeast-2. It denies deleting backups, changing billing, and
    creating users or keys.
-3. Also attach `dyson-deployer-ssm-policy.json` as a second inline policy, named
+3. Also attach `dyson-deployer-ssm-policy.json` as a customer managed policy (inline policies share a 2048-character limit per user), named
    `dyson-deployer-ssm-policy`. It lets the session register the server with Systems Manager,
    run deployment commands on it and ship release bundles to `dyson-*` buckets (D-018).
 4. Create one access key for that user.
