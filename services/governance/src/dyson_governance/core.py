@@ -9,7 +9,7 @@ network beyond the database.
 """
 
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -75,6 +75,7 @@ PARAMETERS: dict[str, Callable[[JsonValue], bool]] = {
     "repeated_failure_threshold": _int_at_least(1),  # read by E (Step 9)
     "founder_reminder_interval_minutes": _int_at_least(1),  # read by E (Step 9)
     "stale_after_hours": _int_at_least(1),  # read by E (Step 9)
+    "approval_expiry_hours": _int_at_least(1),  # D-014: unanswered approvals expire
 }
 
 
@@ -212,6 +213,10 @@ class GovernanceCore:
     ) -> ApprovalRequest:
         if kind is ProposalKind.EXTERNAL_ACTION and category is None:
             raise GovernanceError("an external action needs an approval category")
+        now = self._clock()
+        hours = self.parameter("approval_expiry_hours")
+        if expires_at is None and isinstance(hours, int) and hours > 0:
+            expires_at = now + timedelta(hours=hours)  # D-014: then it must be asked again
         request = ApprovalRequest(
             approval_id=uuid4(),
             task_id=task_id,
@@ -219,7 +224,7 @@ class GovernanceCore:
             action_summary=summary,
             action_digest=canonical_digest({"kind": kind.value, "payload": payload}),
             requested_by=requested_by,
-            created_at=self._clock(),
+            created_at=now,
             expires_at=expires_at,
         )
         self._commit(

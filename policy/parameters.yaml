@@ -14,3 +14,6 @@ parameters:
 - name: stale_after_hours
   value: 72
   decision: D-011
+- name: approval_expiry_hours
+  value: 24
+  decision: D-014

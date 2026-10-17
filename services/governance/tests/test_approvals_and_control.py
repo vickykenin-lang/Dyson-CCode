@@ -282,6 +282,7 @@ def test_founder_decided_recovery_limit_is_three_until_changed(policy, channel, 
         "repeated_failure_threshold": 3,  # D-010
         "founder_reminder_interval_minutes": 60,  # D-009
         "stale_after_hours": 72,  # D-011
+        "approval_expiry_hours": 24,  # D-014
     }
     core = GovernanceCore(
         InMemoryEventStore(), policy, channel, clock=clock, initial_parameters=initial

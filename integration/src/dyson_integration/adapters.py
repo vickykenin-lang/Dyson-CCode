@@ -191,17 +191,57 @@ class GovernanceForIntelligence:
         ).approval_id
 
 
+def open_approvals(core: GovernanceCore, now) -> list[ApprovalRequest]:
+    from dyson_governance.state import ProposalStatus
+
+    return [
+        p.request
+        for p in core.sync().proposals.values()
+        if p.status is ProposalStatus.OPEN
+        and (p.request.expires_at is None or now <= p.request.expires_at)
+    ]
+
+
+class ApprovalReminders:
+    """D-014: while an approval waits, the Founder is reminded every reminder interval; when it
+    expires unanswered, the Founder is told once that it must be asked again."""
+
+    def __init__(self, core: GovernanceCore, inbox: FounderInbox, interval, clock: Clock):
+        self._core, self._inbox, self._interval, self._clock = core, inbox, interval, clock
+        self._last: dict[UUID, object] = {}
+        self._expired: set[UUID] = set()
+
+    def check(self) -> None:
+        from dyson_governance.state import ProposalStatus
+
+        now = self._clock()
+        for p in self._core.sync().proposals.values():
+            r = p.request
+            if p.status is not ProposalStatus.OPEN or r.approval_id in self._expired:
+                continue
+            if r.expires_at is not None and now > r.expires_at:
+                self._expired.add(r.approval_id)
+                self._inbox.escalate("founder", "approval",
+                                     f"Expired unanswered, ask again: {r.action_summary}",
+                                     r.task_id)  # fmt: skip
+                continue
+            if now - self._last.get(r.approval_id, r.created_at) >= self._interval:
+                self._last[r.approval_id] = now
+                until = f" (expires {r.expires_at:%Y-%m-%d %H:%M} UTC)" if r.expires_at else ""
+                self._inbox.escalate("founder", "approval",
+                                     f"Reminder: waiting for you: {r.action_summary}{until}",
+                                     r.task_id)  # fmt: skip
+
+
 class GovernanceForControls:
     """Direct Founder Controls reach A and nothing else (LA-DFC-02)."""
 
-    def __init__(self, core: GovernanceCore):
-        self._core = core
+    def __init__(self, core: GovernanceCore, clock: Clock):
+        self._core, self._clock = core, clock
 
     def pending_approvals(self) -> list[ApprovalRequest]:
-        from dyson_governance.state import ProposalStatus
-
-        props = self._core.sync().proposals.values()
-        return [p.request for p in props if p.status is ProposalStatus.OPEN]
+        """Open approvals that have not expired (D-014: an expired one must be asked again)."""
+        return open_approvals(self._core, self._clock())
 
     def decide(self, decision: ApprovalDecision, proof: str) -> str:
         return self._core.decide(decision, proof).value

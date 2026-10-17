@@ -66,6 +66,7 @@ from dyson_toolhub.store import PgToolStore
 
 from . import t0 as t0_module
 from .adapters import (
+    ApprovalReminders,
     AuditToMemory,
     CatalogForConversation,
     ConversationForGateway,
@@ -416,7 +417,7 @@ class LayerA:
                 clock,
             )
         self.controls: FastAPI = create_controls(
-            GovernanceForControls(self.core),
+            GovernanceForControls(self.core, clock),
             passkeys or device,
             HmacChannelSigner(core_secret("channel_key").encode()),
             _AuditEvents(self.memory, clock),
@@ -429,6 +430,12 @@ class LayerA:
             _HermesRouterClient(TestClient(self.router_api), core_secret("hermes_router_token")),
             _HermesToolHubClient(TestClient(self.toolhub_api), self.tokens[Component.HERMES]),
             self.core,
+            clock,
+        )
+        self.approval_reminders = ApprovalReminders(
+            self.core,
+            self.inbox,
+            timedelta(minutes=int(params["founder_reminder_interval_minutes"])),
             clock,
         )
         self.repairs = Repairs(self)
@@ -539,6 +546,7 @@ class LayerA:
             self.repairs.check()
             self.orch.tick()
             self.monitor.remind()
+            self.approval_reminders.check()
             self.finance.reconcile()
 
     # Founder-approved setup -----------------------------------------------------------------
