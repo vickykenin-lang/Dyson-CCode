@@ -21,4 +21,4 @@ WantedBy=timers.target
 UNIT
 systemctl daemon-reload
 systemctl enable --now dyson-backup.timer
-systemctl list-timers dyson-backup.timer --no-pager | head -2
+systemctl list-timers dyson-backup.timer --no-pager --no-legend || true
