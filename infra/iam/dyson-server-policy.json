@@ -52,6 +52,14 @@
       }
     },
     {
+      "Sid": "ReadOwnBudget",
+      "Effect": "Allow",
+      "Action": [
+        "budgets:ViewBudget"
+      ],
+      "Resource": "arn:aws:budgets::501430758577:budget/dyson-credits-100"
+    },
+    {
       "Sid": "NeverDelete",
       "Effect": "Deny",
       "Action": [
