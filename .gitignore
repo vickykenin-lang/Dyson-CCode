@@ -14,3 +14,4 @@ dist/
 local-secrets/
 integration/docker/wheels/*
 !integration/docker/wheels/.keep
+local-aws/

@@ -42,3 +42,33 @@ WantedBy=timers.target
 UNIT
 systemctl daemon-reload
 systemctl enable --now dyson-spend-guard.timer
+# Role credentials for Bedrock behind C (D-013): the Systems Manager agent keeps root's
+# short-lived credentials fresh; a copy readable only by the container user is refreshed every
+# 5 minutes. They carry only the dyson-server role's permissions.
+install -d -m 700 -o 10001 /opt/dyson/aws
+cat > /usr/local/bin/dyson-aws-relay <<'SCRIPT'
+#!/bin/bash
+set -e
+install -m 400 -o 10001 /root/.aws/credentials /opt/dyson/aws/credentials.new
+mv /opt/dyson/aws/credentials.new /opt/dyson/aws/credentials
+SCRIPT
+chmod 700 /usr/local/bin/dyson-aws-relay
+cat > /etc/systemd/system/dyson-aws-relay.service <<'UNIT'
+[Unit]
+Description=Copy the server role credentials for Dyson's Bedrock calls
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/dyson-aws-relay
+UNIT
+cat > /etc/systemd/system/dyson-aws-relay.timer <<'UNIT'
+[Unit]
+Description=Refresh Dyson's Bedrock credentials every 5 minutes
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=5min
+[Install]
+WantedBy=timers.target
+UNIT
+systemctl daemon-reload
+systemctl enable --now dyson-aws-relay.timer
+/usr/local/bin/dyson-aws-relay

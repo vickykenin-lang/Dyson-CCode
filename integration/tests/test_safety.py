@@ -186,8 +186,9 @@ def test_the_only_aws_sdk_use_is_the_bedrock_model_client():  # LA-VLT-02, D-013
         for n in ast.walk(tree)
         if isinstance(n, ast.Call)
         and isinstance(n.func, ast.Attribute)
-        and isinstance(n.func.value, ast.Attribute)
-        and n.func.value.attr == "_client"
+        and isinstance(n.func.value, ast.Call)
+        and isinstance(n.func.value.func, ast.Attribute)
+        and n.func.value.func.attr == "_fresh_client"
     }
     assert calls == {"converse"}
 

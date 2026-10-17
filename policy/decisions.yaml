@@ -160,3 +160,13 @@ decisions:
     cannot reach GitHub or be managed from the deployment session. It registers with Systems
     Manager, so it gets short-lived role credentials and no long-lived keys are kept on it.
     The budget alerts of D-013 stay as they are.
+- id: D-019
+  date: '2026-10-17'
+  closes: AMD-4 acceptance bar and model choice for conversation.interpret
+  topic: First real model behind C
+  decision: >-
+    DeepSeek v3.2 on Amazon Bedrock in ap-southeast-2 serves conversation.interpret. The
+    acceptance bar is 90% of real benchmark tasks passed and a p95 latency of at most 5,000 ms;
+    on the 26-command benchmark of 17 Oct 2026 it passed 25 (96%) with p95 3,423 ms at about
+    0.00074 USD a command. Its daily budget is 0.16 USD, within D-013's 30 USD for model calls.
+    The stand-in models stay registered but no longer meet the bar (they passed 18 of 26).

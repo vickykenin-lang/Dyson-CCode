@@ -14,6 +14,8 @@ Environment:
   DYSON_SECURE_COOKIES  1 when served over HTTPS (session cookies get the Secure flag)
   DYSON_PASSKEY_RP_ID   site the Founder's passkeys belong to (e.g. control.designinfra.in)
   DYSON_PASSKEY_ORIGIN  its origin (e.g. https://control.designinfra.in)
+  DYSON_BEDROCK         1 to put Amazon Bedrock behind C (role credentials from
+                        AWS_SHARED_CREDENTIALS_FILE, refreshed by the host)
 """
 
 import asyncio
@@ -33,7 +35,8 @@ from dyson_founder_app.gateway_client import GatewayClient
 from dyson_founder_app.voice import NoVoice
 
 from . import db
-from .system import LayerA, Settings, write_secret_file
+from .rules_model import PROVIDER, RulesModel
+from .system import BACKUP_PROVIDER, LayerA, Settings, write_secret_file
 from .t0 import TestReceptorT0
 
 
@@ -67,7 +70,7 @@ class _Serialized:
             return await self.app(scope, receive, send)
 
 
-def main() -> None:
+def _settings_and_dsns():
     env = os.environ
     policy = Path(env.get("DYSON_POLICY_DIR", "/app/policy"))
     secret_file = Path(env.get("DYSON_SECRET_FILE", "/data/secrets.json"))
@@ -85,11 +88,33 @@ def main() -> None:
         passkey_rp_id=env.get("DYSON_PASSKEY_RP_ID", "localhost"),
         passkey_origin=env.get("DYSON_PASSKEY_ORIGIN", "http://localhost:8082"),
     )
+    return settings, dsns
+
+
+def _models() -> dict:
+    """The stand-ins always; Bedrock behind C when the server has role credentials."""
+    models = {PROVIDER: RulesModel(), BACKUP_PROVIDER: RulesModel()}
+    if os.environ.get("DYSON_BEDROCK") == "1":
+        from .bedrock_model import PROVIDER as BEDROCK
+        from .bedrock_model import BedrockModel
+
+        models[BEDROCK] = BedrockModel()
+    return models
+
+
+def build_from_env(t0=None) -> LayerA:
+    """A Layer A on the server's database, for the server and for one-off admin commands."""
+    settings, dsns = _settings_and_dsns()
+    return LayerA.build(dsns, settings, t0 or TestReceptorT0(), _now, _models())
+
+
+def main() -> None:
+    settings, dsns = _settings_and_dsns()
     t0 = TestReceptorT0()
-    layer = LayerA.build(dsns, settings, t0, _now)
+    layer = LayerA.build(dsns, settings, t0, _now, _models())
     if layer.core.sync().receptors.get("T0") is None:
         layer.bootstrap()
-    worker = LayerA.build(dsns, settings, t0, _now)  # its own connections
+    worker = LayerA.build(dsns, settings, t0, _now, _models())  # its own connections
 
     def work() -> None:
         while True:
@@ -103,7 +128,7 @@ def main() -> None:
     app = create_founder_app(
         GatewayClient(TestClient(layer.gateway)),
         NoVoice(),
-        secure_cookies=env.get("DYSON_SECURE_COOKIES") == "1",  # 0 for local http
+        secure_cookies=os.environ.get("DYSON_SECURE_COOKIES") == "1",  # 0 for local http
     )
     print("Layer A is up: gateway 8080, app 8081, controls 8082, dashboard 8083", flush=True)
     asyncio.run(

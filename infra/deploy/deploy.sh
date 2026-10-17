@@ -19,6 +19,7 @@ for n in postgres_password db_password founder_password; do
   chmod 644 "local-secrets/$n"
 done
 DYSON_SECURE_COOKIES=1 DYSON_PASSKEY_RP_ID=control.designinfra.in \
-  DYSON_PASSKEY_ORIGIN=https://control.designinfra.in docker compose -p dyson up -d --build
+  DYSON_PASSKEY_ORIGIN=https://control.designinfra.in \
+  DYSON_BEDROCK=1 DYSON_AWS_DIR=/opt/dyson/aws docker compose -p dyson up -d --build
 ln -sfn "/opt/dyson/releases/$REL" /opt/dyson/current
 docker compose -p dyson ps --format '{{.Service}} {{.State}} {{.Status}}'

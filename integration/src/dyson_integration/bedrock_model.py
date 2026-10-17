@@ -46,13 +46,22 @@ def first_json_object(text: str) -> str:
     return text.strip()
 
 
+CLIENT_MAX_AGE_S = 600  # the host refreshes short-lived role credentials; pick them up
+
+
 class BedrockModel:
     def __init__(self, client: Any = None):
-        if client is None:
+        self._fixed, self._client, self._made = client is not None, client, 0.0
+
+    def _fresh_client(self) -> Any:
+        import time
+
+        if not self._fixed and time.monotonic() - self._made > CLIENT_MAX_AGE_S:
             import boto3
 
-            client = boto3.client("bedrock-runtime", region_name=REGION)
-        self._client = client
+            self._client = boto3.session.Session().client("bedrock-runtime", region_name=REGION)
+            self._made = time.monotonic()
+        return self._client
 
     def complete(self, request: ModelRequest, model_id: str) -> ModelResponse:
         system = request.system
@@ -61,7 +70,7 @@ class BedrockModel:
                 "\n\nReply with exactly one JSON object and nothing else. It must match this "
                 "JSON schema:\n" + json.dumps(request.response_schema, ensure_ascii=False)
             )
-        out = self._client.converse(
+        out = self._fresh_client().converse(
             modelId=model_id,
             system=[{"text": system}] if system else [],
             messages=[{"role": m.role, "content": [{"text": m.content}]} for m in request.messages],
