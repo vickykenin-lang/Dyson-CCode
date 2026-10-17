@@ -10,5 +10,8 @@ Each entry is created by the `dyson-deployer` identity and checked by reading it
 | 17 Oct 2026 | Bucket `dyson-releases-501430758577` (public access blocked) | release bundles |
 | 17 Oct 2026 | Bucket `dyson-backups-501430758577`: versioning, Object Lock GOVERNANCE 35 days, AES256, public access blocked | D-013 |
 | 17 Oct 2026 | Lightsail `dyson-server`: `medium_3_2`, Ubuntu 24.04, ap-southeast-2a, all public ports closed, registered with Systems Manager by a one-use activation | D-018 |
+| 17 Oct 2026 | SecureString parameters `/dyson/postgres_password`, `/dyson/db_password`, `/dyson/founder_password`, generated without being shown; the Founder reads the password in the console | D-013 |
+
+Releases are deployed with `../deploy/deploy.sh` through Systems Manager; the one-use activation was deleted after the server registered.
 
 The 95 USD stop (everything except backups) is not automatic yet; it is wired once the server exists.
