@@ -24,5 +24,7 @@ Releases are deployed with `../deploy/deploy.sh` through Systems Manager; the on
 - 17 Oct 2026: passkey step-up (gate 3, D-014) deployed as `layer-a-4851f84` (CI green). The Founder registered the first passkey, "Founder phone", at 13:24 UTC; the server holds 1 passkey in `/data/passkeys.json` (mode 600). From now on the device key confirms nothing.
 - 17 Oct 2026: approval expiry (24 hours) and hourly reminders (D-014) deployed as `layer-a-e7f9c7f` (CI green). Reminders go to the Founder inbox and I's audit log; they are not yet pushed to the Founder's phone or app.
 
-Still open: a backup passkey (the Founder will add it later), showing reminders to the Founder, and a real model behind C.
+- 17 Oct 2026: DeepSeek v3.2 on Bedrock (Sydney) is C's model for `conversation.interpret` (D-019), deployed as `layer-a-8f73f30`. The Founder approved the three changes (model with its prices, acceptance bar 90% / 5,000 ms, budget 0.16 USD a day) on Direct Founder Controls; the route is now `['deepseek.v3.2']`. The stand-in's real score (18/26) is recorded, so it no longer passes the bar. A test call from the server, "T0 par 7 aur 8 jod do", came back as a `t0.add` action in Hindi for 0.00045 USD.
+
+Still open: a backup passkey (the Founder will add it later) and showing reminders to the Founder.
 
