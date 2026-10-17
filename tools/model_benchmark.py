@@ -123,7 +123,8 @@ def system_prompt() -> str:
     memory = SimpleNamespace(locked_rules=lambda: [
         {"id": r["id"], "version": r["version"], "title": r["title"]} for r in rules
     ])  # fmt: skip
-    persona = ConversationEngine.persona(SimpleNamespace(_memory=memory))
+    b = SimpleNamespace(_memory=memory, _clock=lambda: datetime.now(UTC))
+    persona = ConversationEngine.persona(b)
     tools = {k: DESCRIPTIONS[k] for k in ("t0.tally", "t0.publish")}
     return persona + "\n\nApproved tools:\n" + json.dumps(tools, ensure_ascii=False)
 

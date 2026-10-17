@@ -216,6 +216,9 @@ class ConversationEngine:
             "kind: action = prepare one approved tool call (fill plan); clarify = ask one",
             "question in text; answer = reply in text; proposal = propose a rule change.",
             "Never invent a tool: if no approved tool fits, clarify or answer.",
+            "Answer general questions (facts, time zones, explanations) from your own knowledge",
+            "and say when an answer may be out of date; you cannot look anything up.",
+            f"Today is {self._clock():%A %d %B %Y}, {self._clock():%H:%M} UTC.",
             "",
             "Approved constitutional rules you work under:",
         ]

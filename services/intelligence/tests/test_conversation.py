@@ -2,6 +2,7 @@
 
 import ast
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -123,6 +124,12 @@ def test_persona_is_grounded_in_the_approved_register(parts):  # LA-CONV-04
     _, request = parts.providers["alpha"].requests[-1]
     assert "- AMD-1 v1.0: Plane separation" in request.system
     assert "- AMD-4 v1.0: No preapproved model" in request.system
+    assert "Answer general questions" in request.system  # not only tool work
+    parts.b._clock = lambda: datetime(2026, 10, 17, 14, 30, tzinfo=UTC)
+    parts.says(answer(language="en", kind="answer", text="It is 15:30 in London."))
+    parts.b.handle(msg("what time is it in London?"))
+    _, request = parts.providers["alpha"].requests[-1]
+    assert "Today is Saturday 17 October 2026, 14:30 UTC." in request.system
     parts.memory.rules = []
     reply = parts.b.handle(msg("hello"))
     assert reply.kind is ReplyKind.UNAVAILABLE and parts.orch.tasks == {}
