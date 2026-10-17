@@ -26,5 +26,7 @@ Releases are deployed with `../deploy/deploy.sh` through Systems Manager; the on
 
 - 17 Oct 2026: DeepSeek v3.2 on Bedrock (Sydney) is C's model for `conversation.interpret` (D-019), deployed as `layer-a-8f73f30`. The Founder approved the three changes (model with its prices, acceptance bar 90% / 5,000 ms, budget 0.16 USD a day) on Direct Founder Controls; the route is now `['deepseek.v3.2']`. The stand-in's real score (18/26) is recorded, so it no longer passes the bar. Checked through B on the server: "T0 par 7 aur 8 jod do" became `t0.tally` with numbers [7, 8] on T0 and reached `completed-verified` (task `f81875a7-dc8b-4b91-9934-b0ddf2d2b2ab`); "Aap kaun ho aur kya kar sakte ho?" got an answer in Hinglish. One call cost about 0.00045 USD.
 
-Still open: a backup passkey (the Founder will add it later) and showing reminders to the Founder.
+- 17 Oct 2026: Step 10's done-when met: evidence on AWS reaches AMD-3 stages 5 to 7 (`layer-a-5d4186c`). Stage 5, production deployed, is recorded once per release by Core R&D (`release:layer-a-5d4186c`, environment `aws-ap-southeast-2`). For "Tally 12, 30 and 58 on T0" (task `59b0313f-aa32-4512-9878-122cc5e50cfa`, `completed-verified`), F recorded stage 6, live request verified, and stage 7, real output verified, both passed for `STD-T0-TALLY`. Earlier stage-7 records said `local` because F did not yet know where it ran. Voice is deferred (D-016); production launch still needs gate 9.
+
+Still open: a backup passkey (the Founder will add it later), showing reminders to the Founder, and deleting the deployer's access key (`../iam/README.md`).
 
