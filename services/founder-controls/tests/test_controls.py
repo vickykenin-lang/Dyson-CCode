@@ -34,7 +34,8 @@ def test_the_cli_stops_everything(http, gov, tmp_path):  # LA-DFC-04
 
 
 def test_controls_reach_only_the_governance_core():  # LA-DFC-02, LA-DFC-01
-    allowed = {"dyson_contracts", "fastapi", "httpx", "pydantic"}
+    # webauthn only verifies passkey signatures locally; it reaches nothing (gate 3, D-014).
+    allowed = {"dyson_contracts", "fastapi", "httpx", "pydantic", "webauthn"}
     for path in SRC.rglob("*.py"):
         for node in ast.walk(ast.parse(path.read_text())):
             if isinstance(node, ast.Import):
@@ -51,7 +52,7 @@ def test_controls_reach_only_the_governance_core():  # LA-DFC-02, LA-DFC-01
     from dyson_founder_controls import app
 
     params = inspect.signature(app.create_app).parameters
-    assert list(params) == ["governance", "stepup", "signer", "audit", "clock"]
+    assert list(params) == ["governance", "stepup", "signer", "audit", "clock", "passkeys"]
 
 
 def test_every_action_needs_its_own_fresh_confirmation(http, gov, clock):  # LA-DFC-03, LA-SEC-03

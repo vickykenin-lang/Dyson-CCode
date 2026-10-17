@@ -35,6 +35,7 @@ from dyson_contracts.lanes import HealthStatus
 from dyson_contracts.toolcalls import ToolCallRequest
 from dyson_founder_controls.app import create_app as create_controls
 from dyson_founder_controls.client import ControlsClient
+from dyson_founder_controls.passkey import PasskeyStepUp, PasskeyStore
 from dyson_founder_controls.ports import HmacChannelSigner
 from dyson_founder_controls.stepup import DeviceKeyStepUp
 from dyson_gateway.app import create_app as create_gateway
@@ -119,6 +120,11 @@ class Settings:
     session_max_age: timedelta = timedelta(hours=12)
     session_idle: timedelta = timedelta(hours=1)
     challenge_ttl: timedelta = timedelta(minutes=2)
+    # Passkeys on Direct Founder Controls (gate 3, D-014): where they are kept, and the site
+    # they belong to. None keeps the development device key only.
+    passkey_file: Path | None = None
+    passkey_rp_id: str = "localhost"
+    passkey_origin: str = "http://localhost:8082"
     poll_seconds: float = 0.05
 
 
@@ -396,12 +402,26 @@ class LayerA:
         )
 
         # Direct Founder Controls: its own path, to A only
+        device_key = core_secret("device_key").encode()
+        device = DeviceKeyStepUp(device_key, settings.challenge_ttl, clock)
+        passkeys = None
+        if settings.passkey_file is not None:
+            passkeys = PasskeyStepUp(
+                PasskeyStore(settings.passkey_file),
+                device,
+                device_key,
+                settings.passkey_rp_id,
+                settings.passkey_origin,
+                settings.challenge_ttl,
+                clock,
+            )
         self.controls: FastAPI = create_controls(
             GovernanceForControls(self.core),
-            DeviceKeyStepUp(core_secret("device_key").encode(), settings.challenge_ttl, clock),
+            passkeys or device,
             HmacChannelSigner(core_secret("channel_key").encode()),
             _AuditEvents(self.memory, clock),
             clock,
+            passkeys,
         )
 
         # Hermes, reaching only C's and G's HTTP APIs with its own credentials

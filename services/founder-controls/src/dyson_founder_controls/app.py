@@ -14,14 +14,17 @@ from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import Field
 
 from dyson_contracts.approvals import ApprovalDecision, ApprovalDecisionKind, ApprovalRequest
 from dyson_contracts.common import Component, Contract, NonEmptyStr, ReceptorId, Sha256Hex
 from dyson_contracts.control import ControlCommand, ControlCommandType, ControlScope, ControlState
 
+from .passkey import PasskeyStepUp
 from .ports import AuditPort, GovernancePort, HmacChannelSigner
 from .stepup import Challenge, StepUpVerifier
+from .ui import PAGE
 
 
 def purpose_for_list() -> str:
@@ -67,6 +70,21 @@ class ResumeRequestIn(Confirmation):
     receptor_id: ReceptorId | None = None
 
 
+class PasskeyLabel(Contract):
+    label: str = Field(min_length=1, max_length=40)
+
+
+class RegistrationOptionsIn(PasskeyLabel):
+    device_key: str | None = None  # only for the first passkey
+    challenge_id: UUID | None = None  # for later ones: a passkey confirmation
+    assertion: str | None = None
+
+
+class RegisterIn(Contract):
+    registration_id: UUID
+    credential: NonEmptyStr  # the browser's credential, as JSON
+
+
 class DecisionOut(Contract):
     approval_id: UUID
     status: str
@@ -83,6 +101,7 @@ def create_app(
     signer: HmacChannelSigner,
     audit: AuditPort,
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+    passkeys: PasskeyStepUp | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Dyson Direct Founder Controls")
 
@@ -161,4 +180,45 @@ def create_app(
         audit.record("resume_requested", request.model_dump(mode="json"))
         return request
 
+    if passkeys is not None:
+        _passkey_routes(app, passkeys, audit, clock)
     return app
+
+
+def _passkey_routes(app: FastAPI, passkeys: PasskeyStepUp, audit: AuditPort, clock) -> None:
+    """The Founder's page and passkey enrollment (gate 3, D-014)."""
+
+    @app.get("/", response_class=HTMLResponse)
+    def page() -> str:
+        return PAGE
+
+    @app.get("/passkeys")
+    def enrolled() -> dict:
+        return {"enrolled": passkeys.enrolled}
+
+    @app.post("/passkeys/challenges", status_code=201)
+    def passkey_challenge(body: ChallengeIn) -> dict:
+        if not passkeys.enrolled:
+            raise ControlsError("no passkey is enrolled yet")
+        c, options = passkeys.issue_passkey(body.purpose)
+        return {"challenge_id": str(c.challenge_id), "options": options}
+
+    @app.post("/passkeys/registration-options", status_code=201)
+    def registration_options(body: RegistrationOptionsIn) -> dict:
+        try:
+            rid, options = passkeys.registration_options(
+                body.label, body.device_key, body.challenge_id, body.assertion
+            )
+        except PermissionError as exc:
+            audit.record("passkey_refused", {"label": body.label, "at": clock().isoformat()})
+            raise ControlsError(str(exc)) from exc
+        return {"registration_id": str(rid), "options": options}
+
+    @app.post("/passkeys/register", status_code=201)
+    def register(body: RegisterIn) -> dict:
+        try:
+            key = passkeys.register(body.registration_id, body.credential)
+        except PermissionError as exc:
+            raise ControlsError(str(exc)) from exc
+        audit.record("passkey_enrolled", {"label": key.label, "at": key.created_at})
+        return {"label": key.label, "enrolled": passkeys.enrolled}

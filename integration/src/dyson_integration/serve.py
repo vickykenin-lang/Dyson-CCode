@@ -12,6 +12,8 @@ Environment:
   DYSON_FOUNDER_PASSWORD_FILE  file holding the Founder's login password
   DYSON_POLICY_DIR      policy/ directory
   DYSON_SECURE_COOKIES  1 when served over HTTPS (session cookies get the Secure flag)
+  DYSON_PASSKEY_RP_ID   site the Founder's passkeys belong to (e.g. control.designinfra.in)
+  DYSON_PASSKEY_ORIGIN  its origin (e.g. https://control.designinfra.in)
 """
 
 import asyncio
@@ -75,7 +77,14 @@ def main() -> None:
     dsns = ensure_database(
         env["DYSON_PG_ADMIN"], env.get("DYSON_DB_NAME", "dyson"), env["DYSON_DB_PASSWORD"]
     )
-    settings = Settings(policy_dir=policy, secret_file=secret_file, founder_password=password)
+    settings = Settings(
+        policy_dir=policy,
+        secret_file=secret_file,
+        founder_password=password,
+        passkey_file=secret_file.parent / "passkeys.json",
+        passkey_rp_id=env.get("DYSON_PASSKEY_RP_ID", "localhost"),
+        passkey_origin=env.get("DYSON_PASSKEY_ORIGIN", "http://localhost:8082"),
+    )
     t0 = TestReceptorT0()
     layer = LayerA.build(dsns, settings, t0, _now)
     if layer.core.sync().receptors.get("T0") is None:

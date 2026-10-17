@@ -40,6 +40,8 @@ services:
       DYSON_FOUNDER_PASSWORD_FILE: /run/secrets/founder_password
       DYSON_POLICY_DIR: /app/policy
       DYSON_SECURE_COOKIES: ${DYSON_SECURE_COOKIES:-0}
+      DYSON_PASSKEY_RP_ID: ${DYSON_PASSKEY_RP_ID:-localhost}
+      DYSON_PASSKEY_ORIGIN: ${DYSON_PASSKEY_ORIGIN:-http://localhost:8082}
     secrets: [postgres_password, db_password, founder_password]
     volumes: [dyson-data:/data]
     networks: [core_net]

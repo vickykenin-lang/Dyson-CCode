@@ -205,6 +205,7 @@ def test_no_bank_api_credential_or_payment_path_exists():  # LA-VLT-02
                         "yaml",
                         "httpx",
                         "uvicorn",
+                        "webauthn",  # passkey signature checks only (gate 3, D-014)
                     }
                     or n.startswith("dyson_")
                 ), f"{src}: unexpected dependency {n}"
