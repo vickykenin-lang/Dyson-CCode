@@ -20,6 +20,7 @@ Releases are deployed with `../deploy/deploy.sh` through Systems Manager; the on
 - 17 Oct 2026: `https://control.designinfra.in` reaches Direct Founder Controls through the same tunnel.
 - 17 Oct 2026: nightly backup timer installed (21:00 UTC). First backup `db/dyson-2026-10-17T113156Z.dump` (267,765 bytes, AES256) uploaded; a restore into a throwaway Postgres brought back 1 of 1 tasks and 2 evidence records (`RESTORE_OK`). The bucket's default Object Lock (GOVERNANCE, 35 days) applies to new objects; reading an object's retention needs `s3:GetObjectRetention`, which no Dyson identity has, so it was not read back.
 - 17 Oct 2026: hourly spend guard installed (`infra/deploy/spend-guard.sh`). It reads the budget's actual spend (0.01 USD at install) and at 95 USD stops Layer A and the tunnel and keeps Postgres and the backup timer running. Tested: a dry run with the line at 0 USD reported it would stop both; the live run at 95 USD did nothing. The server itself keeps running (and billing) so backups continue.
+- 17 Oct 2026: the Founder's device key was copied from the server's secret store into the SecureString parameter `/dyson/founder_device_key` without being printed; the one-time `ssm:PutParameter` permission used for it was removed from the server role afterwards.
 
-Still open: the Founder's device key for `dyson-control`, and a real model behind C.
+Still open: passkey step-up on Direct Founder Controls (D-014), and a real model behind C.
 
