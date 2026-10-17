@@ -89,11 +89,35 @@ INTERPRETATION_SCHEMA: dict[str, Any] = {
     "type": "object",
     "required": ["language", "kind"],
     "properties": {
-        "language": {"enum": ["hi", "en", "hinglish"]},
+        "language": {
+            "enum": ["hi", "en", "hinglish"],
+            "description": "The Founder's language: hi = Hindi in Devanagari, en = English, "
+            "hinglish = Hindi or mixed Hindi-English written in Latin letters",
+        },
         "kind": {"enum": ["clarify", "action", "answer", "proposal"]},
-        "text": {"type": "string"},
-        "plan": {"type": "object"},
-        "proposal": {"type": "object"},
+        "text": {"type": "string", "description": "The question or answer, in that language"},
+        "plan": {
+            "type": "object",
+            "description": "Only when kind is action: the one approved tool call to prepare.",
+            "required": ["tool_id", "arguments", "summary"],
+            "properties": {
+                "tool_id": {"type": "string", "description": "One of the approved tools"},
+                "arguments": {"type": "object", "description": "As the tool describes"},
+                "receptor_id": {"type": "string", "description": "e.g. T0 for t0.* tools"},
+                "risk": {"enum": ["low", "medium", "high"]},
+                "summary": {"type": "string", "description": "One line, in English"},
+            },
+        },
+        "proposal": {
+            "type": "object",
+            "description": "Only when kind is proposal: a change to an approved rule.",
+            "required": ["rule_id", "diff", "rationale"],
+            "properties": {
+                "rule_id": {"type": "string", "description": "e.g. AMD-7"},
+                "diff": {"type": "string"},
+                "rationale": {"type": "string"},
+            },
+        },
     },
 }
 
@@ -189,6 +213,9 @@ class ConversationEngine:
             "the Founder decides. Ask when a request is ambiguous; do not guess. Challenge",
             "assumptions respectfully. Reply in the Founder's language (Hindi, English or",
             "Hinglish). Answer only with JSON matching the given schema.",
+            "kind: action = prepare one approved tool call (fill plan); clarify = ask one",
+            "question in text; answer = reply in text; proposal = propose a rule change.",
+            "Never invent a tool: if no approved tool fits, clarify or answer.",
             "",
             "Approved constitutional rules you work under:",
         ]

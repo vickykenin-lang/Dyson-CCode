@@ -96,8 +96,9 @@ STANDARDS = {
     "t0.publish": "STD-T0-PUBLISH",
 }
 DESCRIPTIONS = {
-    "t0.tally": "Tally a list of numbers on the T0 test Receptor",
-    "t0.publish": "Publish a note on the T0 test Receptor (high risk: needs approval)",
+    "t0.tally": 'Tally a list of numbers on the T0 test Receptor. Arguments: {"numbers": [..]}',
+    "t0.publish": "Publish a note on the T0 test Receptor (high risk: needs approval). "
+    'Arguments: {"note": "text"}',
 }
 
 
