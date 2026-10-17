@@ -178,3 +178,12 @@ decisions:
     Up to 24 hours of data may be lost. The nightly encrypted backup at 21:00 UTC (D-013)
     stays the recovery point; no more frequent backups. Acceptance and production
     authorization (the rest of gate 9) are decided separately.
+- id: D-021
+  date: '2026-10-17'
+  closes: Gate 9, disaster recovery (recovery time)
+  topic: How long Dyson may be down after losing its server
+  decision: >-
+    Up to 2 hours. Recovery is a new server registered with Systems Manager, deploy.sh, then
+    restore.sh (newest database backup and the encrypted /data backup), then tunnel.sh. The
+    drill of 17 Oct 2026 rebuilt a separate server from the backups in about 8 minutes, with
+    the same tasks, evidence, approvals and passkey, and ran a T0 task to completed-verified.
