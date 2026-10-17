@@ -43,6 +43,8 @@ services:
       DYSON_PASSKEY_RP_ID: ${DYSON_PASSKEY_RP_ID:-localhost}
       DYSON_PASSKEY_ORIGIN: ${DYSON_PASSKEY_ORIGIN:-http://localhost:8082}
       DYSON_BEDROCK: ${DYSON_BEDROCK:-0}  # 1 only on the server (D-013)
+      DYSON_ENVIRONMENT: ${DYSON_ENVIRONMENT:-local}
+      DYSON_RELEASE: ${DYSON_RELEASE:-}
       AWS_SHARED_CREDENTIALS_FILE: /run/aws/credentials
       AWS_DEFAULT_REGION: ap-southeast-2
     secrets: [postgres_password, db_password, founder_password]

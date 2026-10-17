@@ -58,11 +58,15 @@ def test_passes_only_when_technical_and_fitness_both_pass(qa, probe, evidence):
     ev, rid = evidence[-1]
     assert ev.stage is EvidenceStage.REAL_OUTPUT_VERIFIED and ev.outcome is EvidenceOutcome.PASSED
     assert rid == "T0" and ev.evidence_id in v.evidence_ids
+    live, _ = evidence[-2]  # stage 6 beside stage 7, for the same task (AMD-3)
+    assert live.stage is EvidenceStage.LIVE_REQUEST_VERIFIED and live.task_id == task
+    assert live.outcome is EvidenceOutcome.PASSED and live.recorded_by is Component.QA_QC
     task2 = uuid4()
     probe.sees[task2] = {"target": {"status": "degraded", "latency_ms": 120}}
     v2 = qa.verify(task2, "T0", "t0-inspection", GOOD_TOOL)
     assert v2.technical_success and not v2.fit_for_purpose  # checked separately
     assert evidence[-1][0].outcome is EvidenceOutcome.FAILED
+    assert evidence[-2][0].outcome is EvidenceOutcome.PASSED  # the live request itself was fine
 
 
 def test_receptor_self_certification_never_passes(qa, probe):

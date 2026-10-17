@@ -128,6 +128,9 @@ class Settings:
     passkey_rp_id: str = "localhost"
     passkey_origin: str = "http://localhost:8082"
     poll_seconds: float = 0.05
+    # Where this Layer A runs, as written on its evidence, and the release it runs.
+    environment: str = "local"
+    release: str | None = None
 
 
 def write_secret_file(path: Path, canary: str | None = None) -> Path:
@@ -322,6 +325,7 @@ class LayerA:
             EvidenceToMemory(self.memory),
             self.inbox,
             clock,
+            settings.environment,
         )
         self.monitor = Monitor(
             assurance_connect(dsns["assurance"]),
@@ -549,6 +553,32 @@ class LayerA:
             self.monitor.remind()
             self.approval_reminders.check()
             self.finance.reconcile()
+
+    def record_deployment(self) -> None:
+        """AMD-3 stage 5: this release of T0's lane runs in this environment. Once per release."""
+        rel, env = self.settings.release, self.settings.environment
+        if rel is None:
+            return
+        status = self.memory.capability_status("receptor:T0", "T0", env, self.clock())
+        last = status.get(EvidenceStage.PRODUCTION_DEPLOYED)
+        if last is not None and last.record.artifact_ref == f"release:{rel}":
+            return
+        self.memory.record_evidence(
+            EvidenceRecord(
+                evidence_id=uuid4(),
+                capability="receptor:T0",
+                provider="T0",
+                stage=EvidenceStage.PRODUCTION_DEPLOYED,
+                outcome=EvidenceOutcome.PASSED,
+                environment=env,
+                scope="T0",
+                recorded_by=Component.CORE_RD,
+                recorded_at=self.clock(),
+                artifact_ref=f"release:{rel}",
+                detail=f"Layer A {rel} started in {env}",
+            ),
+            "T0",
+        )
 
     # Founder-approved setup -----------------------------------------------------------------
     def bootstrap(self) -> None:

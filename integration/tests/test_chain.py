@@ -190,3 +190,20 @@ def test_hindi_and_hinglish_commands_reach_the_same_chain(layer, gateway, founde
     hindi = say(gateway, founder, "T0 पर 1 और 2 tally करें")
     assert hindi["reply"]["language"] == "hi" and hindi["acknowledgment"] is not None
     assert TaskState.ACCEPTED.value == hindi["acknowledgment"]["state"]
+
+
+def test_a_release_records_production_deployed_once(make, t0):  # AMD-3 stage 5
+    a = make(t0)
+    a.bootstrap()
+    a.settings.environment, a.settings.release = "aws-test", "layer-a-abc1234"
+    a.record_deployment()
+    a.record_deployment()  # a restart of the same release adds nothing
+    with a.memory_conn.transaction():
+        a.memory_conn.execute("SELECT set_config('dyson.scope', 'core', true)")
+        rows = a.memory_conn.execute(
+            "SELECT stage, outcome, environment, artifact_ref FROM memory.evidence"
+            " WHERE stage = %s",
+            [int(EvidenceStage.PRODUCTION_DEPLOYED)],
+        ).fetchall()
+    assert rows == [{"stage": 5, "outcome": "passed", "environment": "aws-test",
+                     "artifact_ref": "release:layer-a-abc1234"}]  # fmt: skip

@@ -160,6 +160,25 @@ class QAController:
         tech_ok = all(f.passed for f in technical)
         fit_ok = all(f.passed for f in fitness)
         now = self._clock()
+        ref = "sha256:" + _digest({"tool_result": tool_result, "observed": observed})
+        # Stage 6: the live request reached the Receptor and its result passed the technical
+        # checks. Stage 7 adds F's own observation of the output (AMD-3: checked separately).
+        live = EvidenceRecord(
+            evidence_id=uuid4(),
+            capability=standard_id,
+            provider=receptor_id or "core",
+            stage=EvidenceStage.LIVE_REQUEST_VERIFIED,
+            outcome=EvidenceOutcome.PASSED if tech_ok else EvidenceOutcome.FAILED,
+            environment=self._env,
+            scope=receptor_id or "core",
+            recorded_by=Component.QA_QC,
+            recorded_at=now,
+            artifact_ref=ref,
+            task_id=task_id,
+            detail="; ".join(
+                f"{f.check}: {'pass' if f.passed else 'FAIL'} ({f.detail})" for f in technical
+            )[:2000],  # fmt: skip
+        )
         evidence = EvidenceRecord(
             evidence_id=uuid4(),
             capability=standard_id,
@@ -170,7 +189,7 @@ class QAController:
             scope=receptor_id or "core",
             recorded_by=Component.QA_QC,
             recorded_at=now,
-            artifact_ref="sha256:" + _digest({"tool_result": tool_result, "observed": observed}),
+            artifact_ref=ref,
             task_id=task_id,
             detail="; ".join(
                 f"{f.check}: {'pass' if f.passed else 'FAIL'} ({f.detail})"
@@ -189,6 +208,7 @@ class QAController:
             [task_id, receptor_id, std.standard_id, std.version, tech_ok, fit_ok, Jsonb(findings),
              evidence.evidence_id, now],
         )  # fmt: skip
+        self._evidence.record(live, receptor_id)
         self._evidence.record(evidence, receptor_id)
         if not (tech_ok and fit_ok):
             self._maybe_hold(task_id, receptor_id)

@@ -14,6 +14,8 @@ Environment:
   DYSON_SECURE_COOKIES  1 when served over HTTPS (session cookies get the Secure flag)
   DYSON_PASSKEY_RP_ID   site the Founder's passkeys belong to (e.g. control.designinfra.in)
   DYSON_PASSKEY_ORIGIN  its origin (e.g. https://control.designinfra.in)
+  DYSON_ENVIRONMENT     where this runs, written on evidence (default local)
+  DYSON_RELEASE         the release name; when set, AMD-3 stage 5 is recorded for it
   DYSON_BEDROCK         1 to put Amazon Bedrock behind C (role credentials from
                         AWS_SHARED_CREDENTIALS_FILE, refreshed by the host)
 """
@@ -87,6 +89,8 @@ def _settings_and_dsns():
         passkey_file=secret_file.parent / "passkeys.json",
         passkey_rp_id=env.get("DYSON_PASSKEY_RP_ID", "localhost"),
         passkey_origin=env.get("DYSON_PASSKEY_ORIGIN", "http://localhost:8082"),
+        environment=env.get("DYSON_ENVIRONMENT", "local"),
+        release=env.get("DYSON_RELEASE") or None,
     )
     return settings, dsns
 
@@ -114,6 +118,7 @@ def main() -> None:
     layer = LayerA.build(dsns, settings, t0, _now, _models())
     if layer.core.sync().receptors.get("T0") is None:
         layer.bootstrap()
+    layer.record_deployment()
     worker = LayerA.build(dsns, settings, t0, _now, _models())  # its own connections
 
     def work() -> None:
