@@ -164,6 +164,34 @@ def test_canary_credential_never_leaks(layer, gateway, founder, dsns):  # LA-SEC
                 assert not any(tok in text for tok in layer.tokens.values()), f"{schema}.{table}"
 
 
+BEDROCK_ADAPTER = ROOT / "integration/src/dyson_integration/bedrock_model.py"
+
+
+def test_the_only_aws_sdk_use_is_the_bedrock_model_client():  # LA-VLT-02, D-013
+    """boto3 stays banned everywhere except C's Bedrock adapter, and there it can only ever
+    create the Bedrock model-calling client: no payments, billing or other AWS service."""
+    tree = ast.parse(BEDROCK_ADAPTER.read_text())
+    clients = [
+        n.args[0].value
+        for n in ast.walk(tree)
+        if isinstance(n, ast.Call)
+        and isinstance(n.func, ast.Attribute)
+        and n.func.attr in ("client", "resource")
+        and n.args
+        and isinstance(n.args[0], ast.Constant)
+    ]
+    assert clients == ["bedrock-runtime"]
+    calls = {
+        n.func.attr
+        for n in ast.walk(tree)
+        if isinstance(n, ast.Call)
+        and isinstance(n.func, ast.Attribute)
+        and isinstance(n.func.value, ast.Attribute)
+        and n.func.value.attr == "_client"
+    }
+    assert calls == {"converse"}
+
+
 def test_no_bank_api_credential_or_payment_path_exists():  # LA-VLT-02
     banned = {
         "stripe",
@@ -193,6 +221,9 @@ def test_no_bank_api_credential_or_payment_path_exists():  # LA-VLT-02
                 else []
             )
             for n in names:
+                # The one AWS SDK use: C's Bedrock adapter (D-013), checked below.
+                if n == "boto3" and src.name == BEDROCK_ADAPTER.name:
+                    continue
                 assert n.split(".")[0] not in banned, f"{src}: imports {n}"
                 assert (
                     n.split(".")[0] in sys.stdlib_module_names
@@ -206,7 +237,6 @@ def test_no_bank_api_credential_or_payment_path_exists():  # LA-VLT-02
                         "httpx",
                         "uvicorn",
                         "webauthn",  # passkey signature checks only (gate 3, D-014)
-                        "boto3",  # Bedrock behind C only (D-013)
                     }
                     or n.startswith("dyson_")
                 ), f"{src}: unexpected dependency {n}"
