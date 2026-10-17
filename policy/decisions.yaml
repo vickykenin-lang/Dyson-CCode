@@ -170,3 +170,11 @@ decisions:
     on the 26-command benchmark of 17 Oct 2026 it passed 25 (96%) with p95 3,423 ms at about
     0.00074 USD a command. Its daily budget is 0.16 USD, within D-013's 30 USD for model calls.
     The stand-in models stay registered but no longer meet the bar (they passed 18 of 26).
+- id: D-020
+  date: '2026-10-17'
+  closes: Gate 9, disaster recovery (recovery point)
+  topic: How much data a disaster may lose
+  decision: >-
+    Up to 24 hours of data may be lost. The nightly encrypted backup at 21:00 UTC (D-013)
+    stays the recovery point; no more frequent backups. Acceptance and production
+    authorization (the rest of gate 9) are decided separately.
