@@ -116,4 +116,4 @@ The PRD §13 stream milestones that can run locally are also covered:
 - **T0 in memory.** T0 runs in memory inside Layer A's process. A real Receptor reaches the five lanes over the network.
 - **Local-only values.** The acceptance bars, budgets (0 INR) and qualification figures used for the stand-in model, and the Gateway limits, are local values, not Founder decisions. Real values come with the Step 10 benchmark and gates 2, 3 and 5.
 - **Founder inbox.** Escalations go to an in-process Founder inbox and to I's audit log. Push delivery to the app comes in Step 10.
-- **Bank statement format.** Still open, waiting for your sample.
+- **Bank statement format.** Settled from your sample (see `services/assurance/NOTES.md`). There is no upload screen in the Founder app yet, so a statement cannot be sent from the phone.

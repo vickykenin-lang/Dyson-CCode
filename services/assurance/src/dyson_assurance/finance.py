@@ -5,8 +5,10 @@ It has no bank connection, no bank credentials and no way to move money (LA-VLT-
 are made outside Dyson, and H only records money-out actions that already carry a Founder approval.
 Revenue is "reported, not final" until a statement line proves it (LA-FIN-02, LA-IF-05).
 
-Statement upload format (CSV, UTF-8, header row required). Columns used:
-  date (YYYY-MM-DD), direction (credit|debit), amount, currency, reference (optional)
+Statement upload formats (CSV, UTF-8). Columns used:
+  - Dyson's own: date (YYYY-MM-DD), direction (credit|debit), amount, currency, reference
+  - the Founder's bank export (INR): Date (DD/MM/YY or DD/MM/YYYY), Withdrawal Amt.,
+    Deposit Amt., Chq./Ref.No. Lines above the header row (account details) are skipped.
 Every other column (balances, account numbers, narration) is ignored and never stored
 (LA-VLT-03). Long digit runs in references are masked to their last 4 digits.
 """
@@ -78,7 +80,67 @@ def mask(reference: str) -> str:
     return _LONG_DIGITS.sub(lambda m: "*" * (len(m.group()) - 4) + m.group()[-4:], reference)
 
 
+# The Founder's bank export: header names as the bank writes them, lower-cased.
+_BANK_COLUMNS = {
+    "date": ("date",),
+    "debit": ("withdrawal amt.", "withdrawal amt", "debit amount", "withdrawal amount"),
+    "credit": ("deposit amt.", "deposit amt", "credit amount", "deposit amount"),
+    "reference": ("chq./ref.no.", "chq./ref.no", "chq/ref number", "chq/ref no"),
+}
+
+
+def _bank_header(cells: list[str]) -> dict[str, int] | None:
+    names = [c.strip().lower() for c in cells]
+    found = {}
+    for key, aliases in _BANK_COLUMNS.items():
+        hit = next((i for i, n in enumerate(names) if n in aliases), None)
+        if hit is not None:
+            found[key] = hit
+    return found if {"date", "debit", "credit"} <= found.keys() else None
+
+
+def _bank_amount(cell: str) -> Decimal:
+    cell = cell.strip().replace(",", "")
+    return Decimal(cell) if cell else Decimal(0)
+
+
+def _bank_date(cell: str) -> date:
+    return datetime.strptime(
+        cell.strip(), "%d/%m/%y" if len(cell.strip()) == 8 else "%d/%m/%Y"
+    ).date()
+
+
+def _parse_bank_export(
+    rows: list[list[str]], start: int, cols: dict[str, int]
+) -> list[StatementLine]:
+    lines = []
+    for n, cells in enumerate(rows[start + 1 :], start=start + 2):
+        cells = cells + [""] * (max(cols.values()) + 1 - len(cells))
+        when = cells[cols["date"]].strip()
+        if not re.fullmatch(r"\d{2}/\d{2}/\d{2}(\d{2})?", when):
+            continue  # blank, separator or summary rows
+        try:
+            debit, credit = _bank_amount(cells[cols["debit"]]), _bank_amount(cells[cols["credit"]])
+            if (debit > 0) == (credit > 0) or debit < 0 or credit < 0:
+                raise ValueError("needs exactly one positive withdrawal or deposit")
+            ref = cells[cols["reference"]].strip() if "reference" in cols else ""
+            lines.append(StatementLine(
+                line_date=_bank_date(when),
+                direction="credit" if credit > 0 else "debit",
+                amount=Money(amount=credit or debit, currency="INR"),
+                reference=mask(ref),
+            ))  # fmt: skip
+        except (InvalidOperation, ValueError) as exc:
+            raise StatementError(f"line {n}: {exc}") from None
+    return lines
+
+
 def parse_statement(text: str) -> list[StatementLine]:
+    rows = list(csv.reader(io.StringIO(text)))
+    for i, cells in enumerate(rows):
+        cols = _bank_header(cells)
+        if cols is not None:
+            return _parse_bank_export(rows, i, cols)
     reader = csv.DictReader(io.StringIO(text))
     cols = {c.strip().lower() for c in (reader.fieldnames or [])}
     if not REQUIRED_COLUMNS <= cols:

@@ -80,7 +80,7 @@ The append-only history is tested too (`test_ledger_is_append_only`).
 
 Still open before Step 9 wires H:
 
-1. **Bank statement format.** The prototype format is CSV with `date, direction, amount, currency, reference`. Your bank's real export (column names, debit/credit layout) needs confirming; adapting the parser touches only `parse_statement`.
+1. **Bank statement format.** Settled on 17 Oct 2026 from the Founder's sample: `parse_statement` also reads the bank export (Date DD/MM/YY, Narration, Chq./Ref.No., Value Dt, Withdrawal Amt., Deposit Amt., Closing Balance; INR), skipping the account lines above the header. Only date, direction, amount and the masked Chq./Ref.No. are kept; narration, account number and balance are dropped.
 
 ## Left for later steps
 

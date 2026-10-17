@@ -194,3 +194,28 @@ def test_dashboard_is_read_only_and_shows_verified_data(finance, monitor, qa):
     assert client.get("/finance/reconciliation").json() == {"reported_not_final": 1}
     assert client.post("/finance/ledger").status_code == 405
     assert client.get("/health").status_code == 200
+
+
+BANK_EXPORT = """Account Statement,,,,,,
+Account No :,50100123456789,,,,,
+,,,,,,
+Date,Narration,Chq./Ref.No.,Value Dt,Withdrawal Amt.,Deposit Amt.,Closing Balance
+01/04/23,UPI-DESIGN INFRA-designinfra@okhdfc,0000345771173416,01/04/23,"10,000.00",,"41,845.82"
+02/04/23,IMPS-309227039980-ACME TRADERS-XXXX9999,0000309227039980,02/04/23,,"51,358.00","73,503.82"
+,,,,,,
+********,,,,,,
+"""
+
+
+def test_the_founders_bank_export_is_read_and_only_parsed_fields_kept():  # D-017, LA-VLT-03
+    debit, credit = parse_statement(BANK_EXPORT)
+    assert (debit.line_date, debit.direction, debit.amount.amount) == (
+        date(2023, 4, 1), "debit", Decimal("10000.00"))  # fmt: skip
+    assert (credit.direction, credit.amount.amount, credit.amount.currency) == (
+        "credit", Decimal("51358.00"), "INR")  # fmt: skip
+    assert credit.reference == "************9980"  # the bank reference, masked
+    kept = str([x.model_dump() for x in (debit, credit)])
+    for secret in ("ACME", "designinfra@", "50100123456789", "73,503.82", "73503.82"):
+        assert secret not in kept  # no narration, account number or balance
+    with pytest.raises(StatementError):
+        parse_statement(BANK_EXPORT.replace(',,"51,358.00"', ',"5.00","51,358.00"'))
