@@ -41,3 +41,4 @@ Releases are deployed with `../deploy/deploy.sh` through Systems Manager; the on
 
 Still open: a backup passkey (the Founder will add it later), deleting the deployer's access key (`../iam/README.md`), how deletion on request works in an append-only memory (Founder decision), attachment bytes in S3 (no upload path uses attachments yet), and the runtime secret store in Parameter Store (needs a one-time IAM change).
 
+- 18 Oct 2026: gate 8 Founder dashboard live (`layer-a-7ae06bb`): the observatory at `/dashboard`, a 3D Dyson star whose 19 panels are the parts beside a wiring board of the 20 architecture wires, each lit once per real record from the component's own store. three.js r160 is served by the app (`/static/three.module.min.js`, HTTP 200 on the server). The page answers 303 to the login page without a Founder session; it was not opened as the Founder from the server, since that would count as presence.
