@@ -5,10 +5,10 @@ Steps 1 to 9 are proven by the tests named in each step's NOTES.md (CI green). S
 
 | Status | Count |
 |---|---|
-| ✅ Done | 159 |
-| 🟡 Partial | 12 |
+| ✅ Done | 162 |
+| 🟡 Partial | 10 |
 | ⏸ Deferred | 2 |
-| ❌ Gap | 1 |
+| ❌ Gap | 0 |
 
 ## Not done yet
 
@@ -17,18 +17,15 @@ Steps 1 to 9 are proven by the tests named in each step's NOTES.md (CI green). S
 | LA-G-01 | 🟡 Partial | Text in Hindi, English and Hinglish is live on DeepSeek v3.2 (D-019). Voice deferred (D-016). |
 | LA-APP-02 | 🟡 Partial | Text accepts all three languages. Voice deferred (D-016). |
 | LA-APP-08 | ⏸ Deferred | Voice vendor benchmark deferred by the Founder (D-016). |
-| LA-RTR-07 | 🟡 Partial | Policy decided (D-017) and secrets are blocked before any model call (canary test). No filter yet stops personal or financial data the Founder types from reaching DeepSeek. |
-| LA-TOOL-02 | 🟡 Partial | In code, adapters exist only inside G and `call` is the only way to use one. The network rule that stops Hermes and D reaching tools another way is not built on AWS (same process, see LA-DEP-01). |
+| LA-RTR-07 | 🟡 Partial | C replaces email, UPI, PAN, IFSC, card, Aadhaar, mobile and other 9+ digit numbers with placeholders before any model call and restores them inside Layer A (`redaction.py`, `test_personal_and_financial_identifiers_never_reach_a_model`). Names and free-text addresses are not detected yet. |
 | LA-MEM-05 | 🟡 Partial | PostgreSQL in use, encrypted S3 backups, restore tested, access control and retrieval tested. Attachment bytes are not yet stored in S3. |
 | LA-DASH-05 | 🟡 Partial | J's verified data API is built (GET-only, tested). The Founder-visible dashboard screens are not built; they wait for gate 8. |
 | LA-SEC-02 | 🟡 Partial | Least-privilege roles in use (`infra/iam/`). No periodic usage review scheduled yet; the deployer access key is still active. |
-| LA-SEC-07 | 🟡 Partial | Same as LA-RTR-07. Cross-Receptor isolation exists (row-level security per Receptor); only T0 runs (D-017). |
+| LA-SEC-07 | 🟡 Partial | Same filter as LA-RTR-07 (names and addresses not yet detected). Cross-Receptor isolation exists (row-level security per Receptor); only T0 runs (D-017). |
 | LA-COST-03 | 🟡 Partial | Model cost and latency measured (benchmark, `intelligence.calls`). Server CPU, RAM and task throughput not yet measured. |
 | LA-COST-04 | 🟡 Partial | Sydney prices for Bedrock and Lightsail checked; 100 USD credits budgeted. Free-tier eligibility not checked separately. |
 | LA-PERF-02 | ⏸ Deferred | Voice thresholds deferred with voice (D-016). |
 | LA-PRIV-01 | 🟡 Partial | Policy approved (D-017). No in-app deletion control yet; deleting on request is done by hand. |
-| LA-DEP-01 | ❌ Gap | On AWS, Hermes runs in the same container and process as the rest of Layer A. The separate environment with network limits is not built. |
-| LA-DEP-02 | 🟡 Partial | STOP works with B, C and Hermes down (`test_stop_with_models_and_voice_down_reaches_everything`). On AWS they share one process, so a crash of that process also stops the STOP path. |
 
 Also from the Step 10 build list: Layer A's runtime secret store is still the file in `/data` (backed up encrypted); deploy-time secrets are in Parameter Store, but the AWS secret store behind the secret-store interface is not built.
 
@@ -128,7 +125,7 @@ Also from the Step 10 build list: Layer A's runtime secret store is still the fi
 | LA-RTR-04 | 7 | ✅ Done | C shall fall back to a tested alternative on failure without losing task state or memory. | services/intelligence/NOTES.md: `test_falls_back_to_the_tested_alternative`, `test_untested_model_is_never_a_fallback`, `test_losing_a_provider_keeps_task_state_and_memory`, `test_no_route_at_all_starts_nothing` |
 | LA-RTR-05 | 7 | ✅ Done | C shall enforce cost control and token limits inside approved budgets. | services/intelligence/NOTES.md: `test_token_limit_is_enforced_before_any_call`, `test_daily_budget_is_enforced_before_the_call`, `test_a_budget_is_never_spent_in_another_currency` |
 | LA-RTR-06 | 7 | ✅ Done | Model identities, routes and fallbacks shall be recorded and stay under governance. Changes need approval. | services/intelligence/NOTES.md: `test_registration_needs_gate_admission_and_exact_approval`, `test_retiring_a_model_needs_approval`, `test_revoked_at_the_gate_leaves_the_route`, `test_api_has_no_way_to_change_configuration`, `test_routing_records_are_append_only` |
-| LA-RTR-07 | 10 | 🟡 Partial | Data sent to external models shall follow the redaction rules decided at gate 6. | Policy decided (D-017) and secrets are blocked before any model call (canary test). No filter yet stops personal or financial data the Founder types from reaching DeepSeek. |
+| LA-RTR-07 | 10 | 🟡 Partial | Data sent to external models shall follow the redaction rules decided at gate 6. | C replaces email, UPI, PAN, IFSC, card, Aadhaar, mobile and other 9+ digit numbers with placeholders before any model call and restores them inside Layer A (`redaction.py`, `test_personal_and_financial_identifiers_never_reach_a_model`). Names and free-text addresses are not detected yet. |
 
 ## 7.2.4 D. Dyson Orchestrator (Task Planning & Routing)
 
@@ -169,7 +166,7 @@ Also from the Step 10 build list: Layer A's runtime secret store is still the fi
 | ID | Step | Status | Requirement | Proof |
 |---|---|---|---|---|
 | LA-TOOL-01 | 4 | ✅ Done | G shall authorize each individual tool call by checking identity and permission, Receptor scope, risk and spend limits, approval status and current STOP state. | services/toolhub/NOTES.md: `test_all_six_checks_are_evaluated_every_time`, `test_credential_must_match_the_claimed_caller`, `test_caller_must_be_allowed_for_the_tool`, `test_scope_rules`, `test_money_needs_an_approval_for_the_exact_action_used_once`, `test_spend_limits_use_g_own_spend_record`, `test_callers_cannot_declare_a_risky_tool_safe` |
-| LA-TOOL-02 | 4 | 🟡 Partial | G shall be the only path to any tool, API, plugin or MCP connector. Neither the Orchestrator nor Hermes has another path. | In code, adapters exist only inside G and `call` is the only way to use one. The network rule that stops Hermes and D reaching tools another way is not built on AWS (same process, see LA-DEP-01). |
+| LA-TOOL-02 | 4 | ✅ Done | G shall be the only path to any tool, API, plugin or MCP connector. Neither the Orchestrator nor Hermes has another path. | In code, adapters exist only inside G. On AWS, Hermes can reach nothing but G and C through the edge (see LA-DEP-01). `test_hermes_in_its_own_process_reaches_only_c_and_g`. |
 | LA-TOOL-03 | 4 | ✅ Done | G shall keep a governed registry of APIs, plugins and MCP connectors. Nothing is callable until it has passed the Supply Chain / Integration Gate. | services/toolhub/NOTES.md: `test_unknown_or_unadmitted_tools_are_not_callable` |
 | LA-TOOL-04 | 4 | ✅ Done | G shall deny and audit any call that fails a check. First milestone: unauthorized tool execution is denied and audited. | `integration/tests/test_safety.py::test_tool_without_permission_or_outside_registry_is_denied_and_audited`. |
 | LA-TOOL-05 | 9 | ✅ Done | G shall route work to Receptors, Hermes, QA/QC and Financial Control as needed, within per-tool scope. | integration/NOTES.md: `test_g_routes_to_hermes_qa_and_finance_within_scope` |
@@ -274,7 +271,7 @@ Also from the Step 10 build list: Layer A's runtime secret store is still the fi
 | LA-SEC-04 | 3 | ✅ Done | Every package, plugin, API, MCP server and integration shall enter through Central Governance monitoring and an auditable change process. | services/governance/NOTES.md: `test_nothing_is_admitted_before_a_security_check`, `test_failed_check_blocks`, `test_high_risk_needs_founder_approval`, `test_suspect_integration_is_isolated_at_once` |
 | LA-SEC-05 | 10 | ✅ Done | External AI and voice APIs shall be used only behind sanctioned, monitored interfaces and approved budgets. | Bedrock only through C, with an approved budget (0.16 USD/day, D-019) and every call logged in `intelligence.calls`. |
 | LA-SEC-06 | 1 | ✅ Done | GitHub shall be used for private source control, code review, version history and controlled CI/CD only. It shall not be the live intelligence, conversational runtime, scheduler or command bus, and no pull request or GitHub Action shall sit in the runtime response loop. | GitHub is source control and CI only (`.github/workflows/ci.yml`, `README.md`). |
-| LA-SEC-07 | 10 | 🟡 Partial | Data sent to external models shall follow redaction rules, and cross-Receptor isolation rules shall be defined before real data is used (gate 6). | Same as LA-RTR-07. Cross-Receptor isolation exists (row-level security per Receptor); only T0 runs (D-017). |
+| LA-SEC-07 | 10 | 🟡 Partial | Data sent to external models shall follow redaction rules, and cross-Receptor isolation rules shall be defined before real data is used (gate 6). | Same filter as LA-RTR-07 (names and addresses not yet detected). Cross-Receptor isolation exists (row-level security per Receptor); only T0 runs (D-017). |
 | LA-SAF-01 | 3 | ✅ Done | The master STOP and per-Receptor STOP / PAUSE / RESUME shall work independently of any LLM or voice provider. | services/governance/NOTES.md: `test_master_stop_reaches_everything_without_any_model`, `test_governance_imports_no_model_or_network_client`, `test_listener_failure_does_not_block_stop` |
 | LA-SAF-02 | 4 | ✅ Done | The Tool Hub shall check the current STOP state on every call. | services/toolhub/NOTES.md: `test_stop_state_is_checked_on_every_call`, `test_governance_unreachable_means_deny` |
 | LA-SAF-03 | 3 | ✅ Done | Emergency recovery shall be bounded, recorded per attempt, and escalated after repeated failure. | services/governance/NOTES.md: `test_recovery_is_bounded_recorded_and_escalated` |
@@ -306,8 +303,8 @@ Also from the Step 10 build list: Layer A's runtime secret store is still the fi
 
 | ID | Step | Status | Requirement | Proof |
 |---|---|---|---|---|
-| LA-DEP-01 | 10 | ❌ Gap | The Hermes runtime shall be deployed as an isolated environment, separate from the Governance Core, Tool Hub, Memory & Evidence Layer and secret store, with network paths limited to the Model Router and the Tool Hub. | On AWS, Hermes runs in the same container and process as the rest of Layer A. The separate environment with network limits is not built. |
-| LA-DEP-02 | 10 | 🟡 Partial | The STOP path shall be deployed so that it keeps working when the Conversation Engine, Model Router and Hermes are down. | STOP works with B, C and Hermes down (`test_stop_with_models_and_voice_down_reaches_everything`). On AWS they share one process, so a crash of that process also stops the STOP path. |
+| LA-DEP-01 | 10 | ✅ Done | The Hermes runtime shall be deployed as an isolated environment, separate from the Governance Core, Tool Hub, Memory & Evidence Layer and secret store, with network paths limited to the Model Router and the Tool Hub. | Hermes runs in its own container on an internal network (`layer-a-fd29384`). Checked from inside it on 18 Oct 2026: the internet, AWS, Postgres, the Gateway, DFC and every other Layer A port are unreachable; only the Hermes edge (C, G, read-only registry) answers. `integration/tests/test_isolation.py`. |
+| LA-DEP-02 | 10 | ✅ Done | The STOP path shall be deployed so that it keeps working when the Conversation Engine, Model Router and Hermes are down. | DFC runs in its own container with only A and I; STOP goes to A's event log and the main process passes it to D and T0. With layer-a and Hermes stopped on 18 Oct 2026, the controls page and its passkey check kept answering. `test_stop_from_the_separate_controls_process_reaches_d_and_t0`, `test_stop_from_another_process_reaches_this_ones_listeners`. |
 | LA-DEP-03 | 10 | ✅ Done | Direct Founder Controls shall be a separately authenticated endpoint from the app. | `control.designinfra.in`, passkey step-up, separate from the app login. |
 | LA-DEP-04 | 10 | ✅ Done | Encrypted S3 backups shall sit under keys and permissions that the application runtime cannot use to delete or alter them. | Object Lock (GOVERNANCE, 35 days); the server role can write backups but never delete them. |
 | LA-DEP-05 | 10 | ✅ Done | A deployment shall be reproducible from private source control and shall have a rollback artifact. | Each release is a `git archive` of one commit in S3; earlier releases stay in S3 and on the server for rollback. |
