@@ -25,7 +25,8 @@ POLICY_DIR = Path(__file__).resolve().parents[3] / "policy"
 def test_every_rule_has_version_and_effective_date(policy):
     for i in range(1, 15):
         rule = policy.rule(f"AMD-{i}")
-        assert rule.version and rule.effective_from == date(2026, 10, 10)
+        amended = {"AMD-12": date(2026, 10, 18)}  # v1.1, Founder-approved amendment
+        assert rule.version and rule.effective_from == amended.get(f"AMD-{i}", date(2026, 10, 10))
     assert policy.control("AMD-3", "qa_consecutive_failure_limit") == 3
     with pytest.raises(LookupError):
         policy.control("AMD-3", "qa_consecutive_failure_limit", on=date(2026, 10, 9))

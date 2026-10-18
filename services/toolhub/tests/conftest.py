@@ -36,6 +36,12 @@ class FakeGovernance:
         if self.down:
             raise ConnectionError("Governance Core unreachable")
 
+    survival = False
+
+    def survival_mode(self):
+        self._up()
+        return self.survival
+
     def effective_mode(self, receptor_id):
         self._up()
         master = self.modes.get(None, ControlMode.RUNNING)

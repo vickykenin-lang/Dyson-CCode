@@ -31,7 +31,7 @@ def policy_entries(policy_dir: Path) -> list[RegisterEntry]:
                 title=r["title"],
                 body=r["principle"],
                 decision_date=date.fromisoformat(r["effective_from"]),
-                founder_approval_ref=approval_ref,
+                founder_approval_ref=r.get("founder_approval", approval_ref),
                 recorded_at=now,
             )
         )

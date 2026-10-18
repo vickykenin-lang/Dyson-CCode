@@ -350,3 +350,15 @@ def test_lane_adapter_receives_task_id_and_idempotency_key(hub, catalog, gov):  
     (got,) = delivered
     assert got.task_id == request.task_id and got.idempotency_key == "task-lane-key-0001"
     assert hub.call(request, TOKENS[ORCH]).status == "duplicate" and len(delivered) == 1
+
+
+def test_survival_mode_holds_money_and_high_risk_but_not_low_risk_work(hub, gov, ran):
+    # AMD-12 v1.1: even an approved money action waits for the Founder; ordinary work goes on.
+    t = _tokens()[ORCH]
+    gov.survival = True
+    paid = _approved(gov, tool="ads.topup", receptor="R11", spend="200")
+    out = hub.call(paid, t)
+    assert failed(out) == {CheckName.APPROVAL_STATUS} and gov.consumed == []
+    assert "Survival Mode" in next(c.detail for c in out.decision.checks if not c.passed)
+    gov.survival = False
+    assert hub.call(paid.model_copy(update={"call_id": uuid4()}), t).status == "executed"

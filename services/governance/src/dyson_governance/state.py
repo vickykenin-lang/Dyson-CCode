@@ -33,6 +33,7 @@ from .events import (
     ReceptorStatusChanged,
     RecoveryAttempted,
     RecoveryEscalated,
+    SurvivalModeChanged,
 )
 
 
@@ -88,8 +89,9 @@ class GovernanceState:
     integrations: dict[str, IntegrationRecord] = field(default_factory=dict)
     receptors: dict[str, Receptor] = field(default_factory=dict)
     compliance: dict[UUID, ComplianceItem] = field(default_factory=dict)
-    # AMD-12: reserved. Nothing in this package turns it on automatically.
+    # AMD-12 v1.1: Survival Mode, entered and left only by A from observed Founder presence.
     safe_continuity_active: bool = False
+    survival_since: Timestamp | None = None
 
     def control_for(
         self, scope: ControlScope, receptor_id: str | None, at: Timestamp
@@ -142,6 +144,9 @@ class GovernanceState:
                 self.recommendations.append(e)
             case LimitsSet():
                 self.limits[e.limits.receptor_id] = e.limits
+            case SurvivalModeChanged():
+                self.safe_continuity_active = e.active
+                self.survival_since = e.at if e.active else None
             case IntegrationRecorded():
                 self.integrations[e.record.integration_id] = e.record
             case ReceptorRegistered():

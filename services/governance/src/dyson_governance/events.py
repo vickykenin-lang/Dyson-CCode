@@ -200,6 +200,16 @@ class LegalReviewRecorded(_Event):
     review_ref: NonEmptyStr
 
 
+class SurvivalModeChanged(_Event):
+    """AMD-12 v1.1: Survival Mode starts after 72 hours without Founder presence and ends when
+    the Founder is present again. Only A writes it, from presence it observes."""
+
+    type: Literal["survival_mode_changed"] = "survival_mode_changed"
+    active: bool
+    last_presence: Timestamp | None = None
+    reason: NonEmptyStr
+
+
 GovernanceEvent = Annotated[
     ProposalCreated
     | DecisionRecorded
@@ -216,7 +226,8 @@ GovernanceEvent = Annotated[
     | ReceptorRegistered
     | ReceptorStatusChanged
     | ComplianceItemRecorded
-    | LegalReviewRecorded,
+    | LegalReviewRecorded
+    | SurvivalModeChanged,
     Field(discriminator="type"),
 ]
 EVENT_ADAPTER: TypeAdapter[GovernanceEvent] = TypeAdapter(GovernanceEvent)

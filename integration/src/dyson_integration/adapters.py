@@ -130,6 +130,9 @@ class GovernanceForToolHub:
     def effective_mode(self, receptor_id: str | None) -> ControlMode:
         return self._core.effective_mode(receptor_id)
 
+    def survival_mode(self) -> bool:
+        return self._core.survival_mode()
+
     def registry(self) -> dict[str, IntegrationRecord]:
         return self._core.registry()
 
@@ -599,3 +602,57 @@ class ThreadsForGateway:
                 " VALUES (%s, %s, %s)",
                 [thread_id, archived, self._clock()],
             )
+
+
+class NomineeOutbox:
+    """Where nominee notices go until a delivery channel is approved and connected: I's audit
+    log, so nothing is lost. The nominee's details stay in /dyson/nominee and are not read here."""
+
+    def __init__(self, store: MemoryStore, clock: Clock):
+        self._store, self._clock = store, clock
+
+    def notify(self, message: str) -> str:
+        self._store.audit(AuditEvent(
+            event_id=uuid4(), kind=AuditKind.POLICY_DECISION, actor=Component.GOVERNANCE_CORE,
+            at=self._clock(), summary=f"survival mode: nominee notice: {message}"[:500],
+            data={"delivery": "outbox (no channel connected yet)"}))  # fmt: skip
+        return "outbox"
+
+
+class SurvivalWatch:
+    """AMD-12 v1.1, run by the worker. A decides Survival Mode from Founder presence; while it
+    lasts, the nominee gets a notice at the start and every notification interval after."""
+
+    def __init__(self, core: GovernanceCore, store: MemoryStore, inbox: FounderInbox, nominee,
+                 clock: Clock):  # fmt: skip
+        self._core, self._store, self._inbox, self._nominee = core, store, inbox, nominee
+        self._clock = clock
+
+    def check(self) -> bool:
+        from datetime import timedelta
+
+        last = self._store.last_founder_presence()
+        was = self._core.survival_mode()
+        active = self._core.observe_presence(last)
+        if not active:
+            if was:
+                self._inbox.escalate(
+                    "founder", "survival", "Welcome back: Survival Mode has ended."
+                )
+            return False
+        hours = int(self._core.policy.control("AMD-12", "nominee_notification_hours"))
+        sent = self._store.last_audit_at("survival mode: nominee notice")
+        since = self._core.sync().survival_since
+        if (
+            sent is None
+            or (since is not None and sent < since)
+            or (self._clock() - sent >= timedelta(hours=hours))
+        ):
+            seen = last.strftime("%d %b %Y %H:%M UTC") if last else "never"
+            self._nominee.notify(
+                "Dyson has not heard from the Founder since " + seen + ". Dyson keeps running in "
+                "Survival Mode: maintenance and approved low-risk work continue; no money moves "
+                "and no high-risk action is taken until the Founder is back. You are informed "
+                "only; nothing is needed from you."
+            )
+        return True

@@ -286,12 +286,16 @@ def test_parameters_and_amendments_take_different_paths(core):
     assert req.category is ApprovalCategory.RULE_CHANGE
 
 
-def test_safe_continuity_trigger_stays_blocked(core):
-    from dyson_governance.core import GateClosed
-
-    with pytest.raises(GateClosed):
-        core.trigger_safe_continuity_automatically()
-    assert core.sync().safe_continuity_active is False
+def test_survival_mode_after_72_hours_without_the_founder(core, clock):  # AMD-12 v1.1
+    seen = clock()
+    clock.advance(hours=71, minutes=59)
+    assert core.observe_presence(seen) is False
+    clock.advance(minutes=1)
+    assert core.observe_presence(seen) is True and core.survival_mode()
+    assert core.observe_presence(seen) is True  # one event, not one per check
+    clock.advance(hours=5)
+    assert core.observe_presence(clock()) is False  # the Founder is back
+    assert core.survival_mode() is False
 
 
 def test_founder_decided_recovery_limit_is_three_until_changed(policy, channel, clock, founder):

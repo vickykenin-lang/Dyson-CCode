@@ -84,6 +84,27 @@ class MemoryStore:
             ).fetchall()
         return [_message(r) for r in rows]
 
+    # Founder presence (AMD-12 v1.1): a login, a message, or an action on Direct Founder Controls.
+    PRESENCE_EVENTS = ("login", "decision", "control", "resume_requested", "passkey_enrolled")
+
+    def last_founder_presence(self):
+        with self._tx() as c:
+            row = c.execute(
+                "SELECT greatest("
+                " (SELECT max(sent_at) FROM memory.messages WHERE participant = 'founder'),"
+                " (SELECT max(at) FROM memory.audit_log WHERE summary = ANY(%s))) AS at",
+                [list(self.PRESENCE_EVENTS)],
+            ).fetchone()
+        return row["at"]
+
+    def last_audit_at(self, summary_prefix: str):
+        with self._tx() as c:
+            row = c.execute(
+                "SELECT max(at) AS at FROM memory.audit_log WHERE summary LIKE %s",
+                [summary_prefix + "%"],
+            ).fetchone()
+        return row["at"]
+
     def thread_summaries(self, limit: int = 200) -> list[dict]:
         """Each thread with its first Founder message and its last activity, newest first."""
         with self._tx() as c:

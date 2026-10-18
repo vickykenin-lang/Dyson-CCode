@@ -169,20 +169,29 @@ rules:
     limit_change_requires_founder_approval: true
     recommendation_and_approval_are_separate_records: true
 - id: AMD-12
-  title: Founder Continuity / Automatic Safe Mode
+  title: Founder Continuity / Survival Mode
   status: DESIGN LOCKED
-  version: '1.0'
-  effective_from: '2026-10-10'
-  principle: 'After 48 hours of Founder unavailability, Safe Continuity Mode limits work to previously
-    approved low-risk tasks and halts new high-risk or financial decisions. No one else inherits Founder
-    authority. Open sub-point: how presence is detected and verified'
-  layer_a_meaning: Reserve a Safe Continuity mode in A. Do not implement the 48-hour trigger until presence
-    detection is defined and validated
-  carried_by: A (blocked)
+  version: '1.1'
+  effective_from: '2026-10-18'
+  founder_approval: Amendment f4d18570-3494-4d9f-bf2d-44cdfb5962d3, approved on Direct Founder Controls
+    on 18 Oct 2026 (v1.0 of 10 Oct 2026 said 48 hours and left presence open)
+  principle: After 72 hours (3 days) with no Founder presence, Dyson enters Survival Mode. It does not
+    shut down; it keeps recovering from faults, keeps running maintenance, backups and monitoring, and
+    keeps managing Receptors within work the Founder already approved and only at low risk. It halts
+    every new high-risk or financial decision. The Founder's nominee is notified when Survival Mode
+    starts and daily while it lasts, and is informed only. No one else inherits Founder authority.
+    Survival Mode ends the moment the Founder is present again
+  layer_a_meaning: A enters and leaves Survival Mode from Founder presence; while it lasts G refuses
+    every high-risk or money-moving call and the nominee is notified
+  carried_by: A, G
+  presence: A Founder login to the app, a message sent by the Founder, or a Founder action on Direct
+    Founder Controls
   controls:
-    safe_continuity_mode_reserved: true
-    automatic_48h_trigger_enabled: false
-  open_subpoint: How Founder presence is detected and verified (implementation gate 7).
+    survival_mode_enabled: true
+    automatic_72h_trigger_enabled: true
+    presence_timeout_hours: 72
+    nominee_notification_hours: 24
+    nominee_authority: none
 - id: AMD-13
   title: Supply-Chain Security
   status: DESIGN LOCKED

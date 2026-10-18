@@ -56,6 +56,7 @@ from .events import (
     ReceptorStatusChanged,
     RecoveryAttempted,
     RecoveryEscalated,
+    SurvivalModeChanged,
     canonical_digest,
 )
 from .policy import PolicyEngine
@@ -784,11 +785,33 @@ class GovernanceCore:
             approval_id=approval_id,
         )
 
-    # Safe Continuity (LA-GOV-10, AMD-12) --------------------------------------------------
-    def trigger_safe_continuity_automatically(self) -> None:
-        if self.policy.control("AMD-12", "automatic_48h_trigger_enabled") is not True:
-            raise GateClosed("AMD-12 48-hour trigger is blocked until presence detection (gate 7)")
-        raise GateClosed("presence detection is not implemented")
+    # Survival Mode (LA-GOV-10, AMD-12 v1.1) -----------------------------------------------
+    def observe_presence(self, last_presence: datetime | None) -> bool:
+        """Enter Survival Mode after the approved hours without Founder presence; leave it the
+        moment the Founder is present again. Returns whether Survival Mode is on. No model, no
+        other component and no nominee can turn it on or off."""
+        if self.policy.control("AMD-12", "automatic_72h_trigger_enabled") is not True:
+            return False
+        hours = int(self.policy.control("AMD-12", "presence_timeout_hours"))
+        now = self._clock()
+
+        def build(s: GovernanceState):
+            # No presence recorded yet (a new install) starts no clock.
+            absent = last_presence is not None and now - last_presence >= timedelta(hours=hours)
+            if absent and not s.safe_continuity_active:
+                return [self._new(SurvivalModeChanged, active=True, last_presence=last_presence,
+                                  reason=f"no Founder presence for {hours} hours")]  # fmt: skip
+            back = s.survival_since is not None and last_presence is not None
+            if s.safe_continuity_active and back and last_presence > s.survival_since:
+                return [self._new(SurvivalModeChanged, active=False, last_presence=last_presence,
+                                  reason="the Founder is present again")]  # fmt: skip
+            return []
+
+        self._commit(build)
+        return self._state.safe_continuity_active
+
+    def survival_mode(self) -> bool:
+        return self.sync().safe_continuity_active
 
 
 def money(amount: str, currency: str) -> Money:

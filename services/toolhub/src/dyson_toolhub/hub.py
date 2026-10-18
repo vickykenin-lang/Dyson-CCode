@@ -221,6 +221,8 @@ class ToolHub:
         needed, category = self._needs_approval(req)
         if not needed:
             return True, "no approval required"
+        if self._gov.survival_mode():  # AMD-12 v1.1: held until the Founder is back
+            return False, f"Survival Mode: {category} actions wait for the Founder"
         if is_retry:
             return True, "approval was used by the first attempt"
         if req.approval_id is None:

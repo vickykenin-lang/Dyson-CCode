@@ -123,3 +123,41 @@ def test_a_conversation_is_archived_and_restored_never_deleted(layer, gateway, f
     assert gateway.delete(f"/threads/{thread}", headers=founder).status_code == 405  # no delete
     with psycopg.connect(dsns["admin"]) as c, pytest.raises(psycopg.Error):
         c.execute("DELETE FROM integration.thread_archive")  # the archive log is append-only
+
+
+def test_survival_mode_after_three_days_without_the_founder(layer, gateway, founder, t0, clock,
+                                                             settings):  # fmt: skip
+    # AMD-12 v1.1: Dyson keeps working at low risk, holds high-risk work, tells the nominee.
+    say(gateway, founder, "Tally 1 and 1 on T0")
+    layer.tick(rounds=2)
+    clock.advance(hours=73)
+    layer.tick()
+    assert layer.core.survival_mode()
+    notices = [e for e in layer.memory.audit_events(limit=500)
+               if e.summary.startswith("survival mode: nominee notice")]  # fmt: skip
+    assert len(notices) == 1 and "informed only" in notices[0].summary
+    layer.tick()
+    assert (
+        len(
+            [
+                e
+                for e in layer.memory.audit_events(limit=500)
+                if e.summary.startswith("survival mode: nominee notice")
+            ]
+        )
+        == 1
+    )  # not every tick
+    # Low-risk work goes on; the session expired, so the work comes from D directly.
+    from dyson_orchestrator.ports import TaskPlan
+
+    plan = {"risk": "low", "summary": "s", "tool_id": "t0.tally", "receptor_id": "T0",
+            "arguments": {"numbers": [2, 3]}, "standard_id": "STD-T0-TALLY"}  # fmt: skip
+    view = layer.orch.submit(f"survival:{uuid4()}", "Tally 2 and 3", TaskPlan.model_validate(plan))
+    layer.tick(rounds=3)
+    assert layer.orch.get(view.task_id).state.value == "completed-verified"
+    # The Founder comes back: Survival Mode ends at once.
+    clock.advance(minutes=5)
+    gateway.post("/session", json={"username": settings.founder_username,
+                                   "secret": settings.founder_password})  # fmt: skip
+    layer.tick()
+    assert not layer.core.survival_mode()

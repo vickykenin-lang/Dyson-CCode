@@ -42,6 +42,7 @@ from psycopg.conninfo import make_conninfo
 from dyson_founder_app.app import create_app as create_founder_app
 from dyson_founder_app.gateway_client import GatewayClient
 from dyson_founder_app.voice import NoVoice
+from dyson_memory.register_seed import seed_register
 
 from . import db
 from .rules_model import PROVIDER, RulesModel
@@ -151,6 +152,7 @@ def main() -> None:
     layer = LayerA.build(dsns, settings, t0, _now, _models())
     if layer.core.sync().receptors.get("T0") is None:
         layer.bootstrap()
+    seed_register(layer.memory, settings.policy_dir)  # new rule versions and decisions reach I
     layer.record_deployment()
     worker = LayerA.build(dsns, settings, t0, _now, _models())  # its own connections
 

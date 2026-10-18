@@ -41,9 +41,12 @@ def test_amd_1_to_13_unchanged():  # LA-AMD-05
     assert _lock_module().locked_hash() == lock, "AMD-1..13 changed without a lock update"
 
 
-def test_amd12_trigger_stays_blocked():
-    assert RULES["AMD-12"]["controls"]["automatic_48h_trigger_enabled"] is False
-    assert RULES["AMD-12"]["open_subpoint"]
+def test_amd12_is_the_approved_survival_mode():
+    # AMD-12 v1.1 (18 Oct 2026, Founder-approved amendment): 72 hours, Survival Mode.
+    assert RULES["AMD-12"]["controls"]["automatic_72h_trigger_enabled"] is True
+    assert RULES["AMD-12"]["controls"]["presence_timeout_hours"] == 72
+    assert RULES["AMD-12"]["controls"]["nominee_authority"] == "none"
+    assert RULES["AMD-12"]["presence"]  # gate 7's open sub-point, now defined
 
 
 def test_controls_agree_with_contracts():

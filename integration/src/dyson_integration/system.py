@@ -79,9 +79,11 @@ from .adapters import (
     GovernanceForToolHub,
     HermesGatedRouter,
     MemoryForConversation,
+    NomineeOutbox,
     OrchestratorForConversation,
     QAForOrchestrator,
     StatementsForGateway,
+    SurvivalWatch,
     TaskEventsToMemory,
     TaskStatus,
     ThreadsForGateway,
@@ -464,6 +466,9 @@ class LayerA:
             timedelta(minutes=int(params["founder_reminder_interval_minutes"])),
             clock,
         )
+        self.survival = SurvivalWatch(
+            self.core, self.memory, self.inbox, NomineeOutbox(self.memory, clock), clock
+        )
         self.repairs = Repairs(self)
         return self
 
@@ -558,6 +563,7 @@ class LayerA:
     def tick(self, rounds: int = 1) -> None:
         for _ in range(rounds):
             self.core.sync()  # a STOP made on the separate controls process reaches D and T0
+            self.survival.check()  # AMD-12 v1.1
             report = self.t0.health_report()  # Monitoring lane
             if report is not None:
                 self.monitor.ingest(report)
