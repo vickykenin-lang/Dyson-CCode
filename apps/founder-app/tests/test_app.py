@@ -174,8 +174,11 @@ def test_dashboard_page_is_read_only_and_explains_when_unavailable(founder):  # 
     page = founder.get("/").text
     assert "href='/dashboard'" in page
     html = founder.get("/dashboard").text
-    assert '["A", 500, 62' in html and '["hermes", 150, 350' in html  # every part is on the page
-    assert "WHAT JUST HAPPENED" in html and "WAITING FOR YOU" in html
+    assert '["A", 660, 210' in html and '["hermes", 860, 345' in html  # every part is on the board
+    assert '"G>T0":' in html and "What just happened" in html  # and every wire
+    js = founder.get("/static/three.module.min.js")  # the 3D star needs no outside CDN
+    assert js.status_code == 200 and js.headers["content-type"].startswith("text/javascript")
+    assert b"Three.js Authors" in js.content[:200]
     assert "<form" not in html and "method:" not in html  # nothing on the dashboard can act
     r = founder.get("/dashboard/data")
     assert r.status_code == 503  # this test gateway has no dashboard connected

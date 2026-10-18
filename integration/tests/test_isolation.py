@@ -217,5 +217,13 @@ def test_founder_dashboard_shows_every_block_live_and_cannot_act(layer, gateway,
     assert statuses["R11"] == statuses["external"] == "off"  # not approved / not connected
     assert statuses["dfc"] != "stopped" and statuses["hermes"] != "stopped"  # both answer
     assert any(f["block"] == "D" and "completed-verified" in f["text"] for f in d["feed"])
+    # every wire shows what really crossed it: this one task went over each of these
+    wires = {(w["a"], w["b"]): w for w in d["links"]}
+    assert all(w["known"] for w in wires.values())
+    crossed = ["founder>app", "gateway>B", "B>C", "B>D", "D>G", "G>T0", "D>F", "F>I", "T0>E",
+               "dfc>A", "A>D"]  # fmt: skip
+    for ab in (tuple(x.split(">")) for x in crossed):
+        assert wires[ab]["n"] >= 1 and wires[ab]["events"], (ab, wires[ab])
+    assert wires[("vault", "H")]["n"] == wires[("G", "hermes")]["n"] == 0  # nothing crossed
     assert gateway.get("/dashboard").status_code == 401  # Founder session only
     assert gateway.post("/dashboard", headers=founder).status_code == 405  # read only

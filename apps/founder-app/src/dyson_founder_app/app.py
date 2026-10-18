@@ -7,6 +7,7 @@ completed-verified with cited evidence is shown as done. An acknowledgment is sh
 
 from datetime import date
 from html import escape
+from importlib.resources import files
 from typing import Annotated
 from uuid import UUID, uuid4
 
@@ -187,6 +188,17 @@ def create_app(gateway: GatewayClient, voice: VoicePort, *, secure_cookies: bool
         except NotLoggedIn:
             return page(request)
         return switch(thread_id)
+
+    three = files(__package__).joinpath("static/three.module.min.js").read_bytes()
+
+    @app.get("/static/three.module.min.js")
+    def three_js() -> Response:
+        """three.js r160 (MIT), served from here so the live map needs no outside CDN."""
+        return Response(
+            three,
+            media_type="text/javascript",
+            headers={"Cache-Control": "public, max-age=31536000, immutable"},
+        )
 
     @app.get("/dashboard", response_class=HTMLResponse)
     def dashboard(request: Request) -> Response:

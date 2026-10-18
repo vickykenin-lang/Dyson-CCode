@@ -21,6 +21,208 @@ def _iso(at: datetime | None) -> str | None:
     return at.isoformat() if at else None
 
 
+_FOUNDER_MSGS = (
+    "SELECT sent_at AS at FROM memory.messages WHERE participant = 'founder' AND sent_at >= %s"
+)
+_REPLIES = "SELECT sent_at AS at FROM memory.messages WHERE participant = 'dyson' AND sent_at >= %s"
+_MESSAGES = [("memory", _FOUNDER_MSGS, 1), ("memory", _REPLIES, -1)]
+
+
+def _gov(*types: str) -> str:
+    names = ", ".join(f"'{t}'" for t in types)
+    return f"SELECT at FROM governance.events WHERE type IN ({names}) AND at >= %s"
+
+
+# The wires of the master architecture: (from, to, kind, label, sources). A source is
+# (component store, SQL giving `at` for records since %s, direction: 1 from->to, -1 back).
+LINKS = [
+    ("founder", "app", "req", "Messages", _MESSAGES),
+    (
+        "app",
+        "gateway",
+        "req",
+        "Messages and logins",
+        [
+            *_MESSAGES,
+            ("memory", "SELECT at FROM memory.audit_log WHERE summary = 'login' AND at >= %s", 1),
+        ],
+    ),
+    ("gateway", "B", "req", "Messages", _MESSAGES),
+    (
+        "B",
+        "C",
+        "req",
+        "Model calls",
+        [
+            (
+                "intelligence",
+                "SELECT at FROM intelligence.calls WHERE status <> 'reserved' AND at >= %s",
+                1,
+            )
+        ],
+    ),
+    (
+        "B",
+        "D",
+        "req",
+        "New tasks",
+        [
+            (
+                "orchestrator",
+                "SELECT at FROM orchestrator.transitions WHERE from_state IS NULL AND at >= %s",
+                1,
+            )
+        ],
+    ),
+    (
+        "D",
+        "G",
+        "req",
+        "Tool calls",
+        [
+            (
+                "toolhub",
+                "SELECT decided_at AS at FROM toolhub.decisions"
+                " WHERE caller = 'D' AND decided_at >= %s",
+                1,
+            )
+        ],
+    ),
+    (
+        "G",
+        "T0",
+        "req",
+        "Receptor actions",
+        [
+            (
+                "toolhub",
+                "SELECT decided_at AS at FROM toolhub.decisions WHERE allowed"
+                " AND request->>'tool_id' LIKE 't0.%%' AND decided_at >= %s",
+                1,
+            )
+        ],
+    ),
+    (
+        "G",
+        "hermes",
+        "req",
+        "Research jobs",
+        [
+            (
+                "toolhub",
+                "SELECT decided_at AS at FROM toolhub.decisions WHERE allowed"
+                " AND request->>'tool_id' = 'hermes.research' AND decided_at >= %s",
+                1,
+            )
+        ],
+    ),
+    (
+        "D",
+        "F",
+        "res",
+        "QA verdicts",
+        [("assurance", "SELECT at FROM assurance.qa_verdicts WHERE at >= %s", -1)],
+    ),
+    (
+        "F",
+        "I",
+        "mem",
+        "Evidence",
+        [
+            (
+                "memory",
+                "SELECT recorded_at AS at FROM memory.evidence"
+                " WHERE recorded_by = 'F' AND recorded_at >= %s",
+                1,
+            )
+        ],
+    ),
+    (
+        "D",
+        "I",
+        "mem",
+        "Audit trail",
+        [("memory", "SELECT at FROM memory.audit_log WHERE actor = 'D' AND at >= %s", 1)],
+    ),
+    (
+        "T0",
+        "E",
+        "mon",
+        "Health reports",
+        [("assurance", "SELECT at FROM assurance.health WHERE subject_id = 'T0' AND at >= %s", 1)],
+    ),
+    (
+        "E",
+        "A",
+        "mon",
+        "Escalations",
+        [("assurance", "SELECT at FROM assurance.escalations WHERE at >= %s", 1)],
+    ),
+    (
+        "founder",
+        "dfc",
+        "stop",
+        "Your decisions",
+        [
+            (
+                "memory",
+                "SELECT at FROM memory.audit_log"
+                " WHERE actor = 'direct_founder_controls' AND at >= %s",
+                1,
+            )
+        ],
+    ),
+    (
+        "dfc",
+        "A",
+        "stop",
+        "Decisions and controls",
+        [("governance", _gov("decision_recorded", "control_applied"), 1)],
+    ),
+    ("A", "D", "stop", "Approvals used", [("governance", _gov("approval_consumed"), 1)]),
+    (
+        "A",
+        "G",
+        "stop",
+        "Kill switches",
+        [("toolhub", "SELECT at FROM toolhub.switches WHERE at >= %s", 1)],
+    ),
+    (
+        "A",
+        "T0",
+        "stop",
+        "Controls",
+        [("governance", _gov("control_applied", "receptor_status_changed"), 1)],
+    ),
+    (
+        "vault",
+        "H",
+        "fin",
+        "Statements",
+        [
+            (
+                "assurance",
+                "SELECT uploaded_at AS at FROM assurance.statement_uploads WHERE uploaded_at >= %s",
+                1,
+            )
+        ],
+    ),
+    (
+        "T0",
+        "H",
+        "fin",
+        "Revenue reports",
+        [
+            (
+                "assurance",
+                "SELECT reported_at AS at FROM assurance.revenue_reports WHERE reported_at >= %s",
+                1,
+            )
+        ],
+    ),
+]
+
+
 class LiveStatus:
     def __init__(
         self,
@@ -434,7 +636,62 @@ class LiveStatus:
             ("external", "External Business World", external),
         ):
             guard(key, title, fn)
-        return {"as_of": now.isoformat(), "blocks": blocks, "feed": self._feed(since)}
+        return {
+            "as_of": now.isoformat(),
+            "blocks": blocks,
+            "feed": self._feed(since),
+            "links": self._links(since),
+        }
+
+    def _links(self, since: datetime) -> list[dict]:
+        """Each wire of the architecture with what really crossed it in the last 24 hours.
+
+        A wire's events are the records the receiving side keeps (a model call, a tool
+        decision, a QA verdict, ...), so a light on a wire always stands for a real record.
+        """
+        wanted: dict[str, list[tuple[int, int, str]]] = {}
+        for i, (_, _, _, _, sources) in enumerate(LINKS):
+            for j, (component, sql, _) in enumerate(sources):
+                wanted.setdefault(component, []).append((i, j, sql))
+        found: dict[tuple[int, int], list[dict]] = {}
+        for component, queries in wanted.items():
+            try:
+                with psycopg.connect(self._dsns[component], row_factory=dict_row) as c:
+                    if component == "memory":
+                        c.execute("SELECT set_config('dyson.scope', 'core', true)")
+                    for i, j, sql in queries:
+                        found[(i, j)] = c.execute(
+                            f"SELECT at, count(*) OVER () AS n FROM ({sql}) s"
+                            " ORDER BY at DESC LIMIT 30",
+                            [since],
+                        ).fetchall()
+            except Exception:  # an unreachable store leaves its wires unknown, never invented
+                for i, j, _ in queries:
+                    found[(i, j)] = None
+        links = []
+        for i, (a, b, kind, label, sources) in enumerate(LINKS):
+            rows = [found[(i, j)] for j in range(len(sources))]
+            events = sorted(
+                (
+                    (r["at"], direction)
+                    for got, (_, _, direction) in zip(rows, sources, strict=True)
+                    for r in got or []
+                ),
+                reverse=True,
+            )[:30]
+            links.append(
+                {
+                    "a": a,
+                    "b": b,
+                    "kind": kind,
+                    "label": label,
+                    "known": all(r is not None for r in rows),
+                    "n": sum(got[0]["n"] for got in rows if got),
+                    "last": _iso(events[0][0]) if events else None,
+                    "events": [[_iso(at), d] for at, d in events],
+                }
+            )
+        return links
 
     def _feed(self, since: datetime) -> list[dict]:
         """What just happened, newest first, across D, G, C and A."""
