@@ -18,3 +18,9 @@ To settle before it can be built (it amends AMD-12 v1.0):
 - How "no response" is detected and verified (gate 7's open sub-point).
 - What survival mode may do: AMD-12 limits it to previously approved low-risk work and halts new
   high-risk or financial decisions.
+
+**18 Oct 2026:** the Founder named the nominee. The name, email and WhatsApp number are kept only in
+the encrypted parameter `/dyson/nominee` (never in this repository, never sent to a model). The
+amendment "Amend AMD-12" (72 hours, Survival Mode, nominee notified only, presence = app login,
+message or Direct Founder Controls action) was proposed to Direct Founder Controls; it expires
+unanswered on 19 Oct 2026 at 16:55 UTC.
