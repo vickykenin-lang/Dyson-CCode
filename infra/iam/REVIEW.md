@@ -21,3 +21,4 @@ IAM read access (no Dyson identity has it); the drift check runs from the deploy
 | Date | By | Result |
 |---|---|---|
 | 18 Oct 2026 | Deployment session | `dyson-server` inline policy matches the repo; attached `AmazonSSMManagedInstanceCore` only; role last used 18 Oct 2026 in ap-southeast-2. The one-time `ssm:PutParameter` is not in it. Users and keys not reviewed: needs the Founder (step 2). `dyson-deployer` key still active, to delete when deployments stop. |
+| 18 Oct 2026 | Founder (console) | Users: only `dyson-deployer`. Access keys: one, 2 days old, last used minutes before the check (deployment work). Last-accessed services not reviewed this time. Key stays until deployments stop, then it is deleted. |
