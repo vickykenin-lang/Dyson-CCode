@@ -201,17 +201,21 @@ def test_nominee_email_goes_to_the_nominee_only_and_failures_are_recorded(layer,
     assert not any("nominee@example.com" in str(e.model_dump()) for e in events)
 
 
-def test_founder_dashboard_shows_verified_state_and_cannot_act(layer, gateway, founder):  # gate 8
-    from dyson_founder_app.app import _dashboard
-
+def test_founder_dashboard_shows_every_block_live_and_cannot_act(layer, gateway, founder):
+    # gate 8: each block of the master architecture, with a status from real activity
     task = task_of(say(gateway, founder, "Tally 4 and 4 on T0"))
     layer.tick(rounds=3)
     assert status(gateway, founder, task)["state"] == "completed-verified"
     d = gateway.get("/dashboard", headers=founder).json()
-    assert d["control"] == "running" and d["survival_mode"] is False
-    assert d["qa"]["passed"] >= 1 and d["models"][0]["task_class"] == "conversation.interpret"
+    expected = {"founder", "app", "gateway", "dfc", "vault", "A", "B", "C", "D", "E", "hermes",
+                "F", "G", "H", "I", "J", "T0", "R11", "external"}  # fmt: skip
+    assert set(d["blocks"]) == expected
+    statuses = {k: b["status"] for k, b in d["blocks"].items()}
+    assert not [k for k, b in d["blocks"].items() if "unavailable" in b["note"]]
+    for k in ("founder", "app", "gateway", "B", "D", "F", "G", "I", "T0"):
+        assert statuses[k] == "live", (k, d["blocks"][k])  # all just did something
+    assert statuses["R11"] == statuses["external"] == "off"  # not approved / not connected
+    assert statuses["dfc"] != "stopped" and statuses["hermes"] != "stopped"  # both answer
+    assert any(f["block"] == "D" and "completed-verified" in f["text"] for f in d["feed"])
     assert gateway.get("/dashboard").status_code == 401  # Founder session only
     assert gateway.post("/dashboard", headers=founder).status_code == 405  # read only
-    html = _dashboard(d)
-    for part in ("System", "Money (verified)", "Receptor health", "Alerts", "Read only"):
-        assert part in html

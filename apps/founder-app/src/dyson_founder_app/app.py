@@ -16,6 +16,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from dyson_contracts.interface import TaskStatusUpdate
 from dyson_contracts.tasks import TaskState
 
+from .dashboard_page import PAGE
 from .gateway_client import GatewayClient, NotLoggedIn, Refused
 from .voice import VoicePort, VoiceUnavailable
 
@@ -189,17 +190,22 @@ def create_app(gateway: GatewayClient, voice: VoicePort, *, secure_cookies: bool
 
     @app.get("/dashboard", response_class=HTMLResponse)
     def dashboard(request: Request) -> Response:
-        """Gate 8: what the Founder can see at a glance. Read only; acting stays on DFC."""
+        """Gate 8: the architecture, block by block, with live status. Read only."""
+        if not request.cookies.get(SESSION):
+            return RedirectResponse("/", status_code=303)
+        return HTMLResponse(PAGE)
+
+    @app.get("/dashboard/data")
+    def dashboard_data(request: Request) -> Response:
         token = request.cookies.get(SESSION)
         if not token:
-            return RedirectResponse("/", status_code=303)
+            return JSONResponse({"detail": "log in"}, status_code=401)
         try:
-            data = gateway.dashboard(token)
+            return JSONResponse(gateway.dashboard(token))
         except NotLoggedIn:
-            return page(request)
+            return JSONResponse({"detail": "log in"}, status_code=401)
         except Refused as exc:
-            return page(request, notice=f"Dashboard unavailable: {exc}")
-        return HTMLResponse(_shell(_dashboard(data), logged_in=True, refresh=60))
+            return JSONResponse({"detail": str(exc)}, status_code=503)
 
     @app.post("/statement")
     async def statement(
@@ -268,8 +274,7 @@ justify-content:space-between;gap:8px;border-bottom:1px solid #262b44;padding:6p
 border-radius:6px;border:1px solid #33395a;background:#0f1220;color:var(--text)}
 button{margin-top:8px;padding:8px 14px;border:0;border-radius:6px;background:var(--accent);
 color:#111;font-weight:600}nav a{color:var(--text);margin-right:8px}.scroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:6px 8px;
-border-bottom:1px solid #262b44;white-space:nowrap}th{color:var(--muted);font-weight:600}
+.muted{color:var(--muted)}
 """
 
 POLL = """
@@ -287,20 +292,19 @@ for (const el of document.querySelectorAll('[data-task]')) {
 """
 
 
-def _shell(content: str, logged_in: bool = False, refresh: int = 0) -> str:
+def _shell(content: str, logged_in: bool = False, script: str = "") -> str:
     out = (
-        "<nav><a href='/'>Conversation</a> · <a href='/dashboard'>Dashboard</a></nav>"
+        "<nav><a href='/'>Conversation</a> · <a href='/dashboard'>Live map</a></nav>"
         '<form method="post" action="/logout"><button>Log out</button></form>'
         if logged_in
         else ""
     )
-    meta = f"<meta http-equiv='refresh' content='{refresh}'>" if refresh else ""
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        f"<title>Dyson</title>{meta}<style>{CSS}</style></head><body>"
+        f"<title>Dyson</title><style>{CSS}</style></head><body>"
         f"<header><b>DYSON</b>{out}</header><main>{content}</main>"
-        f"<script>{POLL}</script></body></html>"
+        f"<script>{script or POLL}</script></body></html>"
     )
 
 
@@ -369,71 +373,6 @@ def _threads(open_threads: list[dict], archived: list[dict], current: UUID) -> s
         f"{opened or '<p>No other conversations.</p>'}"
         f"<h3>Archived conversations</h3>{stored or '<p>None archived.</p>'}"
         "<p>Nothing is ever deleted; archived conversations can be restored.</p></section>"
-    )
-
-
-def _table(headers: list[str], rows: list[list], empty: str) -> str:
-    if not rows:
-        return f"<p>{escape(empty)}</p>"
-    head = "".join(f"<th>{escape(h)}</th>" for h in headers)
-    body = "".join(
-        "<tr>" + "".join(f"<td>{escape(str(c))}</td>" for c in r) + "</tr>" for r in rows
-    )
-    return f"<div class='scroll'><table><tr>{head}</tr>{body}</table></div>"
-
-
-def _dashboard(d: dict) -> str:
-    """Only verified figures count as money: claims stay apart until a bank line proves them."""
-    mode = d["control"]
-    state = (
-        "<span class='wait'>Survival Mode (Founder not seen for 3 days)</span>"
-        if d.get("survival_mode")
-        else f"<span class='{'done' if mode == 'running' else 'wait'}'>{escape(mode.title())}"
-        "</span>"
-    )
-    models = _table(
-        ["Task", "Model route", "Spent today (USD)"],
-        [[m["task_class"], ", ".join(m["route"]) or "none", m["spent_today_usd"]]
-         for m in d["models"]],
-        "No model is routed.",
-    )  # fmt: skip
-    ledger = _table(
-        ["Receptor", "Currency", "Verified revenue", "Claimed, not yet proven", "Payments",
-         "Verified net profit"],
-        [[x["receptor_id"], x["currency"], x["verified_revenue"], x["unverified_revenue"],
-          x["payments"], x["verified_net_profit"]] for x in d["ledger"]],
-        "No revenue or payments recorded yet.",
-    )  # fmt: skip
-    receipts = _table(
-        ["Date", "Receptor", "Amount", "Reference"],
-        [[r["line_date"], r["receptor_id"], f"{r['amount']['amount']} {r['amount']['currency']}",
-          r["reference"]] for r in d["receipts"]],
-        "No bank-verified receipts yet.",
-    )  # fmt: skip
-    health = _table(
-        ["Subject", "Status", "Last report", "Failures"],
-        [[h["subject_id"], h["status"], h["last_report_at"] or "never",
-          "; ".join(h["failures"]) or "-"] for h in d["health"]],
-        "Nothing is monitored yet.",
-    )  # fmt: skip
-    alerts = _table(
-        ["When", "From", "Receptor", "Message"],
-        [[a["at"][:16].replace("T", " "), a["source"], a["receptor_id"] or "-", a["message"]]
-         for a in d["alerts"]],
-        "No open alerts.",
-    )  # fmt: skip
-    qa = d["qa"]
-    open_items = d["reconciliation"].get("reported_not_final", 0)
-    return (
-        f"<section><h2>System</h2><p>State: {state}</p>"
-        f"<p>Quality checks: {qa['passed']} passed, {qa['failed']} failed.</p>{models}</section>"
-        f"<section><h2>Money (verified)</h2>{ledger}"
-        f"<p>Revenue reports waiting for a bank statement: {open_items}</p>"
-        f"<h3>Latest bank-verified receipts</h3>{receipts}</section>"
-        f"<section><h2>Receptor health</h2>{health}</section>"
-        f"<section><h2>Alerts</h2>{alerts}</section>"
-        f"<p class='msg'>Updated {escape(d['as_of'][:19].replace('T', ' '))} UTC, refreshes every "
-        "minute. Read only: approvals, STOP and PAUSE are on Direct Founder Controls.</p>"
     )
 
 

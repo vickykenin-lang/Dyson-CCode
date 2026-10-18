@@ -44,6 +44,7 @@ services:
       DYSON_BIND: 172.30.0.10  # the core network only: nothing on the Hermes network
       DYSON_EDGE_BIND: 172.31.0.10
       DYSON_HERMES_URL: http://172.31.0.20:8095
+      DYSON_CONTROLS_URL: http://172.30.0.11:8082  # dashboard health check only
       DYSON_HERMES_SECRETS: /hermes/secrets.json
       DYSON_NOMINEE_FILE: /run/secrets/nominee
       DYSON_DB_NAME: dyson

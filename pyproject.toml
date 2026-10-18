@@ -6,6 +6,10 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
 
+[tool.ruff.lint.per-file-ignores]
+# The live map is an HTML/JS page held as one string; its lines follow the page, not Python.
+"apps/founder-app/src/dyson_founder_app/dashboard_page.py" = ["E501"]
+
 [tool.pytest.ini_options]
 testpaths = ["contracts/tests", "tests", "services/memory/tests", "services/governance/tests", "services/toolhub/tests", "services/orchestrator/tests", "services/assurance/tests", "services/intelligence/tests", "services/gateway/tests", "services/founder-controls/tests", "apps/founder-app/tests", "integration/tests"]
 

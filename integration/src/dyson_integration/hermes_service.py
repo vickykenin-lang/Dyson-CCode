@@ -93,6 +93,10 @@ def build_hermes(edge_url: str, creds: dict[str, str], client=None) -> HermesRun
 def create_hermes_app(hermes: HermesRuntime, job_token: str) -> FastAPI:
     app = FastAPI(title="Hermes", docs_url=None, redoc_url=None, openapi_url=None)
 
+    @app.get("/health")
+    def health() -> dict:
+        return {"status": "up"}  # says nothing about Hermes's work, only that it answers
+
     @app.post("/jobs")
     def job(request: ToolCallRequest, x_job_credential: str | None = Header(default=None)):
         if not secrets.compare_digest(x_job_credential or "", job_token):
@@ -108,6 +112,11 @@ class RemoteHermes:
     def __init__(self, url: str, job_token: str, http: httpx.Client | None = None):
         self._http = http or httpx.Client(base_url=url, timeout=120.0)
         self._token = job_token
+
+    def health(self) -> str:
+        r = self._http.get("/health", timeout=2)
+        r.raise_for_status()
+        return r.json()["status"]
 
     def job(self, request: ToolCallRequest) -> Any:
         r = self._http.post("/jobs", json=request.model_dump(mode="json"),

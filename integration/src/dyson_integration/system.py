@@ -70,7 +70,6 @@ from .adapters import (
     AuditToMemory,
     CatalogForConversation,
     ConversationForGateway,
-    DashboardForGateway,
     EvidenceToMemory,
     FounderInbox,
     FounderNotices,
@@ -91,6 +90,7 @@ from .adapters import (
     ToolHubForOrchestrator,
 )
 from .hermes_service import RemoteHermes, create_edge, hermes_job
+from .live_status import LiveStatus
 from .rules_model import MODEL_ID, PROVIDER, RulesModel
 
 Clock = Callable[[], datetime]
@@ -142,6 +142,8 @@ class Settings:
     hermes_url: str | None = None
     # Set on AWS: the nominee's details (from /dyson/nominee); notices then go by email (SES).
     nominee_file: Path | None = None
+    # Set on AWS: Direct Founder Controls runs in its own container here (for the dashboard).
+    controls_url: str | None = None
 
 
 CORE_SECRETS = (
@@ -436,7 +438,14 @@ class LayerA:
             notices=FounderNotices(self.core, self.memory, clock),
             statements=StatementsForGateway(self.finance, clock),
             threads=ThreadsForGateway(self.memory, dsns["integration"], clock),
-            dashboard=DashboardForGateway(self.dashboard, self.core, self.router, clock),
+            dashboard=LiveStatus(
+                dsns,
+                self.core,
+                self.router,
+                self.memory,
+                clock,
+                {"controls": self._probe_controls, "hermes": self._probe_hermes},
+            ),
         )
 
         # Direct Founder Controls: its own path, to A only. On AWS it is served by its own
@@ -559,6 +568,24 @@ class LayerA:
             ),
             lambda args: {"verdicts": len(self.qa.audit_task(UUID(str(args["task_id"]))))},
         )
+
+    # Dashboard probes (gate 8): is each separate process answering? Read only.
+    def _probe_controls(self) -> dict:
+        if self.settings.controls_url:
+            import httpx
+
+            r = httpx.get(self.settings.controls_url.rstrip("/") + "/passkeys", timeout=2)
+        else:
+            r = TestClient(self.controls).get("/passkeys")
+        if r.status_code == 404:  # answering, with the device key only (no passkeys configured)
+            return {"enrolled": "device key"}
+        r.raise_for_status()
+        return r.json()
+
+    def _probe_hermes(self) -> str:
+        if self.remote_hermes is None:
+            return "in process"
+        return self.remote_hermes.health()
 
     def _hermes_job(self, request: ToolCallRequest) -> Any:
         if self.remote_hermes is not None:

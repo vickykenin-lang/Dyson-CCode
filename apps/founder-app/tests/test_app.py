@@ -173,7 +173,9 @@ def test_conversations_can_be_archived_never_deleted(founder):  # D-023
 def test_dashboard_page_is_read_only_and_explains_when_unavailable(founder):  # gate 8
     page = founder.get("/").text
     assert "href='/dashboard'" in page
-    r = founder.get("/dashboard")
-    assert (
-        "Dashboard unavailable" in r.text and "<form method='post' action='/approve" not in r.text
-    )
+    html = founder.get("/dashboard").text
+    assert '["A", 30, 250' in html and '["hermes", 1005, 250' in html
+    assert "What just happened" in html
+    assert "<form" not in html and "method:" not in html  # nothing on the dashboard can act
+    r = founder.get("/dashboard/data")
+    assert r.status_code == 503  # this test gateway has no dashboard connected

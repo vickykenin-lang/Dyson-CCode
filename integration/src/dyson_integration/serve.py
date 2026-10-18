@@ -119,6 +119,7 @@ def _settings_and_dsns(migrate: bool = True):
         environment=env.get("DYSON_ENVIRONMENT", "local"),
         release=env.get("DYSON_RELEASE") or None,
         hermes_url=env.get("DYSON_HERMES_URL") or None,
+        controls_url=env.get("DYSON_CONTROLS_URL") or None,
         nominee_file=Path(env["DYSON_NOMINEE_FILE"]) if env.get("DYSON_NOMINEE_FILE") else None,
     )
     return settings, dsns
