@@ -151,6 +151,28 @@ def test_master_stop_reaches_everything_without_any_model(core, founder, heard):
     assert heard and heard[-1][0] == cmd  # pushed to G, Hermes and Receptor lanes
 
 
+def test_stop_from_another_process_reaches_this_ones_listeners(policy, channel, clock, founder):
+    # LA-DEP-02: Direct Founder Controls runs in its own process on AWS and shares only the
+    # event store; D, T0 and Hermes's lanes listen in the main process.
+    from dyson_governance.core import GovernanceCore
+    from dyson_governance.store import InMemoryEventStore
+
+    store, heard = InMemoryEventStore(), []
+    old = GovernanceCore(store, policy, channel, clock=clock)
+    old.control(_cmd(ControlCommandType.PAUSE, by=Component.GOVERNANCE_CORE, clock=clock))
+    main = GovernanceCore(store, policy, channel, clock=clock,
+                          control_listeners=[lambda c, s: heard.append(s.mode)])  # fmt: skip
+    assert heard == []  # history at start is state, not a new command
+    controls = GovernanceCore(store, policy, channel, clock=clock)
+    cmd, proof = _founder_cmd(founder, ControlCommandType.STOP)
+    controls.control(cmd, proof)
+    assert heard == []  # nothing until the main process catches up
+    main.sync()
+    assert heard == [ControlMode.STOPPED] and main.effective_mode("T0") is ControlMode.STOPPED
+    main.sync()
+    assert heard == [ControlMode.STOPPED]  # dispatched once
+
+
 def test_founder_command_needs_channel_proof(core, founder):
     cmd, _ = _founder_cmd(founder, ControlCommandType.STOP)
     with pytest.raises(GovernanceError):

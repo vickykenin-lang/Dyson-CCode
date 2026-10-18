@@ -13,7 +13,7 @@ if python3 -c "import sys; sys.exit(0 if float('$SPENT') >= float('$STOP_AT') el
   echo "spend $SPENT USD >= stop line $STOP_AT USD"
   if [ "${DRY_RUN:-0}" = 1 ]; then echo "DRY_RUN: would stop layer-a and dyson-tunnel"; exit 0; fi
   touch "$MARK"
-  docker stop dyson-layer-a-1 || true
+  docker stop dyson-layer-a-1 dyson-hermes-1 || true  # controls costs nothing and stays up
   systemctl stop dyson-tunnel || true
   systemctl disable dyson-tunnel || true
   echo "STOPPED: layer-a and tunnel; postgres and backups keep running"

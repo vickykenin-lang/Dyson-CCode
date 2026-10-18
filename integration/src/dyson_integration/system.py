@@ -84,6 +84,7 @@ from .adapters import (
     TaskStatus,
     ToolHubForOrchestrator,
 )
+from .hermes_service import RemoteHermes, create_edge, hermes_job
 from .rules_model import MODEL_ID, PROVIDER, RulesModel
 
 Clock = Callable[[], datetime]
@@ -131,26 +132,45 @@ class Settings:
     # Where this Layer A runs, as written on its evidence, and the release it runs.
     environment: str = "local"
     release: str | None = None
+    # Set on AWS: Hermes runs in its own container at this URL (LA-DEP-01). None runs it here.
+    hermes_url: str | None = None
+
+
+CORE_SECRETS = (
+    "channel_key",
+    "device_key",
+    "orchestrator_token",
+    "hermes_token",
+    "governance_token",
+    "b_router_token",
+    "hermes_router_token",
+    "hermes_job_token",
+)
 
 
 def write_secret_file(path: Path, canary: str | None = None) -> Path:
     """Development secret store: one namespace per scope, readable only by its owner."""
     data: dict[str, dict[str, str]] = {"core": {}, "T0": {"t0_lane_token": secrets.token_hex(24)}}
-    for name in (
-        "channel_key",
-        "device_key",
-        "orchestrator_token",
-        "hermes_token",
-        "governance_token",
-        "b_router_token",
-        "hermes_router_token",
-    ):
+    for name in CORE_SECRETS:
         data["core"][name] = secrets.token_hex(32)
     if canary:
         data["core"]["canary_model_api_key"] = canary
     path.write_text(json.dumps(data))
     path.chmod(0o600)
     return path
+
+
+def add_missing_secrets(path: Path) -> None:
+    """A store written by an older release gets the credentials added since; none is changed."""
+    data = json.loads(path.read_text())
+    missing = [n for n in CORE_SECRETS if n not in data["core"]]
+    if missing:
+        for name in missing:
+            data["core"][name] = secrets.token_hex(32)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data))
+        tmp.chmod(0o600)
+        tmp.replace(path)
 
 
 class VerifiedFinance:
@@ -407,36 +427,31 @@ class LayerA:
             poll_seconds=settings.poll_seconds,
         )
 
-        # Direct Founder Controls: its own path, to A only
-        device_key = core_secret("device_key").encode()
-        device = DeviceKeyStepUp(device_key, settings.challenge_ttl, clock)
-        passkeys = None
-        if settings.passkey_file is not None:
-            passkeys = PasskeyStepUp(
-                PasskeyStore(settings.passkey_file),
-                device,
-                device_key,
-                settings.passkey_rp_id,
-                settings.passkey_origin,
-                settings.challenge_ttl,
+        # Direct Founder Controls: its own path, to A only. On AWS it is served by its own
+        # process (`controls_app`); this copy is the Founder's device for bootstrap and tests.
+        self.controls: FastAPI = _controls(self.core, self.memory, store, settings, clock)
+
+        # Hermes, reaching only C's and G's HTTP APIs with its own credentials. On AWS it runs
+        # in its own container and reaches them through the edge (LA-DEP-01).
+        self.hermes_edge = create_edge(
+            self.router_api,
+            self.toolhub_api,
+            self.core.registry,
+            core_secret("hermes_router_token"),
+        )
+        self.hermes: HermesRuntime | None = None
+        self.remote_hermes: RemoteHermes | None = None
+        if settings.hermes_url:
+            self.remote_hermes = RemoteHermes(settings.hermes_url, core_secret("hermes_job_token"))
+        else:
+            self.hermes = HermesRuntime(
+                _HermesRouterClient(
+                    TestClient(self.router_api), core_secret("hermes_router_token")
+                ),
+                _HermesToolHubClient(TestClient(self.toolhub_api), self.tokens[Component.HERMES]),
+                self.core,
                 clock,
             )
-        self.controls: FastAPI = create_controls(
-            GovernanceForControls(self.core, clock),
-            passkeys or device,
-            HmacChannelSigner(core_secret("channel_key").encode()),
-            _AuditEvents(self.memory, clock),
-            clock,
-            passkeys,
-        )
-
-        # Hermes, reaching only C's and G's HTTP APIs with its own credentials
-        self.hermes = HermesRuntime(
-            _HermesRouterClient(TestClient(self.router_api), core_secret("hermes_router_token")),
-            _HermesToolHubClient(TestClient(self.toolhub_api), self.tokens[Component.HERMES]),
-            self.core,
-            clock,
-        )
         self.approval_reminders = ApprovalReminders(
             self.core,
             self.inbox,
@@ -528,22 +543,15 @@ class LayerA:
         )
 
     def _hermes_job(self, request: ToolCallRequest) -> Any:
-        from dyson_intelligence.models import ChatMessage, ModelRequest
-
-        thought = self.hermes.think(
-            HERMES_TASKS,
-            ModelRequest(
-                messages=(
-                    ChatMessage(role="user", content=str(request.arguments.get("question"))),
-                ),
-                max_output_tokens=200,
-            ),
-        )
-        return self.hermes.report(request.task_id, thought.response.text).model_dump(mode="json")
+        if self.remote_hermes is not None:
+            return self.remote_hermes.job(request)
+        assert self.hermes is not None
+        return hermes_job(self.hermes, request)
 
     # The worker: one pass of every periodic job ---------------------------------------------
     def tick(self, rounds: int = 1) -> None:
         for _ in range(rounds):
+            self.core.sync()  # a STOP made on the separate controls process reaches D and T0
             report = self.t0.health_report()  # Monitoring lane
             if report is not None:
                 self.monitor.ingest(report)
@@ -734,6 +742,46 @@ def _standards() -> list[QualityStandard]:
             fitness=(chk("healthy", CheckKind.EQUALS, "health", "healthy"),),
         ),
     ]
+
+
+def _controls(core, memory, store, settings: Settings, clock: Clock) -> FastAPI:
+    device_key = store.get("core", "device_key").encode()
+    device = DeviceKeyStepUp(device_key, settings.challenge_ttl, clock)
+    passkeys = None
+    if settings.passkey_file is not None:
+        passkeys = PasskeyStepUp(
+            PasskeyStore(settings.passkey_file),
+            device,
+            device_key,
+            settings.passkey_rp_id,
+            settings.passkey_origin,
+            settings.challenge_ttl,
+            clock,
+        )
+    return create_controls(
+        GovernanceForControls(core, clock),
+        passkeys or device,
+        HmacChannelSigner(store.get("core", "channel_key").encode()),
+        _AuditEvents(memory, clock),
+        clock,
+        passkeys,
+    )
+
+
+def controls_app(dsns: dict[str, str], settings: Settings, clock: Clock) -> FastAPI:
+    """Direct Founder Controls in its own process (LA-DEP-02, LA-DEP-03): A and I only, no B, C,
+    G, D or Hermes. Its STOP is committed to A's event log, which the main process follows."""
+    store = LocalSecretStore(settings.secret_file)
+    memory = MemoryStore(memory_connect(dsns["memory"]), "core", SecretGuard(store))
+    core = GovernanceCore(
+        PgEventStore(dsns["governance"]),
+        PolicyEngine.load(settings.policy_dir),
+        HmacChannel(store.get("core", "channel_key").encode()),
+        AuditToMemory(memory),
+        clock=clock,
+        initial_parameters=load_initial_parameters(settings.policy_dir),
+    )
+    return _controls(core, memory, store, settings, clock)
 
 
 class _RouterOverHttp:

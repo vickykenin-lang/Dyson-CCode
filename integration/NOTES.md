@@ -112,7 +112,7 @@ The PRD §13 stream milestones that can run locally are also covered:
 
 ## Known limits of the local setup (for Step 10)
 
-- **One process.** The local stack runs every component in one process, and the components call each other's HTTP APIs in-process. The process serves one request at a time; status streams are excluded so they never block. Separate services, TLS and network isolation between A, G, DFC and the rest come with the AWS deployment in Step 10.
+- **Three containers.** `layer-a` runs A, B, C, D, G, I, E, F, H and J in one process; each process serves one request at a time (status streams excluded). Direct Founder Controls runs in its own container (`DYSON_ROLE=controls`) with only A and I, so a STOP does not wait on, or die with, B, C or Hermes; the main process follows A's event log and passes the STOP to D and T0 on its next tick (LA-DEP-02). Hermes runs in its own container (`DYSON_ROLE=hermes`) on an internal network with no internet and no database; the only thing it can reach is Layer A's Hermes edge, which serves C's and G's APIs and a read-only registry view (LA-DEP-01, LA-TOOL-02).
 - **T0 in memory.** T0 runs in memory inside Layer A's process. A real Receptor reaches the five lanes over the network.
 - **Local-only values.** The acceptance bars, budgets (0 INR) and qualification figures used for the stand-in model, and the Gateway limits, are local values, not Founder decisions. Real values come with the Step 10 benchmark and gates 2, 3 and 5.
 - **Founder inbox.** Escalations go to an in-process Founder inbox and to I's audit log. Push delivery to the app comes in Step 10.

@@ -5,7 +5,7 @@ ARG BASE_IMAGE=python:3.12-slim
 FROM ${BASE_IMAGE}
 ARG PIP_NO_INDEX=""
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_DISABLE_PIP_VERSION_CHECK=1
-RUN useradd --create-home --uid 10001 dyson && mkdir /data && chown dyson /data
+RUN useradd --create-home --uid 10001 dyson && mkdir /data /hermes && chown dyson /data /hermes
 WORKDIR /app
 COPY integration/docker/wheels/ /wheels/
 COPY contracts/ contracts/
@@ -19,5 +19,5 @@ RUN pip install ${PIP_NO_INDEX:+--no-index} --find-links /wheels \
       ./services/gateway ./services/founder-controls ./apps/founder-app ./integration \
     && rm -rf /wheels /root/.cache
 USER dyson
-EXPOSE 8080 8081 8082 8083
+EXPOSE 8080 8081 8082 8083 8090 8095
 CMD ["python", "-m", "dyson_integration.serve"]

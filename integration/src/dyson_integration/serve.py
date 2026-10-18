@@ -16,6 +16,13 @@ Environment:
   DYSON_PASSKEY_ORIGIN  its origin (e.g. https://control.designinfra.in)
   DYSON_ENVIRONMENT     where this runs, written on evidence (default local)
   DYSON_RELEASE         the release name; when set, AMD-3 stage 5 is recorded for it
+  DYSON_ROLE            all (default: everything in this process), or on AWS one of
+                        core (Layer A without DFC and Hermes), controls (DFC alone) or hermes
+  DYSON_BIND            address the core apps listen on (default 0.0.0.0)
+  DYSON_EDGE_BIND       core: the Hermes-network address the Hermes edge listens on (port 8090)
+  DYSON_HERMES_URL      core: where the Hermes container takes jobs
+  DYSON_HERMES_SECRETS  core writes, hermes reads: Hermes's own three credentials
+  DYSON_EDGE_URL        hermes: the edge Layer A serves on the Hermes network
   DYSON_BEDROCK         1 to put Amazon Bedrock behind C (role credentials from
                         AWS_SHARED_CREDENTIALS_FILE, refreshed by the host)
 """
@@ -38,7 +45,14 @@ from dyson_founder_app.voice import NoVoice
 
 from . import db
 from .rules_model import PROVIDER, RulesModel
-from .system import BACKUP_PROVIDER, LayerA, Settings, write_secret_file
+from .system import (
+    BACKUP_PROVIDER,
+    LayerA,
+    Settings,
+    add_missing_secrets,
+    controls_app,
+    write_secret_file,
+)
 from .t0 import TestReceptorT0
 
 
@@ -72,14 +86,25 @@ class _Serialized:
             return await self.app(scope, receive, send)
 
 
-def _settings_and_dsns():
+def _dsns(admin: str, name: str, password: str) -> dict[str, str]:
+    """Connections only, for a process that must not create or migrate anything."""
+    dsns = {"admin": make_conninfo(admin, dbname=name)}
+    for c in db.COMPONENTS:
+        dsns[c] = make_conninfo(admin, dbname=name, user=db.app_role(c), password=password)
+    return dsns
+
+
+def _settings_and_dsns(migrate: bool = True):
     env = os.environ
     policy = Path(env.get("DYSON_POLICY_DIR", "/app/policy"))
     secret_file = Path(env.get("DYSON_SECRET_FILE", "/data/secrets.json"))
-    if not secret_file.exists():
-        write_secret_file(secret_file)
+    if migrate:
+        if not secret_file.exists():
+            write_secret_file(secret_file)
+        add_missing_secrets(secret_file)
     password = Path(env["DYSON_FOUNDER_PASSWORD_FILE"]).read_text().strip()
-    dsns = ensure_database(
+    connect = ensure_database if migrate else _dsns
+    dsns = connect(
         env["DYSON_PG_ADMIN"], env.get("DYSON_DB_NAME", "dyson"), env["DYSON_DB_PASSWORD"]
     )
     settings = Settings(
@@ -91,6 +116,7 @@ def _settings_and_dsns():
         passkey_origin=env.get("DYSON_PASSKEY_ORIGIN", "http://localhost:8082"),
         environment=env.get("DYSON_ENVIRONMENT", "local"),
         release=env.get("DYSON_RELEASE") or None,
+        hermes_url=env.get("DYSON_HERMES_URL") or None,
     )
     return settings, dsns
 
@@ -113,6 +139,13 @@ def build_from_env(t0=None) -> LayerA:
 
 
 def main() -> None:
+    role = os.environ.get("DYSON_ROLE", "all")
+    if role == "hermes":
+        return _main_hermes()
+    if role == "controls":
+        settings, dsns = _settings_and_dsns(migrate=False)
+        print("Direct Founder Controls is up: 8082", flush=True)
+        return asyncio.run(_serve([(controls_app(dsns, settings, _now), "0.0.0.0", 8082)]))
     settings, dsns = _settings_and_dsns()
     t0 = TestReceptorT0()
     layer = LayerA.build(dsns, settings, t0, _now, _models())
@@ -135,21 +168,36 @@ def main() -> None:
         NoVoice(),
         secure_cookies=os.environ.get("DYSON_SECURE_COOKIES") == "1",  # 0 for local http
     )
-    print("Layer A is up: gateway 8080, app 8081, controls 8082, dashboard 8083", flush=True)
-    asyncio.run(
-        _serve(
-            [(layer.gateway, 8080), (app, 8081), (layer.controls, 8082), (layer.dashboard, 8083)]
-        )
-    )
+    bind = os.environ.get("DYSON_BIND", "0.0.0.0")
+    apps = [(layer.gateway, bind, 8080), (app, bind, 8081), (layer.dashboard, bind, 8083)]
+    if role == "core":  # DFC and Hermes run in their own containers
+        from .hermes_service import write_hermes_secrets
+
+        write_hermes_secrets(layer.secrets, Path(os.environ["DYSON_HERMES_SECRETS"]))
+        apps.append((layer.hermes_edge, os.environ["DYSON_EDGE_BIND"], 8090))
+    else:
+        apps.append((layer.controls, bind, 8082))
+    print(f"Layer A ({role}) is up: " + ", ".join(str(p) for _, _, p in apps), flush=True)
+    asyncio.run(_serve(apps))
+
+
+def _main_hermes() -> None:
+    """Hermes alone: its three credentials, the edge, nothing else (LA-DEP-01)."""
+    import json
+
+    from .hermes_service import build_hermes, create_hermes_app
+
+    creds = json.loads(Path(os.environ["DYSON_HERMES_SECRETS"]).read_text())
+    hermes = build_hermes(os.environ["DYSON_EDGE_URL"], creds)
+    print("Hermes is up: 8095", flush=True)
+    asyncio.run(_serve([(create_hermes_app(hermes, creds["hermes_job_token"]), "0.0.0.0", 8095)]))
 
 
 async def _serve(apps) -> None:
     lock = asyncio.Lock()
     servers = [
-        uvicorn.Server(
-            uvicorn.Config(_Serialized(a, lock), host="0.0.0.0", port=p, log_level="warning")
-        )
-        for a, p in apps
+        uvicorn.Server(uvicorn.Config(_Serialized(a, lock), host=host, port=p, log_level="warning"))
+        for a, host, p in apps
     ]
     await asyncio.gather(*(s.serve() for s in servers))
 

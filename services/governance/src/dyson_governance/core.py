@@ -128,18 +128,32 @@ class GovernanceCore:
         self._state = GovernanceState()
         self._seq = 0
         self.audit_backlog: list[AuditEvent] = []  # forwarded later from the event log (Step 9)
+        # Controls committed by another process (Direct Founder Controls runs separately on
+        # AWS, LA-DEP-02) reach this process's listeners when it catches up. History read at
+        # start is state only: it was dispatched when it happened.
+        self._foreign: list[ControlApplied | BreachDeclared] = []
+        self._replaying = True
         self.sync()
+        self._replaying = False
 
     # Plumbing ---------------------------------------------------------------------------
     def sync(self) -> GovernanceState:
         with self._store.transaction() as tx:
             self._catch_up(tx)
+        self._dispatch_foreign()
         return self._state
 
     def _catch_up(self, tx) -> None:
         for seq, event in tx.read_since(self._seq):
             self._state.apply(event)
             self._seq = seq
+            if not self._replaying and isinstance(event, ControlApplied | BreachDeclared):
+                self._foreign.append(event)
+
+    def _dispatch_foreign(self) -> None:
+        pending, self._foreign = self._foreign, []
+        for e in pending:
+            self._dispatch_control(e)
 
     def _commit(self, build: Callable[[GovernanceState], list[GovernanceEvent]]):
         """Validate against current state under the store lock, then append and apply."""
@@ -150,6 +164,7 @@ class GovernanceCore:
                 self._seq = tx.append(events)
                 for e in events:
                     self._state.apply(e)
+        self._dispatch_foreign()
         for e in events:
             self._emit_audit(e)
             if isinstance(e, ControlApplied | BreachDeclared):

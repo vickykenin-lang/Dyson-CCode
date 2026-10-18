@@ -12,7 +12,7 @@ KEY=$(mktemp /run/dyson-backup-key.XXXXXX)
 trap 'rm -f "$KEY" /var/tmp/restore.dump' EXIT
 aws ssm get-parameter --region $R --name /dyson/backup_key --with-decryption \
   --query Parameter.Value --output text | tr -d '\n' > "$KEY"
-docker compose -p dyson stop layer-a
+docker compose -p dyson stop hermes controls layer-a  # every process holding the database
 docker exec dyson-postgres-1 dropdb -U postgres dyson
 docker exec dyson-postgres-1 createdb -U postgres -O dyson_owner dyson
 docker cp /var/tmp/restore.dump dyson-postgres-1:/tmp/r.dump
@@ -20,6 +20,6 @@ docker exec dyson-postgres-1 pg_restore -U postgres -d dyson /tmp/r.dump 2>&1 | 
 docker exec dyson-postgres-1 rm -f /tmp/r.dump
 aws s3 cp --region $R --quiet "$B/data/$DATA" - \
   | openssl enc -d -aes-256-cbc -pbkdf2 -pass "file:$KEY" | docker cp -a - dyson-layer-a-1:/data
-docker compose -p dyson start layer-a
+docker compose -p dyson start layer-a controls hermes
 TASKS=$(docker exec dyson-postgres-1 psql -U postgres -d dyson -tAc "select count(*) from orchestrator.tasks")
 echo "restored $DB and $DATA: $TASKS tasks"
