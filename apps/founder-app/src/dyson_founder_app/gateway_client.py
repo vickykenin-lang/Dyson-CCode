@@ -1,5 +1,7 @@
 """The app's only connection: the Entry Gateway's HTTP API."""
 
+import base64
+from datetime import date
 from typing import Any
 from uuid import UUID
 
@@ -12,6 +14,10 @@ class NotLoggedIn(Exception):
     pass
 
 
+class Refused(Exception):
+    """The Gateway said no, with its reason."""
+
+
 class GatewayClient:
     def __init__(self, http: httpx.Client):
         self._http = http
@@ -21,6 +27,8 @@ class GatewayClient:
         r = self._http.request(method, path, headers=headers, **kw)
         if r.status_code == 401:
             raise NotLoggedIn(r.json().get("detail", "log in"))
+        if r.status_code in (413, 422, 503):
+            raise Refused(r.json().get("detail", f"refused ({r.status_code})"))
         r.raise_for_status()
         return r
 
@@ -60,3 +68,13 @@ class GatewayClient:
 
     def task(self, token: str, task_id: UUID) -> TaskStatusUpdate:
         return TaskStatusUpdate.model_validate(self._call("GET", f"/tasks/{task_id}", token).json())
+
+    def notices(self, token: str) -> list[dict[str, Any]]:
+        return self._call("GET", "/notices", token).json()
+
+    def upload_statement(self, token: str, filename: str, start: date, end: date,
+                         content: bytes) -> int:  # fmt: skip
+        body = {"filename": filename, "period_start": start.isoformat(),
+                "period_end": end.isoformat(),
+                "content_base64": base64.b64encode(content).decode()}  # fmt: skip
+        return self._call("POST", "/statements", token, json=body).json()["lines_kept"]

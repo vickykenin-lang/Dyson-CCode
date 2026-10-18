@@ -72,6 +72,7 @@ from .adapters import (
     ConversationForGateway,
     EvidenceToMemory,
     FounderInbox,
+    FounderNotices,
     GovernanceForControls,
     GovernanceForIntelligence,
     GovernanceForOrchestrator,
@@ -80,6 +81,7 @@ from .adapters import (
     MemoryForConversation,
     OrchestratorForConversation,
     QAForOrchestrator,
+    StatementsForGateway,
     TaskEventsToMemory,
     TaskStatus,
     ToolHubForOrchestrator,
@@ -425,6 +427,8 @@ class LayerA:
             _AuditEvents(self.memory, clock),
             clock=clock,
             poll_seconds=settings.poll_seconds,
+            notices=FounderNotices(self.core, self.memory, clock),
+            statements=StatementsForGateway(self.finance, clock),
         )
 
         # Direct Founder Controls: its own path, to A only. On AWS it is served by its own

@@ -1,5 +1,6 @@
 """What the Gateway reaches. Step 9 connects these to B, D and I."""
 
+from datetime import date, datetime
 from enum import StrEnum
 from typing import Protocol
 from uuid import UUID
@@ -52,3 +53,23 @@ class StatusPort(Protocol):
 
 class AuditPort(Protocol):
     def record(self, event: str, detail: dict) -> None: ...
+
+
+class Notice(Contract):
+    """Something waiting on the Founder: an open approval, a reminder or an escalation."""
+
+    at: datetime
+    kind: str  # approval | reminder
+    text: NonEmptyStr
+
+
+class NoticesPort(Protocol):
+    def notices(self) -> list[Notice]: ...
+
+
+class StatementsPort(Protocol):
+    """H's statement intake. Returns the lines kept; raises ValueError for a bad statement."""
+
+    def upload(
+        self, filename: str, period_start: date, period_end: date, content: bytes
+    ) -> int: ...

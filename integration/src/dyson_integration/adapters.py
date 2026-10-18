@@ -509,3 +509,53 @@ class HermesGatedRouter:
 
     def route(self, task_class: str) -> list[str]:
         return self._router.route(task_class)
+
+
+class FounderNotices:
+    """The Gateway's read-only view of what waits on the Founder: open approvals (acted on only
+    on Direct Founder Controls) and the reminders and escalations of the last 7 days."""
+
+    def __init__(self, core: GovernanceCore, store: MemoryStore, clock: Clock):
+        self._core, self._store, self._clock = core, store, clock
+
+    def notices(self):
+        from datetime import timedelta
+
+        from dyson_gateway.ports import Notice
+
+        now = self._clock()
+        out = [
+            Notice(
+                at=r.created_at, kind="approval", text=f"Approval waiting: {r.action_summary}"
+            )  # fmt: skip
+            for r in open_approvals(self._core, now)
+        ]
+        since = now - timedelta(days=7)
+        for e in reversed(self._store.audit_events(limit=500)):
+            if e.data.get("to") == "founder" and e.at >= since and len(out) < 20:
+                text = e.summary.removeprefix("escalation to founder: ")
+                out.append(Notice(at=e.at, kind="reminder", text=text))
+        return out
+
+
+class StatementsForGateway:
+    """The Gateway's statement upload, to H. Only the Founder's session reaches it."""
+
+    def __init__(self, finance, clock: Clock):
+        self._finance, self._clock = finance, clock
+
+    def upload(self, filename, period_start, period_end, content: bytes) -> int:
+        import hashlib
+
+        from dyson_contracts.finance import BankStatementUpload
+
+        upload = BankStatementUpload(
+            upload_id=uuid4(),
+            uploaded_by=Component.FOUNDER,
+            file_sha256=hashlib.sha256(content).hexdigest(),
+            filename=filename,
+            period_start=period_start,
+            period_end=period_end,
+            uploaded_at=self._clock(),
+        )
+        return self._finance.upload_statement(upload, content)

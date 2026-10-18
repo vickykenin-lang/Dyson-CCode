@@ -5,13 +5,18 @@
 - POST /messages hands the Founder's message to B and answers at once with an honest
   acknowledgment: accepted or approval-needed, never completed (LA-APP-04, LA-PERF-01).
 - GET /tasks/{id}/events streams the task's state until it settles (LA-G-09).
+- GET /notices lists what waits on the Founder: open approvals and reminders. Read only.
+- POST /statements hands a bank statement the Founder uploads to H (LA-VLT-01). H keeps only
+  the parsed fields, never the file (D-017).
 - There is no approve, reject, STOP, PAUSE or RESUME endpoint, and no route to Hermes.
 """
 
 import asyncio
+import base64
+import binascii
 import json
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated
 from uuid import UUID, uuid4
 
@@ -30,7 +35,16 @@ from dyson_contracts.interface import (
 from dyson_contracts.tasks import TaskState
 
 from .auth import FounderAuthenticator, SessionStore
-from .ports import AuditPort, ConversationPort, ConversationReply, StatusPort, ThreadMessage
+from .ports import (
+    AuditPort,
+    ConversationPort,
+    ConversationReply,
+    Notice,
+    NoticesPort,
+    StatementsPort,
+    StatusPort,
+    ThreadMessage,
+)
 from .ratelimit import Limits, LoginGuard, TokenBucket
 
 SETTLED = frozenset(
@@ -58,6 +72,20 @@ class MessageIn(Contract):
     transcription_uncertain: bool = False
 
 
+MAX_STATEMENT_BYTES = 2_000_000
+
+
+class StatementIn(Contract):
+    filename: NonEmptyStr = Field(max_length=200)
+    period_start: date
+    period_end: date
+    content_base64: NonEmptyStr = Field(max_length=MAX_STATEMENT_BYTES * 4 // 3 + 4)
+
+
+class StatementOut(Contract):
+    lines_kept: int
+
+
 class MessageOut(Contract):
     """The reply to a message. `acknowledgment` is set only when a task was created, and its
     contract allows only accepted or approval-needed."""
@@ -77,6 +105,8 @@ def create_app(
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     poll_seconds: float = 1.0,
     stream_seconds: float = 300.0,
+    notices: NoticesPort | None = None,
+    statements: StatementsPort | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Dyson Entry Gateway")
     bucket = TokenBucket(limits.requests_per_minute, limits.burst, clock)
@@ -152,6 +182,28 @@ def create_app(
         if update is None:
             raise HTTPException(404, "unknown task")
         return update
+
+    @app.get("/notices")
+    def founder_notices(_: Founder) -> list[Notice]:
+        return notices.notices() if notices is not None else []
+
+    @app.post("/statements")
+    def statement(body: StatementIn, _: Founder) -> StatementOut:
+        if statements is None:
+            raise HTTPException(503, "statement upload is not connected")
+        try:
+            content = base64.b64decode(body.content_base64, validate=True)
+        except (binascii.Error, ValueError):
+            raise HTTPException(422, "the file is not valid base64") from None
+        if len(content) > MAX_STATEMENT_BYTES:
+            raise HTTPException(413, "statement file is too large")
+        try:
+            kept = statements.upload(body.filename, body.period_start, body.period_end, content)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+        audit.record("statement_uploaded", {"lines": kept, "period_start": body.period_start,
+                                            "period_end": body.period_end})  # fmt: skip
+        return StatementOut(lines_kept=kept)
 
     @app.get("/tasks/{task_id}/events")
     async def events(task_id: UUID, _: Founder) -> StreamingResponse:

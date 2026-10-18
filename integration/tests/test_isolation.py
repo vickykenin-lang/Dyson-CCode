@@ -78,3 +78,26 @@ def test_hermes_in_its_own_process_reaches_only_c_and_g(layer, tmp_path):
     for path in ("/messages", "/login", "/approvals", "/control", "/finance/ledger"):
         assert edge.get(path).status_code == 404  # no Gateway, app, DFC or J on the edge
     assert app.post("/jobs", json=request.model_dump(mode="json")).status_code == 401
+
+
+def test_founder_sees_waiting_approvals_and_uploads_a_statement(layer, gateway, founder):
+    # LA-VLT-01, D-014, D-017: notices are read-only; the statement keeps parsed fields only.
+    say(gateway, founder, "Publish on T0: launch moved to Monday")  # needs an approval
+    layer.tick()
+    notices = gateway.get("/notices", headers=founder).json()
+    assert any(
+        n["kind"] == "approval" and n["text"].startswith("Approval waiting") for n in notices
+    )
+    assert gateway.get("/notices").status_code == 401  # Founder session only
+    import base64
+
+    csv = (
+        "Date,Narration,Chq./Ref.No.,Value Dt,Withdrawal Amt.,Deposit Amt.,Closing Balance\n"
+        '05/10/26,UPI-ACME-acme@okhdfc,0000345771173416,05/10/26,,"1,500.00","9,999.00"\n'
+    )
+    body = {"filename": "oct.csv", "period_start": "2026-10-01", "period_end": "2026-10-31",
+            "content_base64": base64.b64encode(csv.encode()).decode()}  # fmt: skip
+    r = gateway.post("/statements", json=body, headers=founder)
+    assert r.status_code == 200 and r.json() == {"lines_kept": 1}
+    bad = dict(body, period_end="2026-10-02")  # a line outside the stated period
+    assert gateway.post("/statements", json=bad, headers=founder).status_code == 422

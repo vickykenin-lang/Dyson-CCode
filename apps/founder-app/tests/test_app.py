@@ -152,3 +152,12 @@ def test_resubmitting_the_same_form_is_the_same_command(founder, backend):  # LA
     assert str(a.message_id) == str(b.message_id) == mid
     fresh = re.search(r"name='message_id' value='([0-9a-f-]{36})'", founder.get("/").text).group(1)
     assert fresh != mid  # each newly drawn form is a new command
+
+
+def test_statement_upload_form_is_shown_and_refusals_are_explained(founder):  # LA-VLT-01
+    page = founder.get("/").text
+    assert "action='/statement'" in page and "not PDF" in page
+    files = {"file": ("oct.csv", b"date,amount\n", "text/csv")}
+    r = founder.post("/statement", files=files,
+                     data={"period_start": "2026-10-01", "period_end": "2026-10-31"})  # fmt: skip
+    assert "Statement not accepted" in r.text  # nothing is connected behind this gateway

@@ -5,6 +5,7 @@ completed-verified with cited evidence is shown as done. An acknowledgment is sh
 "accepted, not done yet" or "waiting for your approval", never as completion (LA-APP-04).
 """
 
+from datetime import date
 from html import escape
 from typing import Annotated
 from uuid import UUID, uuid4
@@ -15,7 +16,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from dyson_contracts.interface import TaskStatusUpdate
 from dyson_contracts.tasks import TaskState
 
-from .gateway_client import GatewayClient, NotLoggedIn
+from .gateway_client import GatewayClient, NotLoggedIn, Refused
 from .voice import VoicePort, VoiceUnavailable
 
 SESSION, THREAD = "dyson_session", "dyson_thread"
@@ -61,11 +62,14 @@ def create_app(gateway: GatewayClient, voice: VoicePort, *, secure_cookies: bool
         try:
             history = gateway.thread(token, thread)
             tasks = gateway.tasks(token, thread)
+            waiting = gateway.notices(token)
         except NotLoggedIn:
             resp = HTMLResponse(_shell(_login_form("Your session ended. Please log in again.")))
             resp.delete_cookie(SESSION)
             return resp
-        html = body if body is not None else _conversation(history, tasks, notice)
+        html = (
+            body if body is not None else _notices(waiting) + _conversation(history, tasks, notice)
+        )
         resp = HTMLResponse(_shell(html, logged_in=True))
         cookie(resp, THREAD, str(thread))
         return resp
@@ -133,6 +137,29 @@ def create_app(gateway: GatewayClient, voice: VoicePort, *, secure_cookies: bool
     def voice_confirm(request: Request, text: str = Form(), message_id: str = Form("")) -> Response:
         # the Founder confirmed what was heard
         return send(request, text, voice_msg=True, message_id=message_id)
+
+    @app.post("/statement")
+    async def statement(
+        request: Request,
+        file: Annotated[UploadFile, File()],
+        period_start: Annotated[date, Form()],
+        period_end: Annotated[date, Form()],
+    ) -> Response:
+        token = request.cookies.get(SESSION)
+        if not token:
+            return RedirectResponse("/", status_code=303)
+        try:
+            name, content = file.filename or "statement.csv", await file.read()
+            kept = gateway.upload_statement(token, name, period_start, period_end, content)
+        except NotLoggedIn:
+            return page(request)
+        except Refused as exc:
+            return page(request, notice=f"Statement not accepted: {exc}")
+        return page(
+            request,
+            notice=f"Statement received: {kept} lines kept (date, amount, "
+            "direction and masked reference only). The file is not kept.",
+        )
 
     @app.get("/tasks/{task_id}/status")
     def task_status(task_id: UUID, request: Request) -> Response:
@@ -242,7 +269,25 @@ def _conversation(history: list[dict], tasks: list[TaskStatusUpdate], notice: st
         "<form method='post' action='/voice' enctype='multipart/form-data'>"
         "<input type='file' name='audio' accept='audio/*'><button>Send voice</button></form>"
         f"</section><section><h2>Tasks</h2>{rows or '<p>No tasks yet.</p>'}</section>"
+        "<section><h2>Bank statement</h2><p>CSV or delimited export from netbanking, not PDF. "
+        "Only date, amount, debit or credit and a masked reference are kept.</p>"
+        "<form method='post' action='/statement' enctype='multipart/form-data'>"
+        "<input type='file' name='file' accept='.csv,.txt,text/csv' required>"
+        "<label>From<input type='date' name='period_start' required></label>"
+        "<label>To<input type='date' name='period_end' required></label>"
+        "<button>Upload statement</button></form></section>"
         "<p>Approvals, STOP and PAUSE are on Direct Founder Controls, not in this app.</p>"
+    )
+
+
+def _notices(items: list[dict]) -> str:
+    """What waits on the Founder. Acting on it happens on Direct Founder Controls only."""
+    if not items:
+        return ""
+    rows = "".join(f"<p class='msg'>{escape(i['text'])}</p>" for i in items)
+    return (
+        f"<section class='notice'><h2>Waiting for you ({len(items)})</h2>{rows}"
+        "<p>Open Direct Founder Controls to approve or reject.</p></section>"
     )
 
 
