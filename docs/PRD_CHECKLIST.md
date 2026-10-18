@@ -5,8 +5,8 @@ Steps 1 to 9 are proven by the tests named in each step's NOTES.md (CI green). S
 
 | Status | Count |
 |---|---|
-| ✅ Done | 161 |
-| 🟡 Partial | 10 |
+| ✅ Done | 159 |
+| 🟡 Partial | 12 |
 | ⏸ Deferred | 2 |
 | ❌ Gap | 1 |
 
@@ -18,7 +18,9 @@ Steps 1 to 9 are proven by the tests named in each step's NOTES.md (CI green). S
 | LA-APP-02 | 🟡 Partial | Text accepts all three languages. Voice deferred (D-016). |
 | LA-APP-08 | ⏸ Deferred | Voice vendor benchmark deferred by the Founder (D-016). |
 | LA-RTR-07 | 🟡 Partial | Policy decided (D-017) and secrets are blocked before any model call (canary test). No filter yet stops personal or financial data the Founder types from reaching DeepSeek. |
+| LA-TOOL-02 | 🟡 Partial | In code, adapters exist only inside G and `call` is the only way to use one. The network rule that stops Hermes and D reaching tools another way is not built on AWS (same process, see LA-DEP-01). |
 | LA-MEM-05 | 🟡 Partial | PostgreSQL in use, encrypted S3 backups, restore tested, access control and retrieval tested. Attachment bytes are not yet stored in S3. |
+| LA-DASH-05 | 🟡 Partial | J's verified data API is built (GET-only, tested). The Founder-visible dashboard screens are not built; they wait for gate 8. |
 | LA-SEC-02 | 🟡 Partial | Least-privilege roles in use (`infra/iam/`). No periodic usage review scheduled yet; the deployer access key is still active. |
 | LA-SEC-07 | 🟡 Partial | Same as LA-RTR-07. Cross-Receptor isolation exists (row-level security per Receptor); only T0 runs (D-017). |
 | LA-COST-03 | 🟡 Partial | Model cost and latency measured (benchmark, `intelligence.calls`). Server CPU, RAM and task throughput not yet measured. |
@@ -167,7 +169,7 @@ Also from the Step 10 build list: Layer A's runtime secret store is still the fi
 | ID | Step | Status | Requirement | Proof |
 |---|---|---|---|---|
 | LA-TOOL-01 | 4 | ✅ Done | G shall authorize each individual tool call by checking identity and permission, Receptor scope, risk and spend limits, approval status and current STOP state. | services/toolhub/NOTES.md: `test_all_six_checks_are_evaluated_every_time`, `test_credential_must_match_the_claimed_caller`, `test_caller_must_be_allowed_for_the_tool`, `test_scope_rules`, `test_money_needs_an_approval_for_the_exact_action_used_once`, `test_spend_limits_use_g_own_spend_record`, `test_callers_cannot_declare_a_risky_tool_safe` |
-| LA-TOOL-02 | 4 | ✅ Done | G shall be the only path to any tool, API, plugin or MCP connector. Neither the Orchestrator nor Hermes has another path. | services/toolhub/NOTES.md: Adapters exist only inside G's `Catalog`, and `call` is the only way to invoke one. The network rules that stop D and Hermes from reaching tools any other way come with Step 7 (Hermes sandbox) and Step 10 (AWS). |
+| LA-TOOL-02 | 4 | 🟡 Partial | G shall be the only path to any tool, API, plugin or MCP connector. Neither the Orchestrator nor Hermes has another path. | In code, adapters exist only inside G and `call` is the only way to use one. The network rule that stops Hermes and D reaching tools another way is not built on AWS (same process, see LA-DEP-01). |
 | LA-TOOL-03 | 4 | ✅ Done | G shall keep a governed registry of APIs, plugins and MCP connectors. Nothing is callable until it has passed the Supply Chain / Integration Gate. | services/toolhub/NOTES.md: `test_unknown_or_unadmitted_tools_are_not_callable` |
 | LA-TOOL-04 | 4 | ✅ Done | G shall deny and audit any call that fails a check. First milestone: unauthorized tool execution is denied and audited. | `integration/tests/test_safety.py::test_tool_without_permission_or_outside_registry_is_denied_and_audited`. |
 | LA-TOOL-05 | 9 | ✅ Done | G shall route work to Receptors, Hermes, QA/QC and Financial Control as needed, within per-tool scope. | integration/NOTES.md: `test_g_routes_to_hermes_qa_and_finance_within_scope` |
@@ -210,7 +212,7 @@ Also from the Step 10 build list: Layer A's runtime secret store is still the fi
 | LA-DASH-02 | 6 | ✅ Done | J shall have no authority to execute actions and no write path into Core controls. | services/assurance/NOTES.md: `test_dashboard_is_read_only_and_shows_verified_data` |
 | LA-DASH-03 | 6 | ✅ Done | J shall not connect to the bank directly. | services/assurance/NOTES.md: `test_no_bank_payment_network_or_model_client_anywhere` |
 | LA-DASH-04 | 9 | ✅ Done | J shall request data from the Memory & Evidence Layer (I) read-only, and I answers with verified data. | integration/NOTES.md: `test_finance_reaches_j_only_through_verified_records_in_i` |
-| LA-DASH-05 | 6 | ✅ Done | The live, Founder-visible observability dashboard is a locked commitment. Its detailed design is deferred to its development stage. | services/assurance/NOTES.md: J's verified data API is built; the screens are deferred to gate 8 as locked. |
+| LA-DASH-05 | 6 | 🟡 Partial | The live, Founder-visible observability dashboard is a locked commitment. Its detailed design is deferred to its development stage. | J's verified data API is built (GET-only, tested). The Founder-visible dashboard screens are not built; they wait for gate 8. |
 
 ## 7.2.11 Hermes (zone 4): Isolated Hermes Runtime (Candidate Intelligence Engine)
 
