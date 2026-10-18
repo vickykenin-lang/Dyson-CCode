@@ -187,3 +187,15 @@ decisions:
     restore.sh (newest database backup and the encrypted /data backup), then tunnel.sh. The
     drill of 17 Oct 2026 rebuilt a separate server from the backups in about 8 minutes, with
     the same tasks, evidence, approvals and passkey, and ran a T0 task to completed-verified.
+- id: D-022
+  date: '2026-10-18'
+  closes: Gate 9, acceptance and production authorization
+  topic: Layer A accepted and authorized for production
+  decision: >-
+    The Founder accepts Layer A as deployed on AWS (release layer-a-5b93d04 and later docs-only
+    changes) and authorizes it as production. Accepted on this evidence: Founder login and
+    passkey step-up; commands in English, Hindi and Hinglish through DeepSeek v3.2 (D-019);
+    Test T0 tasks reaching AMD-3 stages 5 to 7 on AWS; STOP and approvals on Direct Founder
+    Controls; nightly backups with a restore test and a disaster-recovery drill (D-020, D-021);
+    the hourly spend guard. Only Test T0 runs until a real Receptor is approved (D-017). Voice
+    stays deferred (D-016) and AMD-12's automatic trigger stays off (gate 7).
