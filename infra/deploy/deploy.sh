@@ -13,7 +13,7 @@ if [ ! -d "$REL" ]; then
 fi
 cd "$REL"
 install -d -m 700 local-secrets
-for n in postgres_password db_password founder_password; do
+for n in postgres_password db_password founder_password nominee; do
   aws ssm get-parameter --region $R --name "/dyson/$n" --with-decryption \
     --query Parameter.Value --output text | tr -d '\n' > "local-secrets/$n"
   chmod 644 "local-secrets/$n"

@@ -611,12 +611,12 @@ class NomineeOutbox:
     def __init__(self, store: MemoryStore, clock: Clock):
         self._store, self._clock = store, clock
 
-    def notify(self, message: str) -> str:
+    def notify(self, message: str, delivery: str = "outbox (no channel connected)") -> str:
         self._store.audit(AuditEvent(
             event_id=uuid4(), kind=AuditKind.POLICY_DECISION, actor=Component.GOVERNANCE_CORE,
             at=self._clock(), summary=f"survival mode: nominee notice: {message}"[:500],
-            data={"delivery": "outbox (no channel connected yet)"}))  # fmt: skip
-        return "outbox"
+            data={"delivery": delivery}))  # fmt: skip
+        return delivery
 
 
 class SurvivalWatch:

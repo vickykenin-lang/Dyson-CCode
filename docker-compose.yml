@@ -2,7 +2,8 @@
 #
 #   mkdir -p local-secrets && openssl rand -hex 16 > local-secrets/postgres_password \
 #     && openssl rand -hex 16 > local-secrets/db_password \
-#     && read -s -p "Founder password: " P && printf %s "$P" > local-secrets/founder_password
+#     && read -s -p "Founder password: " P && printf %s "$P" > local-secrets/founder_password \
+#     && echo '{"email": "nominee@example.com"}' > local-secrets/nominee
 #   chmod 700 local-secrets && chmod 644 local-secrets/*   # the folder stays private to you;
 #   docker compose up --build                             # the container user must read the files
 #
@@ -44,6 +45,7 @@ services:
       DYSON_EDGE_BIND: 172.31.0.10
       DYSON_HERMES_URL: http://172.31.0.20:8095
       DYSON_HERMES_SECRETS: /hermes/secrets.json
+      DYSON_NOMINEE_FILE: /run/secrets/nominee
       DYSON_DB_NAME: dyson
       DYSON_SECRET_FILE: /data/secrets.json
       DYSON_FOUNDER_PASSWORD_FILE: /run/secrets/founder_password
@@ -56,7 +58,7 @@ services:
       DYSON_RELEASE: ${DYSON_RELEASE:-}
       AWS_SHARED_CREDENTIALS_FILE: /run/aws/credentials
       AWS_DEFAULT_REGION: ap-southeast-2
-    secrets: [postgres_password, db_password, founder_password]
+    secrets: [postgres_password, db_password, founder_password, nominee]
     volumes:
       - dyson-data:/data
       - hermes-secrets:/hermes
@@ -127,3 +129,5 @@ secrets:
     file: ./local-secrets/db_password
   founder_password:
     file: ./local-secrets/founder_password
+  nominee:  # AMD-12 nominee (from /dyson/nominee on the server; locally any {"email": ...})
+    file: ./local-secrets/nominee

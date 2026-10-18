@@ -161,3 +161,41 @@ def test_survival_mode_after_three_days_without_the_founder(layer, gateway, foun
                                    "secret": settings.founder_password})  # fmt: skip
     layer.tick()
     assert not layer.core.survival_mode()
+
+
+def test_nominee_email_goes_to_the_nominee_only_and_failures_are_recorded(layer, tmp_path):
+    # AMD-12 v1.1: one sender, one recipient; the address is never written to the audit log.
+    import json
+
+    from dyson_integration.adapters import NomineeOutbox
+    from dyson_integration.email_ses import SesNominee
+
+    nominee = tmp_path / "nominee"
+    nominee.write_text(json.dumps({"name": "N", "email": "nominee@example.com"}))
+
+    class FakeSes:
+        sent: list = []
+
+        def send_email(self, **kw):
+            self.sent.append(kw)
+            return {"MessageId": "m-1"}
+
+    ses = FakeSes()
+    sender = SesNominee(nominee, NomineeOutbox(layer.memory, layer.clock), ses)
+    assert sender.notify("Founder not seen") == "email sent (m-1)"
+    (mail,) = ses.sent
+    assert mail["FromEmailAddress"] == "Dyson <dyson@designinfra.in>"
+    assert mail["Destination"] == {"ToAddresses": ["nominee@example.com"]}
+
+    class Down:
+        def send_email(self, **kw):
+            raise ConnectionError("SES unreachable")
+
+    failed = SesNominee(nominee, NomineeOutbox(layer.memory, layer.clock), Down())
+    assert failed.notify("again") == "email failed: ConnectionError"
+    events = [e for e in layer.memory.audit_events(limit=200) if "nominee notice" in e.summary]
+    assert [e.data["delivery"] for e in events][-2:] == [
+        "email sent (m-1)",
+        "email failed: ConnectionError",
+    ]
+    assert not any("nominee@example.com" in str(e.model_dump()) for e in events)

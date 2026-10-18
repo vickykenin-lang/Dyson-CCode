@@ -60,6 +60,19 @@
       "Resource": "arn:aws:budgets::501430758577:budget/dyson-credits-100"
     },
     {
+      "Sid": "EmailTheNomineeOnly",
+      "Effect": "Allow",
+      "Action": [
+        "ses:SendEmail"
+      ],
+      "Resource": "arn:aws:ses:ap-southeast-2:501430758577:identity/*",
+      "Condition": {
+        "StringEquals": {
+          "ses:FromAddress": "dyson@designinfra.in"
+        }
+      }
+    },
+    {
       "Sid": "NeverDelete",
       "Effect": "Deny",
       "Action": [

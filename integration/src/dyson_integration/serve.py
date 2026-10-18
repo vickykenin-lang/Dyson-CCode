@@ -23,6 +23,7 @@ Environment:
   DYSON_HERMES_URL      core: where the Hermes container takes jobs
   DYSON_HERMES_SECRETS  core writes, hermes reads: Hermes's own three credentials
   DYSON_EDGE_URL        hermes: the edge Layer A serves on the Hermes network
+  DYSON_NOMINEE_FILE    the nominee's details; when set, Survival Mode notices go by email
   DYSON_BEDROCK         1 to put Amazon Bedrock behind C (role credentials from
                         AWS_SHARED_CREDENTIALS_FILE, refreshed by the host)
 """
@@ -118,6 +119,7 @@ def _settings_and_dsns(migrate: bool = True):
         environment=env.get("DYSON_ENVIRONMENT", "local"),
         release=env.get("DYSON_RELEASE") or None,
         hermes_url=env.get("DYSON_HERMES_URL") or None,
+        nominee_file=Path(env["DYSON_NOMINEE_FILE"]) if env.get("DYSON_NOMINEE_FILE") else None,
     )
     return settings, dsns
 

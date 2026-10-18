@@ -165,12 +165,18 @@ def test_canary_credential_never_leaks(layer, gateway, founder, dsns):  # LA-SEC
 
 
 BEDROCK_ADAPTER = ROOT / "integration/src/dyson_integration/bedrock_model.py"
+EMAIL_ADAPTER = ROOT / "integration/src/dyson_integration/email_ses.py"
+AWS_ADAPTERS = {  # file -> (the one client it may create, the one call it may make)
+    BEDROCK_ADAPTER.name: (BEDROCK_ADAPTER, "bedrock-runtime", "converse"),  # D-013
+    EMAIL_ADAPTER.name: (EMAIL_ADAPTER, "sesv2", "send_email"),  # AMD-12 v1.1 nominee notice
+}
 
 
-def test_the_only_aws_sdk_use_is_the_bedrock_model_client():  # LA-VLT-02, D-013
-    """boto3 stays banned everywhere except C's Bedrock adapter, and there it can only ever
-    create the Bedrock model-calling client: no payments, billing or other AWS service."""
-    tree = ast.parse(BEDROCK_ADAPTER.read_text())
+@pytest.mark.parametrize("name", sorted(AWS_ADAPTERS))
+def test_the_only_aws_sdk_uses_are_the_bedrock_and_nominee_email_clients(name):
+    # LA-VLT-02, D-013: no payments, billing or other AWS service anywhere.
+    path, client, call = AWS_ADAPTERS[name]
+    tree = ast.parse(path.read_text())
     clients = [
         n.args[0].value
         for n in ast.walk(tree)
@@ -180,7 +186,7 @@ def test_the_only_aws_sdk_use_is_the_bedrock_model_client():  # LA-VLT-02, D-013
         and n.args
         and isinstance(n.args[0], ast.Constant)
     ]
-    assert clients == ["bedrock-runtime"]
+    assert clients == [client]
     calls = {
         n.func.attr
         for n in ast.walk(tree)
@@ -190,7 +196,7 @@ def test_the_only_aws_sdk_use_is_the_bedrock_model_client():  # LA-VLT-02, D-013
         and isinstance(n.func.value.func, ast.Attribute)
         and n.func.value.func.attr == "_fresh_client"
     }
-    assert calls == {"converse"}
+    assert calls == {call}
 
 
 def test_no_bank_api_credential_or_payment_path_exists():  # LA-VLT-02
@@ -223,7 +229,7 @@ def test_no_bank_api_credential_or_payment_path_exists():  # LA-VLT-02
             )
             for n in names:
                 # The one AWS SDK use: C's Bedrock adapter (D-013), checked below.
-                if n == "boto3" and src.name == BEDROCK_ADAPTER.name:
+                if n == "boto3" and src.name in AWS_ADAPTERS:
                     continue
                 assert n.split(".")[0] not in banned, f"{src}: imports {n}"
                 assert (

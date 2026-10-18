@@ -139,6 +139,8 @@ class Settings:
     release: str | None = None
     # Set on AWS: Hermes runs in its own container at this URL (LA-DEP-01). None runs it here.
     hermes_url: str | None = None
+    # Set on AWS: the nominee's details (from /dyson/nominee); notices then go by email (SES).
+    nominee_file: Path | None = None
 
 
 CORE_SECRETS = (
@@ -466,9 +468,12 @@ class LayerA:
             timedelta(minutes=int(params["founder_reminder_interval_minutes"])),
             clock,
         )
-        self.survival = SurvivalWatch(
-            self.core, self.memory, self.inbox, NomineeOutbox(self.memory, clock), clock
-        )
+        nominee = NomineeOutbox(self.memory, clock)
+        if settings.nominee_file is not None and settings.nominee_file.exists():
+            from .email_ses import SesNominee
+
+            nominee = SesNominee(settings.nominee_file, nominee)
+        self.survival = SurvivalWatch(self.core, self.memory, self.inbox, nominee, clock)
         self.repairs = Repairs(self)
         return self
 
