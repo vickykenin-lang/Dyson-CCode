@@ -12,7 +12,7 @@
   (LA-G-06): the next model on the route answers, and B's thread lives in I.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, time
 from decimal import Decimal
 from typing import Any
@@ -60,11 +60,13 @@ class ModelRouter:
         governance: GovernancePort,
         adapters: dict[str, ModelAdapter],
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        personal: Callable[[], Iterable[tuple[str, str]]] = tuple,
     ):
         self._conn = conn
         self._gov = governance
         self._adapters = dict(adapters)  # provider -> adapter
         self._clock = clock
+        self._personal = personal  # (kind, value) Layer A holds, hidden from every model
 
     # --- governed configuration (LA-RTR-06) -------------------------------------------------
 
@@ -181,7 +183,7 @@ class ModelRouter:
         if not route:
             raise RouterError(f"no qualified model meets the acceptance bar for {task_class}")
         models = self._models()
-        redaction = Redaction()
+        redaction = Redaction(self._personal())
         outbound = redaction.request(request)
         call_id, attempts = uuid4(), []
         for n, model_id in enumerate(route, start=1):

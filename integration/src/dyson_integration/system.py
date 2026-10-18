@@ -88,6 +88,7 @@ from .adapters import (
     TaskStatus,
     ThreadsForGateway,
     ToolHubForOrchestrator,
+    nominee_details,
 )
 from .hermes_service import RemoteHermes, create_edge, hermes_job
 from .live_status import LiveStatus
@@ -379,6 +380,7 @@ class LayerA:
             GovernanceForIntelligence(self.core),
             self.models,
             clock,
+            personal=lambda: nominee_details(settings.nominee_file),
         )
         self.router_api = create_router_api(
             HermesGatedRouter(self.router, self.core),  # type: ignore[arg-type]

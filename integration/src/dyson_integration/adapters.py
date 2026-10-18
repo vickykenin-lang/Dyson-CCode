@@ -2,8 +2,10 @@
 component on the other side. No adapter adds authority; each only translates.
 """
 
+import json
 from collections.abc import Callable
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -656,3 +658,16 @@ class SurvivalWatch:
                 "only; nothing is needed from you."
             )
         return True
+
+
+def nominee_details(path: Path | None) -> list[tuple[str, str]]:
+    """The nominee's name, email and WhatsApp number from the file deploy.sh fills from
+    /dyson/nominee, for C to hide from every model (D-017). Missing or unreadable: none."""
+    if path is None:
+        return []
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return []
+    kinds = {"name": "NAME", "email": "EMAIL", "whatsapp": "PHONE", "phone": "PHONE"}
+    return [(kind, str(data[key])) for key, kind in kinds.items() if data.get(key)]

@@ -13,7 +13,8 @@ from intelligence_testkit import configure, qual, spec
 from dyson_contracts.approvals import ApprovalCategory
 from dyson_contracts.common import Component
 from dyson_intelligence.models import ChatMessage, ModelRequest
-from dyson_intelligence.router import RouterError, change_digest
+from dyson_intelligence.redaction import Redaction
+from dyson_intelligence.router import ModelRouter, RouterError, change_digest
 from dyson_intelligence.router_api import create_app
 
 B, HERMES = Component.CONVERSATION_ENGINE, Component.HERMES
@@ -223,3 +224,34 @@ def test_personal_and_financial_identifiers_never_reach_a_model(router, gov, pro
     assert "[PHONE_1]" in sent.messages[0].content and "[ACCOUNT" not in sent.messages[0].content
     # The reply gets the real values back inside Layer A.
     assert out.response.text == '{"note": "call +91 98765 43210, pay designinfra@okhdfc"}'
+
+
+def test_names_and_addresses_never_reach_a_model(conn, gov, providers, clock):
+    # D-017, LA-RTR-07, LA-SEC-07: people Layer A knows, names with a cue, and addresses
+    router = ModelRouter(conn, gov, providers, clock, personal=lambda: [("NAME", "Neha Gautam")])
+    configure(router, gov, "chat", [("m", "alpha", {})])
+    text = ("Neha ko batao. Mera naam Arjun Mehta hai. Mr. Ravi Kumar ka address: Flat 4,"
+            " Green Park, New Delhi 110016; Sharma ji se milo; श्री राम शर्मा;"
+            " tally 4 and 15 on T0")  # fmt: skip
+    providers["alpha"].answers = ['{"to": "[NAME_1]", "at": "[ADDRESS_1]"}']
+    out = router.complete(B, "chat", ask(text))
+    _, sent = providers["alpha"].requests[-1]
+    hidden = ["Neha", "Gautam", "Arjun", "Mehta", "Ravi Kumar", "Flat 4", "110016", "Sharma",
+              "राम शर्मा"]  # fmt: skip
+    for value in hidden:
+        assert value not in sent.messages[0].content, value
+    assert "tally 4 and 15 on T0" in sent.messages[0].content  # the request itself still goes
+    assert (
+        "Mr. [NAME_" in sent.messages[0].content
+        and "address: [ADDRESS_1]" in sent.messages[0].content
+    )
+    assert out.response.text == '{"to": "Neha", "at": "Flat 4, Green Park, New Delhi 110016"}'
+
+
+@pytest.mark.parametrize("text", [
+    "Tally 4 and 4 on T0", "T0 par 7 aur 8 jod do", "Aap kaun ho? Tumhara naam kya hai",
+    "Haan ji, theek hai", "Survival Mode kab chalu hoga? Dyson ko Hermes se research karwao",
+    "I am ready", "Tally 100000 and 5 on T0",
+])  # fmt: skip
+def test_everyday_text_reaches_the_model_unchanged(text):  # LA-RTR-07: no needless hiding
+    assert Redaction().text(text) == text

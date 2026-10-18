@@ -227,3 +227,18 @@ def test_founder_dashboard_shows_every_block_live_and_cannot_act(layer, gateway,
     assert wires[("vault", "H")]["n"] == wires[("G", "hermes")]["n"] == 0  # nothing crossed
     assert gateway.get("/dashboard").status_code == 401  # Founder session only
     assert gateway.post("/dashboard", headers=founder).status_code == 405  # read only
+
+
+def test_the_nominee_never_reaches_a_model(layer, gateway, founder, settings, tmp_path):
+    # D-017: the nominee's details stay in Layer A even when the Founder writes about them
+    import json
+
+    nominee = tmp_path / "nominee"
+    nominee.write_text(json.dumps({"name": "Neha Gautam", "email": "n@example.com",
+                                   "whatsapp": "9988776655"}))  # fmt: skip
+    settings.nominee_file = nominee
+    say(gateway, founder, "Neha ko n@example.com par likho, ya 9988776655 par; Gautam ji ko bhi")
+    prompts = [p for m in layer.models.values() for p in m.prompts]
+    assert prompts
+    for value in ("Neha", "Gautam", "n@example.com", "9988776655"):
+        assert not any(value in p for p in prompts), value
