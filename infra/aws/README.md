@@ -37,6 +37,7 @@ Releases are deployed with `../deploy/deploy.sh` through Systems Manager; the on
 - 18 Oct 2026: the Founder app shows what waits on the Founder (open approvals, last 7 days' reminders and escalations) and takes a CSV bank statement for H (`layer-a-502c94d`); checked live after login.
 - 18 Oct 2026: AMD-12 v1.1 live (`layer-a-634962a`) after the Founder approved amendment f4d18570: Survival Mode after 72 hours without Founder presence. Checked live: register at 1.1 in I, D-023 in I, last presence 16:58 UTC (the Founder's approval), Survival Mode off. Nominee notices go to I's outbox until an email channel is connected. Server-side test logins as the Founder count as presence, so none are made any more.
 - 18 Oct 2026: conversations can be archived and restored (D-023, `layer-a-40bcdb8`).
+- 18 Oct 2026: nominee email live (`layer-a-8a7ef2b`). SES identity `designinfra.in` verified with Easy DKIM (3 CNAMEs in Cloudflare, DNS only); the duplicate DMARC record was removed, the existing `p=reject` one kept. The server role may send only from `dyson@designinfra.in`. A one-time test notice to the nominee was accepted by SES (`010801a15021f74e-f7e8b846-3618-471f-abe4-c12f5133577b-000000`).
 
 Still open: a backup passkey (the Founder will add it later), deleting the deployer's access key (`../iam/README.md`), how deletion on request works in an append-only memory (Founder decision), attachment bytes in S3 (no upload path uses attachments yet), and the runtime secret store in Parameter Store (needs a one-time IAM change).
 
