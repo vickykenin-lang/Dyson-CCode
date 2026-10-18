@@ -70,6 +70,7 @@ from .adapters import (
     AuditToMemory,
     CatalogForConversation,
     ConversationForGateway,
+    DashboardForGateway,
     EvidenceToMemory,
     FounderInbox,
     FounderNotices,
@@ -435,6 +436,7 @@ class LayerA:
             notices=FounderNotices(self.core, self.memory, clock),
             statements=StatementsForGateway(self.finance, clock),
             threads=ThreadsForGateway(self.memory, dsns["integration"], clock),
+            dashboard=DashboardForGateway(self.dashboard, self.core, self.router, clock),
         )
 
         # Direct Founder Controls: its own path, to A only. On AWS it is served by its own

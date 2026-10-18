@@ -5,8 +5,8 @@ Steps 1 to 9 are proven by the tests named in each step's NOTES.md (CI green). S
 
 | Status | Count |
 |---|---|
-| ✅ Done | 165 |
-| 🟡 Partial | 7 |
+| ✅ Done | 166 |
+| 🟡 Partial | 6 |
 | ⏸ Deferred | 2 |
 | ❌ Gap | 0 |
 
@@ -19,7 +19,6 @@ Steps 1 to 9 are proven by the tests named in each step's NOTES.md (CI green). S
 | LA-APP-08 | ⏸ Deferred | Voice vendor benchmark deferred by the Founder (D-016). |
 | LA-RTR-07 | 🟡 Partial | C replaces email, UPI, PAN, IFSC, card, Aadhaar, mobile and other 9+ digit numbers with placeholders before any model call and restores them inside Layer A (`redaction.py`, `test_personal_and_financial_identifiers_never_reach_a_model`). Names and free-text addresses are not detected yet. |
 | LA-MEM-05 | 🟡 Partial | PostgreSQL in use, encrypted S3 backups, restore tested, access control and retrieval tested. Attachment bytes are not yet stored in S3. |
-| LA-DASH-05 | 🟡 Partial | J's verified data API is built (GET-only, tested). The Founder-visible dashboard screens are not built; they wait for gate 8. |
 | LA-SEC-02 | 🟡 Partial | Least-privilege roles in use (`infra/iam/`). Monthly review defined (`infra/iam/REVIEW.md`, `tools/iam_review.sh`); first review 18 Oct 2026: the server role matches the repo. The users-and-keys step needs the Founder (no Dyson identity can read IAM users), and the deployer key is still active. |
 | LA-SEC-07 | 🟡 Partial | Same filter as LA-RTR-07 (names and addresses not yet detected). Cross-Receptor isolation exists (row-level security per Receptor); only T0 runs (D-017). |
 | LA-PERF-02 | ⏸ Deferred | Voice thresholds deferred with voice (D-016). |
@@ -206,7 +205,7 @@ Also from the Step 10 build list: Layer A's runtime secret store is still the fi
 | LA-DASH-02 | 6 | ✅ Done | J shall have no authority to execute actions and no write path into Core controls. | services/assurance/NOTES.md: `test_dashboard_is_read_only_and_shows_verified_data` |
 | LA-DASH-03 | 6 | ✅ Done | J shall not connect to the bank directly. | services/assurance/NOTES.md: `test_no_bank_payment_network_or_model_client_anywhere` |
 | LA-DASH-04 | 9 | ✅ Done | J shall request data from the Memory & Evidence Layer (I) read-only, and I answers with verified data. | integration/NOTES.md: `test_finance_reaches_j_only_through_verified_records_in_i` |
-| LA-DASH-05 | 6 | 🟡 Partial | The live, Founder-visible observability dashboard is a locked commitment. Its detailed design is deferred to its development stage. | J's verified data API is built (GET-only, tested). The Founder-visible dashboard screens are not built; they wait for gate 8. |
+| LA-DASH-05 | 6 | ✅ Done | The live, Founder-visible observability dashboard is a locked commitment. Its detailed design is deferred to its development stage. | Founder dashboard at /dashboard in the app (gate 8, 18 Oct 2026): system state and Survival Mode, model route and spend, verified money by Receptor with claims kept apart, bank-verified receipts, Receptor health, QA and alerts; read only, refreshes every minute. `test_founder_dashboard_shows_verified_state_and_cannot_act`. |
 
 ## 7.2.11 Hermes (zone 4): Isolated Hermes Runtime (Candidate Intelligence Engine)
 

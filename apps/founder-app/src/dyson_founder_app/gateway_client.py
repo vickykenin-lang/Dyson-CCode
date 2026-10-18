@@ -88,3 +88,6 @@ class GatewayClient:
 
     def restore(self, token: str, thread_id: UUID) -> None:
         self._call("POST", f"/threads/{thread_id}/restore", token)
+
+    def dashboard(self, token: str) -> dict[str, Any]:
+        return self._call("GET", "/dashboard", token).json()

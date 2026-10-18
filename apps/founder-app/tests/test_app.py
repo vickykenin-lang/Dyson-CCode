@@ -168,3 +168,12 @@ def test_conversations_can_be_archived_never_deleted(founder):  # D-023
     assert "Archive this conversation" in page and "Nothing is ever deleted" in page
     assert "delete" not in page.lower().replace("nothing was deleted", "").replace(
         "nothing is ever deleted", "")  # fmt: skip
+
+
+def test_dashboard_page_is_read_only_and_explains_when_unavailable(founder):  # gate 8
+    page = founder.get("/").text
+    assert "href='/dashboard'" in page
+    r = founder.get("/dashboard")
+    assert (
+        "Dashboard unavailable" in r.text and "<form method='post' action='/approve" not in r.text
+    )

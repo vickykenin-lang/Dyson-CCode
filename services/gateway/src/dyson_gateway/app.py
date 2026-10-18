@@ -5,6 +5,8 @@
 - POST /messages hands the Founder's message to B and answers at once with an honest
   acknowledgment: accepted or approval-needed, never completed (LA-APP-04, LA-PERF-01).
 - GET /tasks/{id}/events streams the task's state until it settles (LA-G-09).
+- GET /dashboard is the Founder's read-only dashboard data (gate 8): J's verified figures and the
+  system's state. Nothing on it can act.
 - GET /notices lists what waits on the Founder: open approvals and reminders. Read only.
 - GET /threads lists conversations; POST /threads/{id}/archive and /restore move one in or out
   of the archive. There is no delete: nothing the Founder said is ever removed (D-023).
@@ -41,6 +43,7 @@ from .ports import (
     AuditPort,
     ConversationPort,
     ConversationReply,
+    DashboardPort,
     Notice,
     NoticesPort,
     StatementsPort,
@@ -112,6 +115,7 @@ def create_app(
     notices: NoticesPort | None = None,
     statements: StatementsPort | None = None,
     threads: ThreadsPort | None = None,
+    dashboard: DashboardPort | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Dyson Entry Gateway")
     bucket = TokenBucket(limits.requests_per_minute, limits.burst, clock)
@@ -205,6 +209,12 @@ def create_app(
         if update is None:
             raise HTTPException(404, "unknown task")
         return update
+
+    @app.get("/dashboard")
+    def founder_dashboard(_: Founder) -> dict:
+        if dashboard is None:
+            raise HTTPException(503, "the dashboard is not connected")
+        return dashboard.snapshot()
 
     @app.get("/notices")
     def founder_notices(_: Founder) -> list[Notice]:

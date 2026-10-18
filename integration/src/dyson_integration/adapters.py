@@ -656,3 +656,42 @@ class SurvivalWatch:
                 "only; nothing is needed from you."
             )
         return True
+
+
+class DashboardForGateway:
+    """Gate 8: the Founder dashboard's data. J's figures come through J's own GET-only API;
+    A's control and Survival state and C's route and spend are read, never changed."""
+
+    def __init__(self, j_app, core: GovernanceCore, router, clock: Clock):
+        from fastapi.testclient import TestClient
+
+        self._j, self._core, self._router, self._clock = TestClient(j_app), core, router, clock
+
+    def _get(self, path: str):
+        r = self._j.get(path)
+        r.raise_for_status()
+        return r.json()
+
+    def snapshot(self) -> dict:
+        from dyson_intelligence.conversation import TASK_CLASS
+
+        models = []
+        for task_class in (TASK_CLASS,):
+            try:
+                route = self._router.route(task_class)
+                spent = str(self._router.spent_today(task_class, "USD"))
+            except Exception as exc:  # shown, never hidden
+                route, spent = [], f"unavailable ({type(exc).__name__})"
+            models.append({"task_class": task_class, "route": route, "spent_today_usd": spent})
+        return {
+            "as_of": self._clock().isoformat(),
+            "control": self._core.effective_mode(None).value,
+            "survival_mode": self._core.survival_mode(),
+            "models": models,
+            "ledger": self._get("/finance/ledger"),
+            "reconciliation": self._get("/finance/reconciliation"),
+            "receipts": self._get("/finance/receipts")[-10:],
+            "health": self._get("/health"),
+            "qa": self._get("/qa/summary"),
+            "alerts": self._get("/alerts")[-10:],
+        }

@@ -88,3 +88,9 @@ class ThreadsPort(Protocol):
     def summaries(self, archived: bool) -> list[ThreadSummary]: ...
 
     def set_archived(self, thread_id: UUID, archived: bool) -> None: ...
+
+
+class DashboardPort(Protocol):
+    """J's verified view plus A's and C's state, read only (LA-DASH-01, LA-DASH-02)."""
+
+    def snapshot(self) -> dict: ...
