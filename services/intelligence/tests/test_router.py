@@ -196,3 +196,30 @@ def test_no_model_vendor_sdk_or_raw_network_client_anywhere():  # LA-G-06, LA-RT
             )  # fmt: skip
             for name in names:
                 assert name.split(".")[0] not in forbidden, f"{path.name} imports {name}"
+
+
+PERSONAL = {
+    "phone": "+91 98765 43210",
+    "email": "vicky.k@example.com",
+    "upi": "designinfra@okhdfc",
+    "pan": "ABCDE1234F",
+    "ifsc": "HDFC0001234",
+    "card": "4111 1111 1111 1111",
+    "aadhaar": "2345 6789 0123",
+    "account": "50100123456789",
+}
+
+
+def test_personal_and_financial_identifiers_never_reach_a_model(router, gov, providers):
+    # D-017, LA-RTR-07, LA-SEC-07
+    configure(router, gov, "chat", [("m", "alpha", {})])
+    text = "Note for T0: " + "; ".join(f"{k} {v}" for k, v in PERSONAL.items()) + "; tally 4 and 15"
+    providers["alpha"].answers = ['{"note": "call [PHONE_1], pay [UPI_1]"}']
+    out = router.complete(B, "chat", ask(text))
+    _, sent = providers["alpha"].requests[-1]
+    for value in PERSONAL.values():
+        assert value not in sent.messages[0].content
+    assert "tally 4 and 15" in sent.messages[0].content  # ordinary numbers still go
+    assert "[PHONE_1]" in sent.messages[0].content and "[ACCOUNT" not in sent.messages[0].content
+    # The reply gets the real values back inside Layer A.
+    assert out.response.text == '{"note": "call +91 98765 43210, pay designinfra@okhdfc"}'

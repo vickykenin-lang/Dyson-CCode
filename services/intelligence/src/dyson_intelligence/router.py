@@ -6,6 +6,8 @@
   cheapest first; the rest of the route is the tested fallback (LA-RTR-02, LA-RTR-04).
 - Every attempt reserves its worst-case cost against the approved daily budget before the model
   is called, and the per-call token limit is enforced (LA-RTR-05).
+- Personal and financial identifiers are replaced by placeholders before any model sees them,
+  and put back into the reply inside Layer A (D-017, LA-RTR-07; `redaction.py`).
 - C keeps no task state and no memory. Losing a provider loses nothing but that provider
   (LA-G-06): the next model on the route answers, and B's thread lives in I.
 """
@@ -35,6 +37,7 @@ from .models import (
     RoutedResponse,
 )
 from .ports import GovernancePort, ModelAdapter
+from .redaction import Redaction
 
 # Who may ask C for a model. D, G, F, H and the Receptors have no reason to; A must not use one.
 CALLERS = frozenset({Component.CONVERSATION_ENGINE, Component.HERMES})
@@ -178,6 +181,8 @@ class ModelRouter:
         if not route:
             raise RouterError(f"no qualified model meets the acceptance bar for {task_class}")
         models = self._models()
+        redaction = Redaction()
+        outbound = redaction.request(request)
         call_id, attempts = uuid4(), []
         for n, model_id in enumerate(route, start=1):
             spec = models[model_id]
@@ -191,7 +196,7 @@ class ModelRouter:
             try:
                 if adapter is None:
                     raise RouterError(f"no adapter for provider {spec.provider}")
-                response = adapter.complete(request, model_id)
+                response = adapter.complete(outbound, model_id)
                 if response.output_tokens > request.max_output_tokens:
                     raise RouterError("the model returned more tokens than allowed")
             except Exception as exc:  # any provider failure moves on to the fallback
@@ -204,6 +209,7 @@ class ModelRouter:
             cost = _cost(spec, response.input_tokens, response.output_tokens)
             self._settle(attempt_id, call_id, n, caller, task_class, spec, "ok", response, cost, "")
             attempts.append(Attempt(model_id=model_id, ok=True))
+            response = response.model_copy(update={"text": redaction.restore(response.text)})
             return RoutedResponse(call_id=call_id, model_id=model_id, response=response, cost=cost,
                                   currency=spec.currency, attempts=tuple(attempts))  # fmt: skip
         raise RouterError(f"every model on the route failed: {[a.error for a in attempts]}")
