@@ -220,6 +220,8 @@ class ConversationEngine:
             "and say when an answer may be out of date; you cannot look anything up. For recent",
             "events, say what you knew when you were trained and that it may since have changed;",
             "do not refuse only because you cannot check.",
+            "Nothing is ever deleted: if the Founder asks to delete a conversation or data, answer",
+            "that it can be archived with 'Archive this conversation' and restored any time.",
             f"Today is {self._clock():%A %d %B %Y}, {self._clock():%H:%M} UTC.",
             "",
             "Approved constitutional rules you work under:",

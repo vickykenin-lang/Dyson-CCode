@@ -84,6 +84,18 @@ class MemoryStore:
             ).fetchall()
         return [_message(r) for r in rows]
 
+    def thread_summaries(self, limit: int = 200) -> list[dict]:
+        """Each thread with its first Founder message and its last activity, newest first."""
+        with self._tx() as c:
+            return c.execute(
+                "SELECT t.thread_id, max(m.sent_at) AS last_at,"
+                " (array_agg(m.body ORDER BY m.sent_at, m.seq)"
+                "    FILTER (WHERE m.participant = 'founder'))[1] AS first_line"
+                " FROM memory.threads t JOIN memory.messages m USING (thread_id)"
+                " GROUP BY t.thread_id ORDER BY last_at DESC LIMIT %s",
+                [limit],
+            ).fetchall()
+
     def search_messages(self, query: str, limit: int = 20) -> list[MessageHit]:
         with self._tx() as c:
             rows = c.execute(

@@ -101,3 +101,25 @@ def test_founder_sees_waiting_approvals_and_uploads_a_statement(layer, gateway, 
     assert r.status_code == 200 and r.json() == {"lines_kept": 1}
     bad = dict(body, period_end="2026-10-02")  # a line outside the stated period
     assert gateway.post("/statements", json=bad, headers=founder).status_code == 422
+
+
+def test_a_conversation_is_archived_and_restored_never_deleted(layer, gateway, founder, dsns):
+    # D-023
+    from uuid import uuid4 as new_id
+
+    import psycopg
+    import pytest
+
+    thread = new_id()
+    say(gateway, founder, "Tally 6 and 7 on T0", thread)
+    listed = lambda archived: [t["thread_id"] for t in gateway.get(  # noqa: E731
+        f"/threads?archived={str(archived).lower()}", headers=founder).json()]  # fmt: skip
+    assert str(thread) in listed(False)
+    assert gateway.post(f"/threads/{thread}/archive", headers=founder).status_code == 204
+    assert str(thread) in listed(True) and str(thread) not in listed(False)
+    assert gateway.get(f"/threads/{thread}", headers=founder).json()  # still all there
+    assert gateway.post(f"/threads/{thread}/restore", headers=founder).status_code == 204
+    assert str(thread) in listed(False)
+    assert gateway.delete(f"/threads/{thread}", headers=founder).status_code == 405  # no delete
+    with psycopg.connect(dsns["admin"]) as c, pytest.raises(psycopg.Error):
+        c.execute("DELETE FROM integration.thread_archive")  # the archive log is append-only

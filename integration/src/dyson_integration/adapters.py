@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 import psycopg
 from psycopg.errors import UniqueViolation
+from psycopg.rows import dict_row
 
 from dyson_assurance.qa import QAController
 from dyson_contracts.approvals import ApprovalCategory, ApprovalDecision, ApprovalRequest
@@ -559,3 +560,42 @@ class StatementsForGateway:
             uploaded_at=self._clock(),
         )
         return self._finance.upload_statement(upload, content)
+
+
+class ThreadsForGateway:
+    """Conversations for the app. Archiving is a row in integration.thread_archive; the latest row
+    per thread decides. Nothing is deleted (D-023)."""
+
+    def __init__(self, store: MemoryStore, integ_dsn: str, clock: Clock):
+        self._store, self._dsn, self._clock = store, integ_dsn, clock
+
+    def _archived(self) -> set[UUID]:
+        with psycopg.connect(self._dsn, row_factory=dict_row) as c:
+            rows = c.execute(
+                "SELECT DISTINCT ON (thread_id) thread_id, archived FROM integration.thread_archive"
+                " ORDER BY thread_id, seq DESC"
+            ).fetchall()
+        return {r["thread_id"] for r in rows if r["archived"]}
+
+    def summaries(self, archived: bool):
+        from dyson_gateway.ports import ThreadSummary
+
+        hidden = self._archived()
+        return [
+            ThreadSummary(
+                thread_id=r["thread_id"],
+                title=(r["first_line"] or "Conversation")[:80],
+                last_at=r["last_at"],
+                archived=r["thread_id"] in hidden,
+            )  # fmt: skip
+            for r in self._store.thread_summaries()
+            if (r["thread_id"] in hidden) == archived
+        ]
+
+    def set_archived(self, thread_id: UUID, archived: bool) -> None:
+        with psycopg.connect(self._dsn, autocommit=True) as c:
+            c.execute(
+                "INSERT INTO integration.thread_archive (thread_id, archived, at)"
+                " VALUES (%s, %s, %s)",
+                [thread_id, archived, self._clock()],
+            )

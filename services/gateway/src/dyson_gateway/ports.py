@@ -73,3 +73,18 @@ class StatementsPort(Protocol):
     def upload(
         self, filename: str, period_start: date, period_end: date, content: bytes
     ) -> int: ...
+
+
+class ThreadSummary(Contract):
+    thread_id: UUID
+    title: str
+    last_at: datetime
+    archived: bool
+
+
+class ThreadsPort(Protocol):
+    """Conversations, open or archived. Nothing is ever deleted (D-023)."""
+
+    def summaries(self, archived: bool) -> list[ThreadSummary]: ...
+
+    def set_archived(self, thread_id: UUID, archived: bool) -> None: ...

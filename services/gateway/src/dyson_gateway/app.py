@@ -6,6 +6,8 @@
   acknowledgment: accepted or approval-needed, never completed (LA-APP-04, LA-PERF-01).
 - GET /tasks/{id}/events streams the task's state until it settles (LA-G-09).
 - GET /notices lists what waits on the Founder: open approvals and reminders. Read only.
+- GET /threads lists conversations; POST /threads/{id}/archive and /restore move one in or out
+  of the archive. There is no delete: nothing the Founder said is ever removed (D-023).
 - POST /statements hands a bank statement the Founder uploads to H (LA-VLT-01). H keeps only
   the parsed fields, never the file (D-017).
 - There is no approve, reject, STOP, PAUSE or RESUME endpoint, and no route to Hermes.
@@ -44,6 +46,8 @@ from .ports import (
     StatementsPort,
     StatusPort,
     ThreadMessage,
+    ThreadsPort,
+    ThreadSummary,
 )
 from .ratelimit import Limits, LoginGuard, TokenBucket
 
@@ -107,6 +111,7 @@ def create_app(
     stream_seconds: float = 300.0,
     notices: NoticesPort | None = None,
     statements: StatementsPort | None = None,
+    threads: ThreadsPort | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Dyson Entry Gateway")
     bucket = TokenBucket(limits.requests_per_minute, limits.burst, clock)
@@ -167,6 +172,24 @@ def create_app(
         ):
             ack = CommandAcknowledgment(task_id=reply.task_id, state=reply.task_state, at=clock())
         return MessageOut(message_id=msg.message_id, reply=reply, acknowledgment=ack)
+
+    @app.get("/threads")
+    def thread_list(_: Founder, archived: bool = False) -> list[ThreadSummary]:
+        return threads.summaries(archived) if threads is not None else []
+
+    @app.post("/threads/{thread_id}/archive", status_code=204)
+    def archive(thread_id: UUID, _: Founder) -> None:
+        if threads is None:
+            raise HTTPException(503, "the archive is not connected")
+        threads.set_archived(thread_id, True)
+        audit.record("thread_archived", {"thread_id": thread_id})
+
+    @app.post("/threads/{thread_id}/restore", status_code=204)
+    def restore(thread_id: UUID, _: Founder) -> None:
+        if threads is None:
+            raise HTTPException(503, "the archive is not connected")
+        threads.set_archived(thread_id, False)
+        audit.record("thread_restored", {"thread_id": thread_id})
 
     @app.get("/threads/{thread_id}")
     def thread(thread_id: UUID, _: Founder, limit: int = 100) -> list[ThreadMessage]:

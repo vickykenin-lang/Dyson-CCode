@@ -63,19 +63,33 @@ def create_app(gateway: GatewayClient, voice: VoicePort, *, secure_cookies: bool
             history = gateway.thread(token, thread)
             tasks = gateway.tasks(token, thread)
             waiting = gateway.notices(token)
+            open_threads = gateway.threads(token)
+            archived = gateway.threads(token, archived=True)
         except NotLoggedIn:
             resp = HTMLResponse(_shell(_login_form("Your session ended. Please log in again.")))
             resp.delete_cookie(SESSION)
             return resp
         html = (
-            body if body is not None else _notices(waiting) + _conversation(history, tasks, notice)
+            body
+            if body is not None
+            else (
+                _notices(waiting)
+                + _conversation(history, tasks, notice)
+                + _threads(open_threads, archived, thread)
+            )
         )
         resp = HTMLResponse(_shell(html, logged_in=True))
         cookie(resp, THREAD, str(thread))
         return resp
 
     @app.get("/", response_class=HTMLResponse)
-    def home(request: Request) -> Response:
+    def home(request: Request, notice: str = "") -> Response:
+        if notice == "archived":
+            return page(
+                request,
+                notice="Conversation archived. Nothing was deleted; it is under "
+                "Archived conversations.",
+            )
         return page(request)
 
     @app.post("/login")
@@ -137,6 +151,41 @@ def create_app(gateway: GatewayClient, voice: VoicePort, *, secure_cookies: bool
     def voice_confirm(request: Request, text: str = Form(), message_id: str = Form("")) -> Response:
         # the Founder confirmed what was heard
         return send(request, text, voice_msg=True, message_id=message_id)
+
+    def switch(thread: UUID, notice: str = "") -> Response:
+        resp = RedirectResponse("/" + (f"?notice={notice}" if notice else ""), status_code=303)
+        cookie(resp, THREAD, str(thread))
+        return resp
+
+    @app.post("/new")
+    def new_conversation(request: Request) -> Response:
+        return switch(uuid4())
+
+    @app.post("/archive")
+    def archive(request: Request) -> Response:
+        token = request.cookies.get(SESSION)
+        if not token:
+            return RedirectResponse("/", status_code=303)
+        try:
+            gateway.archive(token, thread_of(request))
+        except NotLoggedIn:
+            return page(request)
+        return switch(uuid4(), "archived")
+
+    @app.post("/open/{thread_id}")
+    def open_thread(thread_id: UUID, request: Request) -> Response:
+        return switch(thread_id)
+
+    @app.post("/restore/{thread_id}")
+    def restore(thread_id: UUID, request: Request) -> Response:
+        token = request.cookies.get(SESSION)
+        if not token:
+            return RedirectResponse("/", status_code=303)
+        try:
+            gateway.restore(token, thread_id)
+        except NotLoggedIn:
+            return page(request)
+        return switch(thread_id)
 
     @app.post("/statement")
     async def statement(
@@ -277,6 +326,29 @@ def _conversation(history: list[dict], tasks: list[TaskStatusUpdate], notice: st
         "<label>To<input type='date' name='period_end' required></label>"
         "<button>Upload statement</button></form></section>"
         "<p>Approvals, STOP and PAUSE are on Direct Founder Controls, not in this app.</p>"
+    )
+
+
+def _threads(open_threads: list[dict], archived: list[dict], current: UUID) -> str:
+    """Conversations: open ones and the archive. There is no delete (D-023)."""
+
+    def row(t: dict, action: str, label: str) -> str:
+        here = " (this one)" if t["thread_id"] == str(current) else ""
+        return (
+            f"<div class='task'><span>{escape(t['title'])}{here}</span>"
+            f"<form method='post' action='/{action}/{t['thread_id']}'><button>{label}</button>"
+            "</form></div>"
+        )
+
+    opened = "".join(row(t, "open", "Open") for t in open_threads)
+    stored = "".join(row(t, "restore", "Restore") for t in archived)
+    return (
+        "<section><h2>Conversations</h2>"
+        "<form method='post' action='/new'><button>New conversation</button></form>"
+        "<form method='post' action='/archive'><button>Archive this conversation</button></form>"
+        f"{opened or '<p>No other conversations.</p>'}"
+        f"<h3>Archived conversations</h3>{stored or '<p>None archived.</p>'}"
+        "<p>Nothing is ever deleted; archived conversations can be restored.</p></section>"
     )
 
 

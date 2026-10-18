@@ -84,6 +84,7 @@ from .adapters import (
     StatementsForGateway,
     TaskEventsToMemory,
     TaskStatus,
+    ThreadsForGateway,
     ToolHubForOrchestrator,
 )
 from .hermes_service import RemoteHermes, create_edge, hermes_job
@@ -429,6 +430,7 @@ class LayerA:
             poll_seconds=settings.poll_seconds,
             notices=FounderNotices(self.core, self.memory, clock),
             statements=StatementsForGateway(self.finance, clock),
+            threads=ThreadsForGateway(self.memory, dsns["integration"], clock),
         )
 
         # Direct Founder Controls: its own path, to A only. On AWS it is served by its own

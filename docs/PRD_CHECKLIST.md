@@ -5,8 +5,8 @@ Steps 1 to 9 are proven by the tests named in each step's NOTES.md (CI green). S
 
 | Status | Count |
 |---|---|
-| ✅ Done | 164 |
-| 🟡 Partial | 8 |
+| ✅ Done | 165 |
+| 🟡 Partial | 7 |
 | ⏸ Deferred | 2 |
 | ❌ Gap | 0 |
 
@@ -23,7 +23,6 @@ Steps 1 to 9 are proven by the tests named in each step's NOTES.md (CI green). S
 | LA-SEC-02 | 🟡 Partial | Least-privilege roles in use (`infra/iam/`). Monthly review defined (`infra/iam/REVIEW.md`, `tools/iam_review.sh`); first review 18 Oct 2026: the server role matches the repo. The users-and-keys step needs the Founder (no Dyson identity can read IAM users), and the deployer key is still active. |
 | LA-SEC-07 | 🟡 Partial | Same filter as LA-RTR-07 (names and addresses not yet detected). Cross-Receptor isolation exists (row-level security per Receptor); only T0 runs (D-017). |
 | LA-PERF-02 | ⏸ Deferred | Voice thresholds deferred with voice (D-016). |
-| LA-PRIV-01 | 🟡 Partial | Policy approved (D-017). No in-app deletion control yet; deleting on request is done by hand. |
 
 Also from the Step 10 build list: Layer A's runtime secret store is still the file in `/data` (backed up encrypted); deploy-time secrets are in Parameter Store, but the AWS secret store behind the secret-store interface is not built.
 
@@ -293,7 +292,7 @@ Also from the Step 10 build list: Layer A's runtime secret store is still the fi
 | LA-PERF-01 | 8 | ✅ Done | Command acknowledgment shall be fast and honest. Completion latency is not promised. | apps/founder-app/NOTES.md: `test_acknowledgment_is_honest_and_immediate`, `test_acknowledgment_is_immediate_and_never_completion`, `test_status_streams_until_verified` |
 | LA-PERF-02 | 10 | ⏸ Deferred | Acceptable spoken-response latency and Hindi / Hinglish quality thresholds shall be set by benchmark before a voice vendor is chosen (gate 5). | Voice thresholds deferred with voice (D-016). |
 | LA-PERF-03 | 9 | ✅ Done | Task status shall stream continuously while a task runs. | integration/NOTES.md: `test_status_streams_while_the_task_runs` |
-| LA-PRIV-01 | 10 | 🟡 Partial | Retention period, deletion controls, voice audio retention and data sharing shall be approved as implementation-level policy (gate 6). | Policy approved (D-017). No in-app deletion control yet; deleting on request is done by hand. |
+| LA-PRIV-01 | 10 | ✅ Done | Retention period, deletion controls, voice audio retention and data sharing shall be approved as implementation-level policy (gate 6). | D-017 with D-023: data is kept permanently and never deleted; a conversation the Founder no longer wants in view is archived and can be restored (app: Archive / Restore; append-only `integration.thread_archive`; `test_a_conversation_is_archived_and_restored_never_deleted`). No voice audio is stored; no data is shared beyond D-017. |
 | LA-PRIV-02 | 10 | ✅ Done | Personal-data classification shall be defined before real data is used (gate 6). | Classification decided in D-017 before real data. |
 | LA-PRIV-03 | 2 | ✅ Done | Existing ChatGPT conversations shall not migrate automatically. Any import needs an explicit, separately approved data transfer. | services/memory/NOTES.md: `test_no_automatic_chatgpt_import` |
 

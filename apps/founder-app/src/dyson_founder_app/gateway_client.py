@@ -78,3 +78,13 @@ class GatewayClient:
                 "period_end": end.isoformat(),
                 "content_base64": base64.b64encode(content).decode()}  # fmt: skip
         return self._call("POST", "/statements", token, json=body).json()["lines_kept"]
+
+    def threads(self, token: str, archived: bool = False) -> list[dict[str, Any]]:
+        flag = "true" if archived else "false"
+        return self._call("GET", f"/threads?archived={flag}", token).json()
+
+    def archive(self, token: str, thread_id: UUID) -> None:
+        self._call("POST", f"/threads/{thread_id}/archive", token)
+
+    def restore(self, token: str, thread_id: UUID) -> None:
+        self._call("POST", f"/threads/{thread_id}/restore", token)

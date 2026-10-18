@@ -199,3 +199,12 @@ decisions:
     Controls; nightly backups with a restore test and a disaster-recovery drill (D-020, D-021);
     the hourly spend guard. Only Test T0 runs until a real Receptor is approved (D-017). Voice
     stays deferred (D-016) and AMD-12's automatic trigger stays off (gate 7).
+- id: D-023
+  date: '2026-10-18'
+  closes: How a deletion request is handled (amends D-017)
+  topic: Archive, never delete
+  decision: >-
+    Nothing the Founder said or Dyson recorded is deleted. A conversation the Founder no longer
+    wants in view is archived: it leaves the open list, stays complete in memory, evidence and
+    the audit log, and can be restored at any time. Archiving needs no approval because it
+    removes nothing. D-017's "deleted only on the Founder's request" now means archived.

@@ -89,14 +89,20 @@ def _migrate_integration(dsn: str, role: str) -> None:
             with conn.transaction():
                 sql_text = files("dyson_integration").joinpath("migrations/001_integration.sql")
                 conn.execute(sql_text.read_text("utf-8"))
+        done = {
+            r["version"] for r in conn.execute("SELECT version FROM integration.schema_migrations")
+        }
+        if 2 not in done:
+            with conn.transaction():
+                sql_text = files("dyson_integration").joinpath("migrations/002_thread_archive.sql")
+                conn.execute(sql_text.read_text("utf-8"))
         r = sql.Identifier(role)
         conn.execute(sql.SQL("GRANT USAGE ON SCHEMA integration TO {}").format(r))
-        conn.execute(sql.SQL("GRANT SELECT, INSERT ON integration.thread_tasks TO {}").format(r))
-        conn.execute(
-            sql.SQL(
-                "GRANT USAGE, SELECT ON SEQUENCE integration.thread_tasks_seq_seq TO {}"
-            ).format(r)
-        )
+        for table in ("thread_tasks", "thread_archive"):
+            t = sql.Identifier("integration", table)
+            conn.execute(sql.SQL("GRANT SELECT, INSERT ON {} TO {}").format(t, r))
+            seq = sql.Identifier("integration", f"{table}_seq_seq")
+            conn.execute(sql.SQL("GRANT USAGE, SELECT ON SEQUENCE {} TO {}").format(seq, r))
 
 
 def drop(admin_dsn: str, dbname: str) -> None:

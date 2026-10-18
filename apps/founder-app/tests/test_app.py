@@ -161,3 +161,10 @@ def test_statement_upload_form_is_shown_and_refusals_are_explained(founder):  # 
     r = founder.post("/statement", files=files,
                      data={"period_start": "2026-10-01", "period_end": "2026-10-31"})  # fmt: skip
     assert "Statement not accepted" in r.text  # nothing is connected behind this gateway
+
+
+def test_conversations_can_be_archived_never_deleted(founder):  # D-023
+    page = founder.get("/").text
+    assert "Archive this conversation" in page and "Nothing is ever deleted" in page
+    assert "delete" not in page.lower().replace("nothing was deleted", "").replace(
+        "nothing is ever deleted", "")  # fmt: skip
