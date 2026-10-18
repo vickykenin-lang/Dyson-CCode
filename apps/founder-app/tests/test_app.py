@@ -174,8 +174,8 @@ def test_dashboard_page_is_read_only_and_explains_when_unavailable(founder):  # 
     page = founder.get("/").text
     assert "href='/dashboard'" in page
     html = founder.get("/dashboard").text
-    assert '["A", 30, 250' in html and '["hermes", 1005, 250' in html
-    assert "What just happened" in html
+    assert '["A", 500, 62' in html and '["hermes", 150, 350' in html  # every part is on the page
+    assert "WHAT JUST HAPPENED" in html and "WAITING FOR YOU" in html
     assert "<form" not in html and "method:" not in html  # nothing on the dashboard can act
     r = founder.get("/dashboard/data")
     assert r.status_code == 503  # this test gateway has no dashboard connected
