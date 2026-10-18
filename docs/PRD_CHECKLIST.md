@@ -5,8 +5,8 @@ Steps 1 to 9 are proven by the tests named in each step's NOTES.md (CI green). S
 
 | Status | Count |
 |---|---|
-| ✅ Done | 162 |
-| 🟡 Partial | 10 |
+| ✅ Done | 164 |
+| 🟡 Partial | 8 |
 | ⏸ Deferred | 2 |
 | ❌ Gap | 0 |
 
@@ -22,8 +22,6 @@ Steps 1 to 9 are proven by the tests named in each step's NOTES.md (CI green). S
 | LA-DASH-05 | 🟡 Partial | J's verified data API is built (GET-only, tested). The Founder-visible dashboard screens are not built; they wait for gate 8. |
 | LA-SEC-02 | 🟡 Partial | Least-privilege roles in use (`infra/iam/`). No periodic usage review scheduled yet; the deployer access key is still active. |
 | LA-SEC-07 | 🟡 Partial | Same filter as LA-RTR-07 (names and addresses not yet detected). Cross-Receptor isolation exists (row-level security per Receptor); only T0 runs (D-017). |
-| LA-COST-03 | 🟡 Partial | Model cost and latency measured (benchmark, `intelligence.calls`). Server CPU, RAM and task throughput not yet measured. |
-| LA-COST-04 | 🟡 Partial | Sydney prices for Bedrock and Lightsail checked; 100 USD credits budgeted. Free-tier eligibility not checked separately. |
 | LA-PERF-02 | ⏸ Deferred | Voice thresholds deferred with voice (D-016). |
 | LA-PRIV-01 | 🟡 Partial | Policy approved (D-017). No in-app deletion control yet; deleting on request is done by hand. |
 
@@ -290,8 +288,8 @@ Also from the Step 10 build list: Layer A's runtime secret store is still the fi
 | LA-REL-06 | 9 | ✅ Done | Losing or replacing a model or voice provider shall not destroy task state, Founder decisions or memory. | integration/NOTES.md: `test_switching_the_model_keeps_history_tasks_and_register` |
 | LA-COST-01 | 10 | ✅ Done | AWS budgets, alarms and explicit spend limits shall exist before any paid deployment. | Budget `dyson-credits-100` with alerts, created before any paid resource; hourly spend guard. |
 | LA-COST-02 | 10 | ✅ Done | The initial planning target is 2 vCPU, 4 GB RAM and 50 to 80 GB persistent disk for a small isolated prototype. It is a hypothesis, not a guaranteed capacity or an approved budget. | 2 vCPU, 4 GB, 80 GB server (D-018). |
-| LA-COST-03 | 10 | 🟡 Partial | CPU, RAM, database, task throughput, stream latency, model and voice API costs and recovery behavior shall be measured, and resources scaled up only from evidence. | Model cost and latency measured (benchmark, `intelligence.calls`). Server CPU, RAM and task throughput not yet measured. |
-| LA-COST-04 | 10 | 🟡 Partial | Free-tier eligibility and prices shall be verified against the Founder's actual AWS account. | Sydney prices for Bedrock and Lightsail checked; 100 USD credits budgeted. Free-tier eligibility not checked separately. |
+| LA-COST-03 | 10 | ✅ Done | CPU, RAM, database, task throughput, stream latency, model and voice API costs and recovery behavior shall be measured, and resources scaled up only from evidence. | Measured on dyson-server, 18 Oct 2026: 2 vCPU, 3.8 GB RAM (2.9 GB available), 71 GB disk free, database 23 MB; the four containers use about 250 MB idle. 30 T0 tasks reached completed-verified in 1.1 s (about 27 a second), layer-a peaking at about 44% of one core. Model cost and latency: benchmark and `intelligence.calls`. No scale-up needed. |
+| LA-COST-04 | 10 | ✅ Done | Free-tier eligibility and prices shall be verified against the Founder's actual AWS account. | From the account's Cost Explorer, 1-18 Oct 2026: usage 0.42 USD, all covered by credits. Lightsail medium_3_2 is billed at its full 24 USD a month (no free tier for this size); Bedrock 0.10, Systems Manager 0.09 (0.002 USD per Run Command on a hybrid node), S3 under 0.01. The free-tier API itself could not be called from this session. |
 | LA-PERF-01 | 8 | ✅ Done | Command acknowledgment shall be fast and honest. Completion latency is not promised. | apps/founder-app/NOTES.md: `test_acknowledgment_is_honest_and_immediate`, `test_acknowledgment_is_immediate_and_never_completion`, `test_status_streams_until_verified` |
 | LA-PERF-02 | 10 | ⏸ Deferred | Acceptable spoken-response latency and Hindi / Hinglish quality thresholds shall be set by benchmark before a voice vendor is chosen (gate 5). | Voice thresholds deferred with voice (D-016). |
 | LA-PERF-03 | 9 | ✅ Done | Task status shall stream continuously while a task runs. | integration/NOTES.md: `test_status_streams_while_the_task_runs` |

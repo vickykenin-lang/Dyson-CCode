@@ -33,6 +33,7 @@ Releases are deployed with `../deploy/deploy.sh` through Systems Manager; the on
 - 18 Oct 2026: gate 9 closed (D-022). The Founder accepted Layer A and authorized it as production.
 - 18 Oct 2026: C hides personal and financial identifiers from every model (`layer-a-78383bd`); a live round trip through DeepSeek came back with the real phone number and email restored inside Layer A.
 - 18 Oct 2026: three containers (`layer-a-fd29384`, LA-DEP-01/02). `controls` runs Direct Founder Controls alone; `hermes` runs on an internal network. From inside Hermes only the edge (172.31.0.10:8090) answered; the internet, AWS, Postgres, the Gateway, DFC and other ports did not. With `layer-a` and `hermes` stopped, `control.designinfra.in` kept answering (1 passkey). After the switch, "T0 par 11 aur 31 jod do" went through DeepSeek to `completed-verified`.
+- 18 Oct 2026: measured (LA-COST-03): 2 vCPU, 3.8 GB RAM with 2.9 GB available, 71 GB disk free, database 23 MB, four containers about 250 MB idle; 30 T0 load-test tasks (instructions `Load test N`) completed-verified in 1.1 s. Costs from Cost Explorer 1-18 Oct (LA-COST-04): 0.42 USD usage, all paid by credits; Lightsail 0.22, Bedrock 0.10, Systems Manager 0.09 (0.002 USD per Run Command), S3 under 0.01.
 
 Still open: a backup passkey (the Founder will add it later), showing reminders to the Founder, and deleting the deployer's access key (`../iam/README.md`).
 
