@@ -5,23 +5,22 @@ Steps 1 to 9 are proven by the tests named in each step's NOTES.md (CI green). S
 
 | Status | Count |
 |---|---|
-| ✅ Done | 166 |
-| 🟡 Partial | 6 |
-| ⏸ Deferred | 2 |
+| ✅ Done | 167 |
+| 🟡 Partial | 7 |
+| ⏸ Deferred | 0 |
 | ❌ Gap | 0 |
 
 ## Not done yet
 
 | ID | Status | What is missing |
 |---|---|---|
-| LA-G-01 | 🟡 Partial | Text in Hindi, English and Hinglish is live on DeepSeek v3.2 (D-019). Voice deferred (D-016). |
-| LA-APP-02 | 🟡 Partial | Text accepts all three languages. Voice deferred (D-016). |
-| LA-APP-08 | ⏸ Deferred | Voice vendor benchmark deferred by the Founder (D-016). |
+| LA-G-01 | 🟡 Partial | Text and voice are live (D-019, D-024): the Founder speaks in the app, the voice is heard on Dyson's own server and replies are spoken by Polly in Sydney. Quality thresholds wait for the Founder's recordings (LA-PERF-02). |
+| LA-APP-02 | 🟡 Partial | Text and voice accept Hindi and Hinglish; English is heard but written in Devanagari and usually sent to the Founder to confirm. Thresholds wait for the Founder's recordings. |
 | LA-RTR-07 | 🟡 Partial | C replaces email, UPI, PAN, IFSC, card, Aadhaar, mobile and other 9+ digit numbers, the nominee's name and contacts, names with a cue (Mr, Shri, Smt, Dr, my name is, mera naam ... hai, ... ji, श्री, नाम) and addresses that are labelled or end in a PIN code, before any model call, and restores them inside Layer A (`redaction.py`, `test_personal_and_financial_identifiers_never_reach_a_model`, `test_names_and_addresses_never_reach_a_model`, `test_the_nominee_never_reaches_a_model`). Still missed: a name written with no cue at all (“Ravi se baat karo”). |
 | LA-MEM-05 | 🟡 Partial | PostgreSQL in use, encrypted S3 backups, restore tested, access control and retrieval tested. Attachment bytes are not yet stored in S3. |
 | LA-SEC-02 | 🟡 Partial | Least-privilege roles in use (`infra/iam/`). Monthly review defined (`infra/iam/REVIEW.md`, `tools/iam_review.sh`); first review 18 Oct 2026: the server role matches the repo. The users-and-keys step needs the Founder (no Dyson identity can read IAM users), and the deployer key is still active. |
 | LA-SEC-07 | 🟡 Partial | Same filter as LA-RTR-07 (a name with no cue is still missed). Cross-Receptor isolation exists (row-level security per Receptor); only T0 runs (D-017). |
-| LA-PERF-02 | ⏸ Deferred | Voice thresholds deferred with voice (D-016). |
+| LA-PERF-02 | 🟡 Partial | First numbers on synthetic speech: about 1.2 s to hear 4 s of audio (`docs/benchmarks/2026-10-19-voice.md`). The thresholds are set from the Founder's own recordings. |
 
 Also from the Step 10 build list: Layer A's runtime secret store is still the file in `/data` (backed up encrypted); deploy-time secrets are in Parameter Store, but the AWS secret store behind the secret-store interface is not built.
 
@@ -30,7 +29,7 @@ Also from the Step 10 build list: Layer A's runtime secret store is still the fi
 
 | ID | Step | Status | Requirement | Proof |
 |---|---|---|---|---|
-| LA-G-01 | 10 | 🟡 Partial | Converse with the Founder in natural Hindi, English and Hinglish, with live voice and text sharing one history and one memory. | Text in Hindi, English and Hinglish is live on DeepSeek v3.2 (D-019). Voice deferred (D-016). |
+| LA-G-01 | 10 | 🟡 Partial | Converse with the Founder in natural Hindi, English and Hinglish, with live voice and text sharing one history and one memory. | Text and voice are live (D-019, D-024): the Founder speaks in the app, the voice is heard on Dyson's own server and replies are spoken by Polly in Sydney. Quality thresholds wait for the Founder's recordings (LA-PERF-02). |
 | LA-G-02 | 7 | ✅ Done | Reason independently, challenge assumptions respectfully, understand the constitutional rules and propose improvements or amendments, without ever self-authorizing a constitutional change. | services/intelligence/NOTES.md: `test_improvements_are_proposed_never_applied` |
 | LA-G-03 | 2 | ✅ Done | Preserve conversations, project context, decisions, evidence and reasoning across days, sessions, devices and model changes. | services/memory/NOTES.md: `test_transcript_survives_*`, `test_backup_and_restore` |
 | LA-G-04 | 9 | ✅ Done | Direct and monitor separately governed Layer B Receptors, and receive truthful, verified results from them. | integration/NOTES.md: `test_command_to_verified_answer`, `test_planted_fault_is_caught_and_held` |
@@ -45,13 +44,13 @@ Also from the Step 10 build list: Layer A's runtime secret store is still the fi
 | ID | Step | Status | Requirement | Proof |
 |---|---|---|---|---|
 | LA-APP-01 | 8 | ✅ Done | The app shall be a Dyson-owned, branded conversation environment (Web, with Android as the target) offering near-real-time two-way voice and text on the same authoritative Dyson backend. | apps/founder-app/NOTES.md: `test_branded_dyson_text_first_page`, `test_voice_is_a_slot_until_gate_5` (Android is later) |
-| LA-APP-02 | 10 | 🟡 Partial | The app shall accept Hindi, English and mixed Hinglish in voice and text. Quality thresholds are set by benchmark (gate 5). | Text accepts all three languages. Voice deferred (D-016). |
+| LA-APP-02 | 10 | 🟡 Partial | The app shall accept Hindi, English and mixed Hinglish in voice and text. Quality thresholds are set by benchmark (gate 5). | Text and voice accept Hindi and Hinglish; English is heard but written in Devanagari and usually sent to the Founder to confirm. Thresholds wait for the Founder's recordings. |
 | LA-APP-03 | 8 | ✅ Done | Voice and text shall share one conversation history and one memory. | apps/founder-app/NOTES.md: `test_voice_and_text_share_one_thread` |
 | LA-APP-04 | 8 | ✅ Done | For every command the app shall show an immediate honest acknowledgment ( accepted or approval-needed ), then stream task progress, and show a final result only when verified evidence exists. An acknowledgment shall never be presented as completion. | apps/founder-app/NOTES.md: `test_acknowledgment_is_honest_and_immediate`, `test_live_status_says_done_only_with_verified_evidence`, `test_status_label_never_calls_anything_else_done`, `test_acknowledgment_is_immediate_and_never_completion` |
 | LA-APP-05 | 8 | ✅ Done | Ending a voice call shall not erase any task or its history. On reconnect the app shall retrieve task states and relevant conversation context from AWS. | apps/founder-app/NOTES.md: `test_reconnect_restores_tasks_and_context`, `test_reconnect_gets_tasks_and_context_back` |
 | LA-APP-06 | 8 | ✅ Done | Access shall be Founder-only, with sessions handled through the Entry Gateway. The app holds no authority of its own. | apps/founder-app/NOTES.md: `test_founder_only_through_the_gateway`, `test_session_cookie_is_protected`, `test_app_holds_no_authority_and_no_records` |
 | LA-APP-07 | 8 | ✅ Done | The app shall flag uncertain speech transcription instead of acting on it silently. | apps/founder-app/NOTES.md: `test_uncertain_speech_is_confirmed_never_sent_silently`, `test_uncertain_speech_is_passed_on_flagged` |
-| LA-APP-08 | 10 | ⏸ Deferred | The voice technology shall be chosen only after benchmarking GPT-Live / Realtime, Gemini Live and chained STT to LLM to TTS options (including Hindi-oriented providers), and transport such as LiveKit or Pipecat. None is preapproved. | Voice vendor benchmark deferred by the Founder (D-016). |
+| LA-APP-08 | 10 | ✅ Done | The voice technology shall be chosen only after benchmarking GPT-Live / Realtime, Gemini Live and chained STT to LLM to TTS options (including Hindi-oriented providers), and transport such as LiveKit or Pipecat. None is preapproved. | Benchmarked 19 Oct 2026 within the Founder's limits (Sydney, free plan, central): Transcribe refused by the free plan, Nova 2 Sonic not in Sydney, Whisper too slow and wrong for Hinglish, IndicConformer chosen (D-024, `docs/benchmarks/2026-10-19-voice.md`). GPT Realtime and Gemini Live were not tested because audio would leave AWS and Sydney. |
 | LA-APP-09 | 8 | ✅ Done | The app shall not be the system of record or a source of authorization. Any other front end, for example a ChatGPT adapter, is optional, later and tested first. | apps/founder-app/NOTES.md: `test_app_holds_no_authority_and_no_records` |
 
 ## 7.1.2 Entry Gateway (Identity, Session, Rate Limiting), on AWS
@@ -289,7 +288,7 @@ Also from the Step 10 build list: Layer A's runtime secret store is still the fi
 | LA-COST-03 | 10 | ✅ Done | CPU, RAM, database, task throughput, stream latency, model and voice API costs and recovery behavior shall be measured, and resources scaled up only from evidence. | Measured on dyson-server, 18 Oct 2026: 2 vCPU, 3.8 GB RAM (2.9 GB available), 71 GB disk free, database 23 MB; the four containers use about 250 MB idle. 30 T0 tasks reached completed-verified in 1.1 s (about 27 a second), layer-a peaking at about 44% of one core. Model cost and latency: benchmark and `intelligence.calls`. No scale-up needed. |
 | LA-COST-04 | 10 | ✅ Done | Free-tier eligibility and prices shall be verified against the Founder's actual AWS account. | From the account's Cost Explorer, 1-18 Oct 2026: usage 0.42 USD, all covered by credits. Lightsail medium_3_2 is billed at its full 24 USD a month (no free tier for this size); Bedrock 0.10, Systems Manager 0.09 (0.002 USD per Run Command on a hybrid node), S3 under 0.01. The free-tier API itself could not be called from this session. |
 | LA-PERF-01 | 8 | ✅ Done | Command acknowledgment shall be fast and honest. Completion latency is not promised. | apps/founder-app/NOTES.md: `test_acknowledgment_is_honest_and_immediate`, `test_acknowledgment_is_immediate_and_never_completion`, `test_status_streams_until_verified` |
-| LA-PERF-02 | 10 | ⏸ Deferred | Acceptable spoken-response latency and Hindi / Hinglish quality thresholds shall be set by benchmark before a voice vendor is chosen (gate 5). | Voice thresholds deferred with voice (D-016). |
+| LA-PERF-02 | 10 | 🟡 Partial | Acceptable spoken-response latency and Hindi / Hinglish quality thresholds shall be set by benchmark before a voice vendor is chosen (gate 5). | First numbers on synthetic speech: about 1.2 s to hear 4 s of audio (`docs/benchmarks/2026-10-19-voice.md`). The thresholds are set from the Founder's own recordings. |
 | LA-PERF-03 | 9 | ✅ Done | Task status shall stream continuously while a task runs. | integration/NOTES.md: `test_status_streams_while_the_task_runs` |
 | LA-PRIV-01 | 10 | ✅ Done | Retention period, deletion controls, voice audio retention and data sharing shall be approved as implementation-level policy (gate 6). | D-017 with D-023: data is kept permanently and never deleted; a conversation the Founder no longer wants in view is archived and can be restored (app: Archive / Restore; append-only `integration.thread_archive`; `test_a_conversation_is_archived_and_restored_never_deleted`). No voice audio is stored; no data is shared beyond D-017. |
 | LA-PRIV-02 | 10 | ✅ Done | Personal-data classification shall be defined before real data is used (gate 6). | Classification decided in D-017 before real data. |
