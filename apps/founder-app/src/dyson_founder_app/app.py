@@ -111,7 +111,7 @@ def create_app(
             return HTMLResponse(_shell(_login_form("Login failed.")), status_code=401)
         except Exception:
             return HTMLResponse(_shell(_login_form("Login is unavailable right now.")), 503)
-        resp = RedirectResponse("/", status_code=303)
+        resp = RedirectResponse("/dashboard", status_code=303)  # the observatory is home (D-024)
         cookie(resp, SESSION, token)
         return resp
 
@@ -232,7 +232,9 @@ def create_app(
         """Gate 8: the architecture, block by block, with live status. Read only."""
         if not request.cookies.get(SESSION):
             return RedirectResponse("/", status_code=303)
-        return HTMLResponse(PAGE)
+        resp = HTMLResponse(PAGE)
+        cookie(resp, THREAD, str(thread_of(request)))  # the conversation it talks in
+        return resp
 
     @app.get("/dashboard/data")
     def dashboard_data(request: Request) -> Response:
@@ -268,6 +270,124 @@ def create_app(
             notice=f"Statement received: {kept} lines kept (date, amount, "
             "direction and masked reference only). The file is not kept.",
         )
+
+    # --- the same conversation as JSON, for the observatory (D-024) -------------------------
+    # Exactly what the Conversation page does, through the same Entry Gateway calls; nothing
+    # here approves, stops or pauses anything (that stays on Direct Founder Controls).
+    def api(request: Request):
+        token = request.cookies.get(SESSION)
+        if not token:
+            raise NotLoggedIn
+        return token
+
+    def json_out(body: dict, request: Request, thread: UUID | None = None) -> Response:
+        resp = JSONResponse(body)
+        cookie(resp, THREAD, str(thread or thread_of(request)))
+        return resp
+
+    def login_needed() -> Response:
+        return JSONResponse({"detail": "log in"}, status_code=401)
+
+    @app.get("/api/state")
+    def api_state(request: Request) -> Response:
+        try:
+            token, thread = api(request), thread_of(request)
+            tasks = []
+            for t in gateway.tasks(token, thread):
+                label, done = status_label(t)
+                tasks.append({"task_id": str(t.task_id), "label": label, "done": done,
+                              "settled": t.state in SETTLED})  # fmt: skip
+            return json_out(
+                {
+                    "thread": str(thread),
+                    "messages": gateway.thread(token, thread),
+                    "tasks": tasks,
+                    "notices": gateway.notices(token),
+                    "threads": gateway.threads(token),
+                    "archived": gateway.threads(token, archived=True),
+                    "speech": not isinstance(speech, NoSpeech),
+                },
+                request,
+                thread,
+            )
+        except NotLoggedIn:
+            return login_needed()
+
+    def api_send(request: Request, text: str, voice_msg: bool, message_id: str) -> Response:
+        try:
+            mid = UUID(message_id) if message_id else None
+        except ValueError:
+            mid = None
+        thread = thread_of(request)
+        try:
+            out = gateway.send(api(request), thread, text, voice=voice_msg, message_id=mid)
+        except NotLoggedIn:
+            return login_needed()
+        return json_out({"sent": True, "notice": _ack_notice(out)}, request, thread)
+
+    @app.post("/api/send")
+    def api_send_text(
+        request: Request, text: str = Form(), message_id: str = Form(""), voice: str = Form("")
+    ) -> Response:
+        # voice=1 when the Founder confirmed or corrected what was heard
+        return api_send(request, text, voice == "1", message_id)
+
+    @app.post("/api/voice")
+    async def api_voice(request: Request, audio: Annotated[UploadFile, File()]) -> Response:
+        try:
+            api(request)
+            heard = voice.transcribe(await audio.read(), audio.content_type or "")
+        except NotLoggedIn:
+            return login_needed()
+        except VoiceUnavailable as exc:
+            return json_out({"sent": False, "notice": f"Voice: {exc}."}, request)
+        if heard.uncertain or not heard.text.strip():
+            # never sent on its own (LA-APP-07): the Founder confirms or corrects it first
+            return json_out({"sent": False, "heard": heard.text, "uncertain": True}, request)
+        out = api_send(request, heard.text, True, str(uuid4()))
+        return out
+
+    @app.post("/api/thread/{action}")
+    def api_thread(request: Request, action: str, thread_id: str = Form("")) -> Response:
+        try:
+            token = api(request)
+            if action == "new":
+                return json_out({"thread": None}, request, uuid4())
+            if action == "archive":
+                gateway.archive(token, thread_of(request))
+                return json_out({"notice": "Archived. Nothing was deleted."}, request, uuid4())
+            target = UUID(thread_id)
+            if action == "restore":
+                gateway.restore(token, target)
+            elif action != "open":
+                return JSONResponse({"detail": "unknown"}, status_code=404)
+            return json_out({"thread": str(target)}, request, target)
+        except NotLoggedIn:
+            return login_needed()
+        except Refused as exc:
+            return JSONResponse({"notice": f"Not done: {exc}"}, status_code=503)
+        except ValueError:
+            return JSONResponse({"detail": "bad thread"}, status_code=422)
+
+    @app.post("/api/statement")
+    async def api_statement(
+        request: Request,
+        file: Annotated[UploadFile, File()],
+        period_start: Annotated[date, Form()],
+        period_end: Annotated[date, Form()],
+    ) -> Response:
+        try:
+            name, content = file.filename or "statement.csv", await file.read()
+            kept = gateway.upload_statement(api(request), name, period_start, period_end, content)
+        except NotLoggedIn:
+            return login_needed()
+        except Refused as exc:
+            return json_out({"ok": False, "notice": f"Statement not accepted: {exc}"}, request)
+        return json_out(
+            {"ok": True, "notice": f"Statement received: {kept} lines kept (date, amount, "
+             "direction and masked reference only). The file is not kept."},
+            request,
+        )  # fmt: skip
 
     @app.get("/tasks/{task_id}/status")
     def task_status(task_id: UUID, request: Request) -> Response:

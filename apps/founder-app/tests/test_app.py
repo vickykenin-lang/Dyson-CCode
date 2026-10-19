@@ -231,7 +231,7 @@ def test_conversations_can_be_archived_never_deleted(founder):  # D-023
         "nothing is ever deleted", "")  # fmt: skip
 
 
-def test_dashboard_page_is_read_only_and_explains_when_unavailable(founder):  # gate 8
+def test_dashboard_holds_the_conversation_but_no_control(founder):  # gate 8, D-024
     page = founder.get("/").text
     assert "href='/dashboard'" in page
     html = founder.get("/dashboard").text
@@ -240,6 +240,43 @@ def test_dashboard_page_is_read_only_and_explains_when_unavailable(founder):  # 
     js = founder.get("/static/three.module.min.js")  # the 3D star needs no outside CDN
     assert js.status_code == 200 and js.headers["content-type"].startswith("text/javascript")
     assert b"Three.js Authors" in js.content[:200]
-    assert "<form" not in html and "method:" not in html  # nothing on the dashboard can act
+    # the only things it can post are the conversation's own calls; approvals, STOP and PAUSE
+    # stay on Direct Founder Controls
+    import re
+
+    posted = set(re.findall(r'post\("(/api/[a-z/]*)', html))
+    assert posted == {"/api/send", "/api/voice", "/api/thread/", "/api/statement"}
+    for control in ("/decisions", "/controls", "/approve", "/stop", "/pause", "/proposals"):
+        assert control not in html.lower()
     r = founder.get("/dashboard/data")
     assert r.status_code == 503  # this test gateway has no dashboard connected
+
+
+def test_the_observatory_talks_through_the_same_gateway_calls(make, backend, voice):  # D-024
+    speech = Speech()
+    app = make(voice, speech)
+    assert app.get("/api/state").status_code == 401  # Founder session only
+    app.post("/login", data={"username": "founder", "password": PASSWORD})
+    out = app.post("/api/send", data={"text": "How are sales?", "message_id": str(uuid4())}).json()
+    assert out["sent"] and "Sales are up" in out["notice"]
+    state = app.get("/api/state").json()
+    assert [m["content"] for m in state["messages"]] == ["How are sales?", "Sales are up 4%."]
+    assert state["speech"] is True and state["notices"] == []
+    heard = app.post("/api/voice", files={"audio": ("voice.wav", b"RIFF", "audio/wav")}).json()
+    assert heard["sent"] and backend.messages[-1].modality.value == "voice"
+    thread = state["thread"]
+    app.post("/api/thread/new")
+    assert app.get("/api/state").json()["thread"] != thread  # a fresh conversation
+    assert app.post("/api/thread/open", data={"thread_id": thread}).json()["thread"] == thread
+    assert app.get("/api/state").json()["thread"] == thread
+    assert app.post("/api/thread/delete", data={"thread_id": thread}).status_code == 404  # D-023
+
+
+def test_an_unsure_voice_in_the_observatory_waits_for_the_founder(make, backend):  # LA-APP-07
+    from app_testkit import ScriptedVoice
+
+    app = make(ScriptedVoice("pachas hazaar bhejo", uncertain=True))
+    app.post("/login", data={"username": "founder", "password": PASSWORD})
+    out = app.post("/api/voice", files={"audio": ("voice.wav", b"RIFF", "audio/wav")}).json()
+    assert out == {"sent": False, "heard": "pachas hazaar bhejo", "uncertain": True}
+    assert backend.messages == []

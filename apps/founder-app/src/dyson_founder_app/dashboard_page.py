@@ -45,14 +45,14 @@ border-bottom:1px solid var(--line)}
 background:radial-gradient(circle at 42% 40%,#fffbe8,#ffc56b 30%,#ff8a2a 62%,#7a2a08 100%);
 box-shadow:0 0 80px 30px rgba(255,170,60,.35),0 0 200px 80px rgba(255,120,30,.15)}
 .nogl .css-star{display:block}
-.copy{position:absolute;left:32px;right:32px;bottom:28px;pointer-events:none}
-.copy h1{margin:0;font-weight:300;font-size:clamp(28px,3.1vw,48px);line-height:1.08;letter-spacing:-.02em;max-width:16ch;
+.copy{position:absolute;left:32px;right:32px;top:22px;pointer-events:none}
+.copy h1{margin:0;font-weight:300;font-size:clamp(26px,2.6vw,40px);line-height:1.08;letter-spacing:-.02em;max-width:16ch;
 transition:opacity .3s,transform .3s var(--out)}
 .copy h1.swap{opacity:0;transform:translateY(8px)}
 .copy p{margin:12px 0 0;color:var(--soft);max-width:42ch}
-.vitals{display:flex;gap:30px;margin:22px 0 0;padding:0}
+.vitals{display:flex;gap:30px;margin:16px 0 0;padding:0}
 .vitals div{display:flex;flex-direction:column}
-.vitals b{font-weight:600;font-size:28px;line-height:1}.vitals b small{font-size:15px;color:var(--soft);font-weight:400}
+.vitals b{font-weight:600;font-size:24px;line-height:1}.vitals b small{font-size:15px;color:var(--soft);font-weight:400}
 .vitals span{font-size:12px;color:var(--soft);margin-top:6px;max-width:14ch;line-height:1.3}
 .vitals .hot b{color:var(--mon)}
 .starnote{position:absolute;top:18px;left:32px;right:32px;margin:0;font-size:12px;color:var(--dim);pointer-events:none}
@@ -110,26 +110,79 @@ background:rgba(3,4,11,.55);border:1px solid var(--line);min-height:52px}
 .log .b{font-family:var(--mono);font-size:11px;color:var(--gold);padding-top:1px}
 .log li.new{animation:arrive 2.2s var(--out)}@keyframes arrive{0%{opacity:0;transform:translateX(-10px);background:rgba(255,197,107,.12)}15%{opacity:1;transform:none}100%{background:transparent}}
 .foot{color:var(--dim);font-size:12px;margin:0}
-@media (max-width:1100px){.obs{grid-template-columns:1fr}.star{position:relative;top:0;height:560px;border-right:0;border-bottom:1px solid var(--line)}
+/* talking to Dyson, inside the observatory (D-024) */
+.hbtn{padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--ink);font-size:12.5px;
+cursor:pointer;white-space:nowrap}.hbtn:hover{border-color:#3a4a70}.hbtn .short{display:none}.hbtn b{color:var(--mon);margin-left:4px}
+.dock{position:absolute;left:16px;right:16px;bottom:16px;padding:12px;border-radius:16px;background:rgba(5,8,18,.82);
+border:1px solid var(--line);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.chat{max-height:96px;overflow:auto;display:flex;flex-direction:column;gap:6px;padding:2px 2px 8px;transition:max-height .3s var(--out)}
+.dock.open .chat{max-height:46vh}
+.hist{display:flex;justify-content:space-between;align-items:center;margin:-2px 0 6px;font-size:12px;color:var(--soft)}
+.hist button{border:1px solid var(--line);background:none;color:var(--ink);border-radius:999px;padding:4px 10px;font-size:12px;cursor:pointer}
+.m{max-width:88%;padding:7px 11px;border-radius:12px;font-size:13.5px;line-height:1.45;background:rgba(255,255,255,.05)}
+.m.user{align-self:flex-end;background:rgba(255,197,107,.12);color:#ffe2b0}.m .v{color:var(--soft);font-size:11px;margin-left:6px}
+.m button{margin-left:6px;border:0;background:none;cursor:pointer;font-size:13px;padding:0}
+.tasks{font-size:12px;color:var(--soft);padding:0 2px 8px}.tasks b{color:var(--ink);font-weight:500}.tasks .ok{color:var(--res)}
+.sayrow{display:flex;gap:8px;align-items:center}
+.mic{flex:none;width:46px;height:46px;border-radius:50%;border:1px solid #3a4a70;background:radial-gradient(circle at 40% 35%,#2a3a66,#101a33);
+color:var(--ink);font-size:19px;cursor:pointer;transition:transform .15s,box-shadow .2s}
+.mic.on{background:radial-gradient(circle at 40% 35%,#ffcf80,#d9822b);box-shadow:0 0 0 6px rgba(255,197,107,.18),0 0 24px rgba(255,170,60,.5)}
+.mic:active{transform:scale(.95)}
+#msg{flex:1;min-width:0;padding:12px 14px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--ink);font:inherit}
+#msg:focus{outline:none;border-color:#4d6390}
+.send{flex:none;padding:11px 16px;border-radius:999px;border:0;background:var(--gold);color:#1a1205;font-weight:600;cursor:pointer}
+.send:disabled,.mic:disabled{opacity:.5;cursor:default}
+.dnote{margin:8px 2px 0;font-size:11.5px;color:var(--soft)}.dnote.talk{color:#8fc2ff}.dnote.hear{color:var(--gold)}
+.confirm{margin:0 0 10px;padding:10px;border-radius:12px;border:1px solid rgba(255,176,32,.45);background:rgba(255,176,32,.07)}
+.confirm p{margin:0 0 6px;font-size:12.5px;color:var(--mon)}
+.confirm textarea{width:100%;min-height:54px;padding:8px;border-radius:8px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--ink);font:inherit}
+.confirm .row{display:flex;gap:8px;margin-top:6px}
+.ghost{padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:none;color:var(--ink);cursor:pointer}
+.modal{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:16px;background:rgba(2,3,8,.6);backdrop-filter:blur(4px)}
+.modal[hidden]{display:none}
+.mbox{position:relative;width:min(460px,100%);max-height:85vh;overflow:auto;padding:22px;border-radius:18px;background:#0b1224;border:1px solid #26365a;
+box-shadow:0 30px 80px rgba(0,0,0,.6);animation:open .25s var(--out)}
+.mbox h2{margin:0 0 12px;font-size:18px}.mx{position:absolute;top:12px;right:14px;border:0;background:none;color:var(--soft);font-size:22px;cursor:pointer}
+.mbox label{display:block;margin:10px 0 4px;font-size:12.5px;color:var(--soft)}
+.mbox input{width:100%;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--ink);font:inherit}
+.mbox .send{margin-top:14px}.mbox .res{margin:12px 0 0;font-size:13px}.mbox .small{font-size:12px;color:var(--soft)}
+.trow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px}
+.notice{padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
+@media (max-width:1100px){.obs{grid-template-columns:1fr}.star{position:relative;top:0;height:auto;padding-top:400px;border-right:0;border-bottom:1px solid var(--line)}
+#gl{height:400px;bottom:auto}.css-star{top:200px}.copy{top:18px}.dock{position:relative;left:auto;right:auto;bottom:auto;margin:0 12px 14px}
 .lower{grid-template-columns:1fr}}
 @media (max-width:900px){.hint{display:block}}
-@media (max-width:560px){.bar{gap:12px;padding:0 14px}.mark span,.pill{display:none}.star{height:520px}.copy{left:18px;right:18px;bottom:20px}
+@media (max-width:560px){.bar{gap:8px;padding:0 10px;overflow-x:auto}.mark span,.pill,.clock{display:none}.star{padding-top:340px}#gl{height:340px}
+.copy{left:18px;right:18px}.copy p,.vitals{display:none}.copy h1{font-size:24px}.hbtn{padding:6px 10px}.hbtn .long{display:none}.hbtn .short{display:inline}
 .starnote{left:18px;right:18px}.vitals{gap:20px}.right{padding:16px 12px 24px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style></head><body>
 <header class="bar"><span class="mark">DYSON<span>Layer A observatory</span></span>
- <nav><a href="/">Conversation</a></nav>
  <span class="pill" id="ctl"><i></i><span id="ctltext">control: checking</span></span>
+ <button class="hbtn" id="b-wait" type="button">Waiting<span class="long"> for you</span><b id="n-wait">0</b></button>
+ <button class="hbtn" id="b-up" type="button">Upload<span class="long"> statement</span></button>
+ <button class="hbtn" id="b-threads" type="button"><span class="long">Conversations</span><span class="short">Chats</span></button>
  <div class="clock" id="clock"><b id="hhmm">--:--:--</b><small id="clocktext">connecting…</small></div></header>
 <main class="obs">
  <section class="star" id="star" aria-label="Dyson as a star: each panel of the sphere is one part of the system">
   <canvas id="gl"></canvas><div class="css-star" aria-hidden="true"></div>
-  <p class="starnote">Each panel on the sphere is one part of Dyson. Bright panels are live. Drag to turn it.</p>
   <div class="copy"><h1 id="headline">Reading the system…</h1><p id="subline"></p>
    <div class="vitals" aria-live="polite"><div><b id="v-live">–</b><span>parts live right now</span></div>
     <div><b id="v-wires">–</b><span>wires that carried work today</span></div>
     <div id="v-wait-box"><b id="v-wait">–</b><span>approvals waiting for you</span></div></div></div>
   <div class="tip" id="tip"></div>
+  <div class="dock" id="dock">
+   <div class="hist"><span id="htitle">Conversation</span><button type="button" id="htoggle" aria-expanded="false">History ▴</button></div>
+   <div class="chat" id="chat" aria-live="polite"></div>
+   <div class="tasks" id="tasks"></div>
+   <div class="confirm" id="confirm" hidden><p>I may have misheard. Nothing was sent. Check it, then send:</p>
+    <textarea id="ctext" aria-label="What I heard"></textarea>
+    <div class="row"><button class="send" id="csend" type="button">Send as corrected</button><button class="ghost" id="cdrop" type="button">Discard</button></div></div>
+   <div class="sayrow"><button class="mic" id="mic" type="button" aria-label="Tap to speak">🎙</button>
+    <input id="msg" placeholder="Bolo ya likho… Hindi, Hinglish, English" autocomplete="off" aria-label="Message to Dyson">
+    <button class="send" id="send" type="button">Send</button></div>
+   <p class="dnote" id="dnote">Tap the mic, speak, tap again to send. Your voice is heard on Dyson's server and not kept.</p>
+  </div>
  </section>
  <section class="right">
   <div class="panel"><div class="bhead"><div><h2>Wiring</h2><p>Every light is one real record crossing that wire. Select a wire or a part.</p></div>
@@ -153,6 +206,8 @@ background:rgba(3,4,11,.55);border:1px solid var(--line);min-height:52px}
   <p class="foot">Read only. Approvals, STOP and PAUSE stay on Direct Founder Controls.</p>
  </section>
 </main>
+<div class="modal" id="modal" hidden><div class="mbox" role="dialog" aria-modal="true" aria-labelledby="mtitle">
+ <button class="mx" id="mx" type="button" aria-label="Close">×</button><h2 id="mtitle"></h2><div id="mbody"></div></div></div>
 <script>
 // Parts on the board: key, x, y (board units 1000 x 650), silkscreen code, short name.
 const CHIPS = [
@@ -404,6 +459,154 @@ async function refresh() {
 }
 refresh(); setInterval(refresh, 5000); setInterval(tick, 1000); tick();
 </script>
+<script>
+// Talking to Dyson from the observatory (D-024): the same conversation as the app, through the
+// same Entry Gateway calls. Nothing here approves, stops or pauses anything.
+(() => {
+ const $ = id => document.getElementById(id);
+ const esc = s => String(s).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+ const C = {state: null, sig: "", ctx: null, rec: null, speech: false};
+ DY.voice = {who: null, level: 0};
+ const note = (t, cls = "") => { const n = $("dnote"); n.textContent = t; n.className = "dnote " + cls; };
+ const idle = "Tap the mic, speak, tap again to send. Your voice is heard on Dyson's server and not kept.";
+ const audio = () => { if (!C.ctx) C.ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (C.ctx.state === "suspended") C.ctx.resume(); return C.ctx; };
+
+ async function load() {
+  const r = await fetch("/api/state", {cache: "no-store"});
+  if (r.status === 401) { location.href = "/"; return; }
+  if (!r.ok) return;
+  C.state = await r.json(); C.speech = C.state.speech;
+  $("n-wait").textContent = C.state.notices.length;
+  const sig = JSON.stringify([C.state.messages.length, C.state.messages.slice(-1), C.state.tasks]);
+  if (sig !== C.sig) { C.sig = sig; render(); }
+ }
+ function render() {
+  const msgs = C.state.messages; let n = 0;
+  $("chat").innerHTML = msgs.length ? msgs.map(m => {
+   const mine = m.role === "user", i = mine ? -1 : n++;
+   return `<div class="m ${mine ? "user" : ""}">${esc(m.content)}${m.modality === "voice" ? '<span class="v">🎙</span>' : ""}`
+    + (mine || !C.speech ? "" : `<button type="button" data-n="${i}" aria-label="Hear this reply">🔊</button>`) + "</div>";
+  }).join("") : '<div class="m">Namaste. Bolo ya likho, main sun raha hoon.</div>';
+  $("chat").scrollTop = $("chat").scrollHeight;
+  $("htitle").textContent = msgs.length ? `Conversation · ${msgs.length} messages` : "Conversation";
+  const open = C.state.tasks.filter(t => !t.settled).slice(-3);
+  $("tasks").innerHTML = open.map(t => `Task <b>${esc(t.task_id.slice(0, 8))}</b>: <span class="${t.done ? "ok" : ""}">${esc(t.label)}</span>`).join("<br>");
+ }
+ $("htoggle").onclick = () => { const d = $("dock"), o = d.classList.toggle("open");
+  $("htoggle").textContent = o ? "Close ▾" : "History ▴"; $("htoggle").setAttribute("aria-expanded", o);
+  $("chat").scrollTop = $("chat").scrollHeight; };
+ $("chat").onclick = e => { const b = e.target.closest("button[data-n]"); if (b) speak(b.dataset.n); };
+
+ async function speak(n) {  // Dyson answers aloud; the star turns blue with its voice
+  if (!C.speech) return;
+  try {
+   const ctx = audio(), r = await fetch("/speak/" + n, {cache: "no-store"});
+   if (!r.ok) return;
+   const buf = await ctx.decodeAudioData(await r.arrayBuffer());
+   const src = ctx.createBufferSource(), an = ctx.createAnalyser(); an.fftSize = 1024;
+   src.buffer = buf; src.connect(an); an.connect(ctx.destination);
+   const data = new Float32Array(an.fftSize); let live = true;
+   const tick = () => { if (!live) return; an.getFloatTimeDomainData(data);
+    let sum = 0; for (const x of data) sum += x * x;
+    DY.voice = {who: "dyson", level: Math.min(1, Math.sqrt(sum / data.length) * 7)}; requestAnimationFrame(tick); };
+   src.onended = () => { live = false; DY.voice = {who: null, level: 0}; note(idle); };
+   note("Dyson is speaking…", "talk"); src.start(); tick();
+  } catch (e) { DY.voice = {who: null, level: 0}; }
+ }
+ async function post(url, body) {
+  const r = await fetch(url, {method: "POST", body});
+  if (r.status === 401) { location.href = "/"; return null; }
+  return r.ok ? r.json() : null;
+ }
+ async function sendText(text, spoken) {
+  const f = new FormData(); f.append("text", text); f.append("message_id", crypto.randomUUID());
+  if (spoken) f.append("voice", "1");
+  note("Sending…"); $("send").disabled = true;
+  const out = await post("/api/send", f); $("send").disabled = false;
+  note(out ? out.notice : "Could not reach Dyson. Try again."); await load();
+  if (out && spoken) speak(-1);
+ }
+ $("send").onclick = () => { audio(); const t = $("msg").value.trim(); if (!t) return; $("msg").value = ""; sendText(t, false); };
+ $("msg").onkeydown = e => { if (e.key === "Enter") $("send").click(); };
+ $("csend").onclick = () => { audio(); const t = $("ctext").value.trim(); $("confirm").hidden = true; if (t) sendText(t, true); };
+ $("cdrop").onclick = () => { $("confirm").hidden = true; note("Discarded. Nothing was sent."); };
+
+ // the Founder's voice: 16 kHz mono WAV, recorded here, heard on Dyson's server
+ const wav = (pcm, rate) => {
+  const v = new DataView(new ArrayBuffer(44 + pcm.length * 2)), w = (o, t) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  w(0, "RIFF"); v.setUint32(4, 36 + pcm.length * 2, true); w(8, "WAVEfmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, pcm.length * 2, true);
+  pcm.forEach((x, i) => v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, x)) * 32767, true));
+  return new Blob([v], {type: "audio/wav"});
+ };
+ const to16k = (x, rate) => { if (rate === 16000) return x; const out = new Float32Array(Math.floor(x.length * 16000 / rate));
+  for (let i = 0; i < out.length; i++) out[i] = x[Math.floor(i * rate / 16000)]; return out; };
+ async function startRec() {
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({audio: {channelCount: 1, echoCancellation: true, noiseSuppression: true}}); }
+  catch (e) { note("The microphone is blocked. Allow it in the browser, or type instead."); return; }
+  const ctx = audio(), src = ctx.createMediaStreamSource(stream), proc = ctx.createScriptProcessor(4096, 1, 1);
+  const parts = [];
+  proc.onaudioprocess = e => { const x = e.inputBuffer.getChannelData(0); parts.push(new Float32Array(x));
+   let sum = 0; for (const v of x) sum += v * v; DY.voice = {who: "founder", level: Math.min(1, Math.sqrt(sum / x.length) * 8)}; };
+  src.connect(proc); proc.connect(ctx.destination);
+  C.rec = {stream, src, proc, parts, rate: ctx.sampleRate, timer: setTimeout(stopRec, 30000)};
+  $("mic").classList.add("on"); $("mic").setAttribute("aria-label", "Tap to send"); note("Listening… tap again to send.", "hear");
+ }
+ async function stopRec() {
+  const R = C.rec; if (!R) return; C.rec = null; clearTimeout(R.timer);
+  R.proc.disconnect(); R.src.disconnect(); R.stream.getTracks().forEach(t => t.stop());
+  DY.voice = {who: null, level: 0}; $("mic").classList.remove("on"); $("mic").setAttribute("aria-label", "Tap to speak");
+  const all = new Float32Array(R.parts.reduce((n, p) => n + p.length, 0)); let o = 0;
+  for (const p of R.parts) { all.set(p, o); o += p.length; }
+  const f = new FormData(); f.append("audio", new File([wav(to16k(all, R.rate), 16000)], "voice.wav", {type: "audio/wav"}));
+  note("Dyson is listening to what you said…"); $("mic").disabled = true;
+  const out = await post("/api/voice", f); $("mic").disabled = false;
+  if (!out) { note("Could not reach Dyson. Try again."); return; }
+  if (out.uncertain) { $("ctext").value = out.heard || ""; $("confirm").hidden = false; note("Please check what I heard."); return; }
+  note(out.notice || idle); await load(); if (out.sent) speak(-1);
+ }
+ $("mic").onclick = () => C.rec ? stopRec() : startRec();
+
+ // small windows: what waits on the Founder, the bank statement, conversations
+ const modal = (title, html) => { $("mtitle").textContent = title; $("mbody").innerHTML = html; $("modal").hidden = false; $("mx").focus(); };
+ const close = () => { $("modal").hidden = true; };
+ $("mx").onclick = close; $("modal").onclick = e => { if (e.target === $("modal")) close(); };
+ document.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
+ $("b-wait").onclick = () => { const n = (C.state && C.state.notices) || [];
+  modal("Waiting for you", (n.length ? n.map(x => `<div class="notice">${esc(x.text)}</div>`).join("") : '<p class="small">Nothing waits for you.</p>')
+   + '<p class="small">Approve, reject, STOP and PAUSE on Direct Founder Controls.</p>'); };
+ $("b-up").onclick = () => {
+  modal("Upload bank statement", `<p class="small">CSV or delimited export from netbanking, not PDF. Only date, amount, debit or credit and a masked reference are kept; the file is not.</p>
+   <label for="sf">Statement file</label><input id="sf" type="file" accept=".csv,.txt,text/csv">
+   <label for="s1">From</label><input id="s1" type="date"><label for="s2">To</label><input id="s2" type="date">
+   <button class="send" id="sgo" type="button">Upload</button><p class="res" id="sres" aria-live="polite"></p>`);
+  $("sgo").onclick = async () => {
+   const file = $("sf").files[0]; if (!file || !$("s1").value || !$("s2").value) { $("sres").textContent = "Choose the file and both dates."; return; }
+   const f = new FormData(); f.append("file", file); f.append("period_start", $("s1").value); f.append("period_end", $("s2").value);
+   $("sgo").disabled = true; $("sres").textContent = "Uploading…";
+   const out = await post("/api/statement", f); $("sgo").disabled = false;
+   $("sres").textContent = out ? out.notice : "Upload failed. Try again.";
+  };
+ };
+ const threadAct = async (action, id) => { const f = new FormData(); if (id) f.append("thread_id", id);
+  const out = await post("/api/thread/" + action, f); C.sig = ""; await load(); close();
+  if (out && out.notice) note(out.notice); };
+ $("b-threads").onclick = () => { const st = C.state || {threads: [], archived: []};
+  const row = (t, act, label) => `<div class="trow"><span>${esc(t.title)}${t.thread_id === st.thread ? " (this one)" : ""}</span>`
+   + `<button class="ghost" type="button" data-act="${act}" data-id="${t.thread_id}">${label}</button></div>`;
+  modal("Conversations", '<div class="sayrow"><button class="send" type="button" data-act="new">New conversation</button>'
+   + '<button class="ghost" type="button" data-act="archive">Archive this one</button></div>'
+   + (st.threads.map(t => row(t, "open", "Open")).join("") || '<p class="small">No other conversations.</p>')
+   + '<h3 class="small">Archived</h3>' + (st.archived.map(t => row(t, "restore", "Restore")).join("") || '<p class="small">None archived.</p>')
+   + '<p class="small">Nothing is ever deleted; archived conversations can be restored.</p>');
+  $("mbody").onclick = e => { const b = e.target.closest("button[data-act]"); if (b) threadAct(b.dataset.act, b.dataset.id); };
+ };
+ load(); setInterval(load, 5000);
+})();
+</script>
 <script type="module">
 // The star: Dyson's own sun inside a lattice sphere. The 19 bright hexagonal panels are the
 // parts of the system, coloured by their live status; a real record arriving at a part sends
@@ -421,10 +624,10 @@ function start() {
  const world = new THREE.Group(); scene.add(world);
  const rig = new THREE.Group(); world.add(rig);
  // the star
- const starMat = new THREE.ShaderMaterial({uniforms: {t: {value: 0}, heat: {value: new THREE.Color(1, .55, .15)}},
+ const starMat = new THREE.ShaderMaterial({uniforms: {t: {value: 0}, heat: {value: new THREE.Color(1, .55, .15)}, talk: {value: 0}, level: {value: 0}},
   vertexShader: `varying vec3 vP; varying vec3 vN; varying vec3 vV; void main(){ vP = position; vN = normalize(normalMatrix*normal);
    vec4 mv = modelViewMatrix*vec4(position,1.); vV = normalize(-mv.xyz); gl_Position = projectionMatrix*mv; }`,
-  fragmentShader: `uniform float t; uniform vec3 heat; varying vec3 vP; varying vec3 vN; varying vec3 vV;
+  fragmentShader: `uniform float t; uniform vec3 heat; uniform float talk; uniform float level; varying vec3 vP; varying vec3 vN; varying vec3 vV;
    float h(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
    float n(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
     return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),
@@ -433,7 +636,10 @@ function start() {
    void main(){ vec3 p = vP*2.6; float g = fbm(p + vec3(0.,t*.07,t*.05)); float c = fbm(p*1.7 - g*1.6 + t*.04);
     vec3 deep = heat*.55, hot = vec3(1.,.82,.45), white = vec3(1.,.98,.9);
     vec3 col = mix(deep, hot, smoothstep(.25,.75,c)); col = mix(col, white, smoothstep(.62,.9,c));
-    float rim = pow(1.-max(dot(vN,vV),0.),2.2); col += heat*rim*1.3; gl_FragColor = vec4(col,1.); }`});
+    float rim = pow(1.-max(dot(vN,vV),0.),2.2); col += heat*rim*1.3;
+    vec3 b = mix(vec3(.03,.12,.45), vec3(.3,.62,1.), smoothstep(.25,.75,c)); b = mix(b, vec3(.82,.93,1.), smoothstep(.62,.9,c));
+    b += vec3(.3,.55,1.)*rim*1.3; col = mix(col, b, talk) * (1. + level*.9*talk);  // Dyson speaking: the core turns blue
+    gl_FragColor = vec4(col,1.); }`});
  const star = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 96), starMat); rig.add(star);
  const glowTex = (() => { const c = document.createElement("canvas"); c.width = c.height = 256; const g = c.getContext("2d");
   const r = g.createRadialGradient(128, 128, 0, 128, 128, 128); r.addColorStop(0, "rgba(255,230,180,1)"); r.addColorStop(.2, "rgba(255,180,90,.55)");
@@ -505,10 +711,10 @@ function start() {
  });
  cv.addEventListener("pointerleave", () => tip.classList.remove("on"));
  cv.addEventListener("click", () => { ray.setFromCamera(mouse, camera); const hit = ray.intersectObjects(pick)[0]; if (hit) DY.select(hit.object.userData.k); });
- function size() { const w = box.clientWidth, h = box.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h;
-  camera.position.z = w / h < .8 ? 10.2 : 8.6; camera.updateProjectionMatrix(); world.position.y = h > 600 ? .55 : .45; }
- new ResizeObserver(size).observe(box); size();
- let last = performance.now(), T = 0;
+ function size() { const w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h;
+  camera.position.z = w / h < .8 ? 10.2 : 8.6; camera.updateProjectionMatrix(); world.position.y = innerWidth > 1100 ? .05 : innerWidth > 560 ? -.1 : -.3; }
+ const ro = new ResizeObserver(size); ro.observe(box); ro.observe(cv); size();
+ let last = performance.now(), T = 0, talk = 0, lvl = 0;
  function draw(dt) {
   T += dt; starMat.uniforms.t.value = T;
   if (!drag) { vy *= .95; yaw += dt * .12 * DY.speed + vy * .2; }
@@ -523,6 +729,13 @@ function start() {
   for (let i = beams.length - 1; i >= 0; i--) { const B = beams[i]; B.life -= dt * 1.2; B.line.material.opacity = Math.max(0, B.life);
    if (B.life <= 0) { rig.remove(B.line); B.line.geometry.dispose(); B.line.material.dispose(); beams.splice(i, 1); } }
   halo.material.opacity = .9 + .1 * Math.sin(T * .8);
+  // voice: blue while Dyson speaks, brighter collectors while the Founder speaks, both following the sound
+  const V = DY.voice || {}, dysonOn = V.who === "dyson" ? 1 : 0, founderOn = V.who === "founder" ? 1 : 0;
+  talk += (dysonOn - talk) * Math.min(1, dt * 5); lvl += ((V.level || 0) - lvl) * Math.min(1, dt * 14);
+  starMat.uniforms.talk.value = talk; starMat.uniforms.level.value = lvl;
+  halo.material.color.setRGB(1 - .6 * talk, 1 - .3 * talk, 1); corona.material.color.copy(halo.material.color);
+  const hs = 5.2 * (1 + lvl * .35 * Math.max(talk, founderOn * .5)); halo.scale.set(hs, hs, 1);
+  coll.material.opacity = .55 + founderOn * lvl * .45; shell.material.opacity = .1 + founderOn * lvl * .25 + talk * .1;
   renderer.render(scene, camera);
  }
  function frame(t) { const dt = Math.min(.05, (t - last) / 1000); last = t; draw(dt); if (!document.hidden) requestAnimationFrame(frame); }
