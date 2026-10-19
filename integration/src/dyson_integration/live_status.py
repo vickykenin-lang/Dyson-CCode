@@ -302,7 +302,8 @@ class LiveStatus:
         def app():
             m = self._one(
                 "memory",
-                "SELECT count(*) AS n, max(sent_at) AS last FROM memory.messages"
+                "SELECT count(*) AS n, count(*) FILTER (WHERE modality = 'voice') AS spoken,"
+                " max(sent_at) AS last FROM memory.messages"
                 " WHERE participant = 'founder' AND sent_at >= %s",
                 [since],
             )
@@ -310,7 +311,7 @@ class LiveStatus:
                 "app",
                 "Dyson App",
                 self._status(m["last"], now),
-                [("Your messages (24 h)", m["n"]), ("Voice", "deferred (D-016)")],
+                [("Your messages (24 h)", m["n"]), ("Spoken (24 h)", m["spoken"])],
                 m["last"],
             )
 

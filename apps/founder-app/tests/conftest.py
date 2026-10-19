@@ -34,9 +34,9 @@ def voice():
 
 @pytest.fixture
 def make(gateway):
-    def _make(voice=None):
-        return TestClient(create_app(gateway, voice or NoVoice(), secure_cookies=False),
-                          follow_redirects=True)  # fmt: skip
+    def _make(voice=None, speech=None):
+        return TestClient(create_app(gateway, voice or NoVoice(), speech=speech,
+                                     secure_cookies=False), follow_redirects=True)  # fmt: skip
 
     return _make
 

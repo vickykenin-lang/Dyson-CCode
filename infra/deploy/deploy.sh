@@ -21,6 +21,6 @@ done
 DYSON_SECURE_COOKIES=1 DYSON_PASSKEY_RP_ID=control.designinfra.in \
   DYSON_PASSKEY_ORIGIN=https://control.designinfra.in \
   DYSON_ENVIRONMENT=aws-ap-southeast-2 DYSON_RELEASE="$REL" \
-  DYSON_BEDROCK=1 DYSON_AWS_DIR=/opt/dyson/aws docker compose -p dyson up -d --build
+  DYSON_BEDROCK=1 DYSON_POLLY=1 DYSON_AWS_DIR=/opt/dyson/aws docker compose -p dyson up -d --build
 ln -sfn "/opt/dyson/releases/$REL" /opt/dyson/current
 docker compose -p dyson ps --format '{{.Service}} {{.State}} {{.Status}}'

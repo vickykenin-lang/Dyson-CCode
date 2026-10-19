@@ -28,3 +28,5 @@ IAM read access (no Dyson identity has it); the drift check runs from the deploy
 en-IN) answered in 0.1 to 0.25 s. Transcribe was refused by a service control policy of the AWS
 Organization this account belongs to (`p-9gwbhrxm`, managed from account 484612795290), which
 explicitly denies `transcribe:StartStreamTranscription`; Dyson's own policy cannot override it.
+Same day: Transcribe removed again; the Founder keeps the free plan and voice is heard on Dyson's
+own server (D-024). The statement is now `SpeakRepliesInSydneyOnly`: Polly `SynthesizeSpeech` only.

@@ -87,11 +87,72 @@ def test_uncertain_speech_is_confirmed_never_sent_silently(make, backend):  # LA
     assert backend.messages[-1].text == "send fifteen thousand"
 
 
-def test_voice_is_a_slot_until_gate_5(make, backend):  # LA-APP-01
+def test_without_voice_connected_nothing_is_sent(make, backend):  # LA-APP-01
     app = make()  # NoVoice
     app.post("/login", data={"username": "founder", "password": PASSWORD})
+    page = app.post("/voice", files={"audio": ("a.wav", b"...", "audio/wav")}).text
+    assert "voice is not connected yet" in page and backend.messages == []
+
+
+class FakeVoiceService:  # stands in for the voice container's HTTP API
+    def __init__(self, answer, status=200):
+        self.answer, self.status, self.sent = answer, status, []
+
+    def post(self, url, content, headers):
+        import httpx
+
+        self.sent.append((url, headers["content-type"], content))
+        return httpx.Response(self.status, json=self.answer)
+
+
+def test_spoken_words_reach_dyson_through_the_voice_container(make, backend):  # D-024
+    from dyson_founder_app.voice import RemoteVoice
+
+    service = FakeVoiceService({"text": "T0 par 7 aur 8 jod do", "uncertain": False})
+    app = make(RemoteVoice("http://172.32.0.10:8096", http=service))
+    app.post("/login", data={"username": "founder", "password": PASSWORD})
+    app.post("/voice", files={"audio": ("voice.wav", b"RIFF-wav", "audio/wav")})
+    assert service.sent == [("http://172.32.0.10:8096/transcribe", "audio/wav", b"RIFF-wav")]
+    assert backend.messages[-1].text == "T0 par 7 aur 8 jod do"
+    assert backend.messages[-1].modality.value == "voice"
+    # anything but the app's own WAV recording is refused before it leaves the app
     page = app.post("/voice", files={"audio": ("a.webm", b"...", "audio/webm")}).text
-    assert "Voice is not available yet" in page and backend.messages == []
+    assert "use the microphone button" in page and len(service.sent) == 1
+
+
+def test_an_unsure_hearing_from_the_voice_container_waits_for_the_founder(make, backend):
+    from dyson_founder_app.voice import RemoteVoice  # LA-APP-07
+
+    service = FakeVoiceService({"text": "pachas hazaar bhejo", "uncertain": True})
+    app = make(RemoteVoice("http://voice", http=service))
+    app.post("/login", data={"username": "founder", "password": PASSWORD})
+    page = app.post("/voice", files={"audio": ("voice.wav", b"RIFF", "audio/wav")}).text
+    assert "Please check what I heard" in page and backend.messages == []
+
+
+class Speech:
+    def __init__(self):
+        self.said = []
+
+    def speak(self, text):
+        self.said.append(text)
+        return b"ID3-mp3"
+
+
+def test_a_spoken_command_gets_a_spoken_answer_a_typed_one_does_not(make, voice):  # D-024
+    speech = Speech()
+    app = make(voice, speech)
+    app.post("/login", data={"username": "founder", "password": PASSWORD})
+    typed = app.post("/send", data={"text": "How are sales?"}).text
+    assert "id='answer'" not in typed and "Hear this reply" in typed
+    spoken = app.post("/voice", files={"audio": ("voice.wav", b"RIFF", "audio/wav")}).text
+    assert "<audio id='answer' autoplay src='/speak/-1'>" in spoken
+    r = app.get("/speak/-1")
+    assert r.status_code == 200 and r.headers["content-type"] == "audio/mpeg"
+    assert speech.said == ["I will report when verified."]  # only Dyson's own reply is spoken
+    assert app.get("/speak/0").content == b"ID3-mp3" and app.get("/speak/9").status_code == 404
+    app.post("/logout")
+    assert app.get("/speak/-1").status_code == 401
 
 
 def test_reconnect_restores_tasks_and_context(founder, make, backend):  # LA-APP-05
@@ -129,7 +190,7 @@ def test_founder_talks_only_to_dyson(founder):  # LA-HER-04, LA-G-08
 
     from dyson_founder_app import app
 
-    assert list(inspect.signature(app.create_app).parameters) == ["gateway", "voice",
+    assert list(inspect.signature(app.create_app).parameters) == ["gateway", "voice", "speech",
                                                                   "secure_cookies"]  # fmt: skip
     assert "hermes" not in (SRC / "app.py").read_text().lower()
     page = founder.get("/").text

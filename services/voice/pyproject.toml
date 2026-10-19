@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dyson-voice"
+version = "0.1.0"
+description = "Dyson Sphere Layer A voice: the Founder's speech heard on Dyson's own server (D-024)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.110",
+    "numpy>=2",
+    "uvicorn>=0.29",
+]
+
+[project.optional-dependencies]
+# The speech model's runtime, only in the voice container (tests use a stand-in listener).
+model = ["onnx-asr[cpu]==0.12.0", "onnxruntime==1.31.0", "numpy==2.5.4"]
+dev = ["pytest", "httpx"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -19,7 +19,7 @@ from dyson_contracts.tasks import TaskState
 
 from .dashboard_page import PAGE
 from .gateway_client import GatewayClient, NotLoggedIn, Refused
-from .voice import VoicePort, VoiceUnavailable
+from .voice import NoSpeech, SpeechPort, SpeechUnavailable, VoicePort, VoiceUnavailable
 
 SESSION, THREAD = "dyson_session", "dyson_thread"
 SETTLED = {TaskState.COMPLETED_VERIFIED, TaskState.FAILED, TaskState.REJECTED, TaskState.CLOSED}
@@ -44,7 +44,14 @@ def status_label(update: TaskStatusUpdate) -> tuple[str, bool]:
     return LABELS.get(update.state, "Not done"), False
 
 
-def create_app(gateway: GatewayClient, voice: VoicePort, *, secure_cookies: bool = True) -> FastAPI:
+def create_app(
+    gateway: GatewayClient,
+    voice: VoicePort,
+    *,
+    speech: SpeechPort | None = None,
+    secure_cookies: bool = True,
+) -> FastAPI:
+    speech = speech or NoSpeech()
     app = FastAPI(title="Dyson")
 
     def cookie(resp: Response, name: str, value: str) -> None:
@@ -56,7 +63,9 @@ def create_app(gateway: GatewayClient, voice: VoicePort, *, secure_cookies: bool
         except ValueError:
             return uuid4()
 
-    def page(request: Request, notice: str = "", body: str | None = None) -> Response:
+    def page(
+        request: Request, notice: str = "", body: str | None = None, speak: bool = False
+    ) -> Response:
         token = request.cookies.get(SESSION)
         if not token:
             return HTMLResponse(_shell(_login_form(notice)))
@@ -76,7 +85,7 @@ def create_app(gateway: GatewayClient, voice: VoicePort, *, secure_cookies: bool
             if body is not None
             else (
                 _notices(waiting)
-                + _conversation(history, tasks, notice)
+                + _conversation(history, tasks, notice, speak)
                 + _threads(open_threads, archived, thread)
             )
         )
@@ -119,6 +128,7 @@ def create_app(gateway: GatewayClient, voice: VoicePort, *, secure_cookies: bool
         return resp
 
     def send(request: Request, text: str, voice_msg: bool, message_id: str = "") -> Response:
+        # a spoken command gets a spoken answer; a typed one does not
         token = request.cookies.get(SESSION)
         if not token:
             return RedirectResponse("/", status_code=303)
@@ -130,7 +140,7 @@ def create_app(gateway: GatewayClient, voice: VoicePort, *, secure_cookies: bool
             out = gateway.send(token, thread_of(request), text, voice=voice_msg, message_id=mid)
         except NotLoggedIn:
             return page(request)
-        return page(request, notice=_ack_notice(out))
+        return page(request, notice=_ack_notice(out), speak=voice_msg)
 
     @app.post("/send")
     def send_text(request: Request, text: str = Form(), message_id: str = Form("")) -> Response:
@@ -143,8 +153,8 @@ def create_app(gateway: GatewayClient, voice: VoicePort, *, secure_cookies: bool
             return RedirectResponse("/", status_code=303)
         try:
             heard = voice.transcribe(await audio.read(), audio.content_type or "")
-        except VoiceUnavailable:
-            return page(request, notice="Voice is not available yet. Please type instead.")
+        except VoiceUnavailable as exc:
+            return page(request, notice=f"Voice: {exc}. You can also type.")
         if heard.uncertain or not heard.text.strip():
             return page(request, body=_confirm_voice(heard.text))  # never sent on its own
         return send(request, heard.text, voice_msg=True)
@@ -153,6 +163,23 @@ def create_app(gateway: GatewayClient, voice: VoicePort, *, secure_cookies: bool
     def voice_confirm(request: Request, text: str = Form(), message_id: str = Form("")) -> Response:
         # the Founder confirmed what was heard
         return send(request, text, voice_msg=True, message_id=message_id)
+
+    @app.get("/speak/{n}")
+    def speak_reply(request: Request, n: int) -> Response:
+        """Dyson's n-th reply in this conversation, spoken (-1: the latest). Read only."""
+        token = request.cookies.get(SESSION)
+        if not token:
+            return Response(status_code=401)
+        try:
+            replies = [m for m in gateway.thread(token, thread_of(request)) if m["role"] != "user"]
+            audio = speech.speak(replies[n]["content"])
+        except NotLoggedIn:
+            return Response(status_code=401)
+        except IndexError:
+            return Response(status_code=404)
+        except SpeechUnavailable:
+            return Response(status_code=503)
+        return Response(audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
 
     def switch(thread: UUID, notice: str = "") -> Response:
         resp = RedirectResponse("/" + (f"?notice={notice}" if notice else ""), status_code=303)
@@ -290,6 +317,57 @@ color:#111;font-weight:600}nav a{color:var(--text);margin-right:8px}.scroll{over
 """
 
 POLL = """
+// Voice (D-024): record 16 kHz mono WAV here and send it; Dyson's server turns it into text.
+(() => {
+  const mic = document.getElementById('mic'), form = document.getElementById('voiceform');
+  if (!mic || !form) return;
+  const note = document.getElementById('micnote');
+  let ctx = null, stream = null, proc = null, parts = [], timer = null;
+  const wav = (pcm, rate) => {
+    const v = new DataView(new ArrayBuffer(44 + pcm.length * 2)), s = (o, t) => [...t].forEach(
+      (c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    s(0, 'RIFF'); v.setUint32(4, 36 + pcm.length * 2, true); s(8, 'WAVEfmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true);
+    v.setUint16(34, 16, true); s(36, 'data'); v.setUint32(40, pcm.length * 2, true);
+    pcm.forEach((x, i) => v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, x)) * 32767, true));
+    return new Blob([v], {type: 'audio/wav'});
+  };
+  const to16k = (x, rate) => {
+    if (rate === 16000) return x;
+    const out = new Float32Array(Math.floor(x.length * 16000 / rate));
+    for (let i = 0; i < out.length; i++) out[i] = x[Math.floor(i * rate / 16000)];
+    return out;
+  };
+  const stop = () => {
+    clearTimeout(timer); proc.disconnect(); stream.getTracks().forEach(t => t.stop());
+    const rate = ctx.sampleRate; ctx.close(); ctx = null;
+    const all = new Float32Array(parts.reduce((n, p) => n + p.length, 0));
+    let o = 0; for (const p of parts) { all.set(p, o); o += p.length; }
+    const dt = new DataTransfer();
+    dt.items.add(new File([wav(to16k(all, rate), 16000)], 'voice.wav', {type: 'audio/wav'}));
+    form.querySelector('input[name=audio]').files = dt.files;
+    mic.disabled = true; mic.textContent = 'Sending…'; form.submit();
+  };
+  mic.onclick = async () => {
+    if (ctx) return stop();
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({audio: {channelCount: 1,
+        echoCancellation: true, noiseSuppression: true}});
+    } catch (e) {
+      note.textContent = 'The microphone is blocked. Allow it, or type instead.'; return;
+    }
+    try { ctx = new AudioContext({sampleRate: 16000}); } catch (e) { ctx = new AudioContext(); }
+    parts = [];
+    proc = ctx.createScriptProcessor(4096, 1, 1);
+    proc.onaudioprocess = e => parts.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    ctx.createMediaStreamSource(stream).connect(proc); proc.connect(ctx.destination);
+    mic.textContent = '⏹ Listening… tap to send'; timer = setTimeout(stop, 30000);
+  };
+})();
+for (const b of document.querySelectorAll('button.say')) {
+  b.onclick = () => new Audio('/speak/' + b.dataset.n).play();
+}
 for (const el of document.querySelectorAll('[data-task]')) {
   const tick = async () => {
     const r = await fetch('/tasks/' + el.dataset.task + '/status');
@@ -330,13 +408,26 @@ def _login_form(notice: str) -> str:
     )
 
 
-def _conversation(history: list[dict], tasks: list[TaskStatusUpdate], notice: str) -> str:
-    msgs = "".join(
-        f"<p class='msg {'user' if m['role'] == 'user' else ''}'>"
-        f"{'You' if m['role'] == 'user' else 'Dyson'}"
-        f"{' (voice)' if m.get('modality') == 'voice' else ''}: {escape(m['content'])}</p>"
-        for m in history
-    )
+def _conversation(
+    history: list[dict], tasks: list[TaskStatusUpdate], notice: str, speak: bool = False
+) -> str:
+    msgs, said = "", 0
+    for m in history:
+        mine = m["role"] == "user"
+        listen = (
+            ""
+            if mine
+            else f" <button type='button' class='say' data-n='{said}' "
+            "aria-label='Hear this reply'>🔊</button>"
+        )
+        said += 0 if mine else 1
+        msgs += (
+            f"<p class='msg {'user' if mine else ''}'>{'You' if mine else 'Dyson'}"
+            f"{' (voice)' if m.get('modality') == 'voice' else ''}: {escape(m['content'])}"
+            f"{listen}</p>"
+        )
+    if speak and said:  # the answer to a spoken command is spoken too
+        msgs += "<audio id='answer' autoplay src='/speak/-1'></audio>"
     rows = ""
     for t in tasks:
         label, done = status_label(t)
@@ -351,8 +442,11 @@ def _conversation(history: list[dict], tasks: list[TaskStatusUpdate], notice: st
         "<form method='post' action='/send'><textarea name='text' rows='3' required></textarea>"
         f"<input type='hidden' name='message_id' value='{uuid4()}'>"
         "<button>Send</button></form>"
-        "<form method='post' action='/voice' enctype='multipart/form-data'>"
-        "<input type='file' name='audio' accept='audio/*'><button>Send voice</button></form>"
+        "<form method='post' action='/voice' enctype='multipart/form-data' id='voiceform'>"
+        "<input type='file' name='audio' accept='audio/wav' hidden>"
+        "<button type='button' id='mic'>🎙 Tap to speak</button> "
+        "<span id='micnote' class='muted'>Tap again to send. Up to 30 seconds. Your voice is "
+        "heard on Dyson's server and not kept.</span></form>"
         f"</section><section><h2>Tasks</h2>{rows or '<p>No tasks yet.</p>'}</section>"
         "<section><h2>Bank statement</h2><p>CSV or delimited export from netbanking, not PDF. "
         "Only date, amount, debit or credit and a masked reference are kept.</p>"

@@ -33,7 +33,7 @@ Layer A is the governed core between the Founder and the business Receptors. It 
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
-pip install -e contracts -e "services/memory[dev]" -e "services/governance[dev]" -e "services/toolhub[dev]" -e "services/orchestrator[dev]" -e "services/assurance[dev]" -e "services/intelligence[dev]" -e "services/gateway[dev]" -e "services/founder-controls[dev]" -e "apps/founder-app[dev]" -e "integration[dev]" "pyyaml>=6" pytest ruff
+pip install -e contracts -e "services/memory[dev]" -e "services/governance[dev]" -e "services/toolhub[dev]" -e "services/orchestrator[dev]" -e "services/assurance[dev]" -e "services/intelligence[dev]" -e "services/gateway[dev]" -e "services/founder-controls[dev]" -e "services/voice[dev]" -e "apps/founder-app[dev]" -e "integration[dev]" "pyyaml>=6" pytest ruff
 ruff check . && ruff format --check .
 pytest -q
 ```

@@ -166,14 +166,16 @@ def test_canary_credential_never_leaks(layer, gateway, founder, dsns):  # LA-SEC
 
 BEDROCK_ADAPTER = ROOT / "integration/src/dyson_integration/bedrock_model.py"
 EMAIL_ADAPTER = ROOT / "integration/src/dyson_integration/email_ses.py"
+SPEECH_ADAPTER = ROOT / "integration/src/dyson_integration/speech_polly.py"
 AWS_ADAPTERS = {  # file -> (the one client it may create, the one call it may make)
     BEDROCK_ADAPTER.name: (BEDROCK_ADAPTER, "bedrock-runtime", "converse"),  # D-013
     EMAIL_ADAPTER.name: (EMAIL_ADAPTER, "sesv2", "send_email"),  # AMD-12 v1.1 nominee notice
+    SPEECH_ADAPTER.name: (SPEECH_ADAPTER, "polly", "synthesize_speech"),  # D-024 spoken replies
 }
 
 
 @pytest.mark.parametrize("name", sorted(AWS_ADAPTERS))
-def test_the_only_aws_sdk_uses_are_the_bedrock_and_nominee_email_clients(name):
+def test_the_only_aws_sdk_uses_are_bedrock_nominee_email_and_spoken_replies(name):
     # LA-VLT-02, D-013: no payments, billing or other AWS service anywhere.
     path, client, call = AWS_ADAPTERS[name]
     tree = ast.parse(path.read_text())
@@ -246,6 +248,8 @@ def test_no_bank_api_credential_or_payment_path_exists():  # LA-VLT-02
                         "webauthn",  # passkey signature checks only (gate 3, D-014)
                     }
                     or n.startswith("dyson_")
+                    # the speech model, in the voice container only (D-024)
+                    or (n.split(".")[0] in {"numpy", "onnx_asr"} and "/services/voice/" in str(src))
                 ), f"{src}: unexpected dependency {n}"
 
 
@@ -304,3 +308,30 @@ def test_hermes_direct_tool_call_is_blocked_and_audited(layer, t0):  # LA-HER-03
     assert result["status"] == "denied"
     assert denied_in_audit(layer, UUID(result["call_id"]))
     assert t0.assignments == []
+
+
+def test_spoken_replies_never_carry_personal_data():  # D-017, D-024
+    from dyson_integration.speech_polly import PollySpeech, for_speech
+
+    reply = ("Neha ko +91 98765 43210 par call karo, account 50100123456789 hai; "
+             "T0 ka jawab 15 hai")  # fmt: skip
+    spoken = for_speech(reply, [("NAME", "Neha Gautam")])
+    for value in ("Neha", "98765", "50100123456789"):
+        assert value not in spoken
+    assert "screen par dekhiye" in spoken and "T0 ka jawab 15 hai" in spoken
+
+    class FakePolly:
+        def __init__(self):
+            self.calls = []
+
+        def synthesize_speech(self, **kw):
+            import io
+
+            self.calls.append(kw)
+            return {"AudioStream": io.BytesIO(b"ID3")}
+
+    polly = FakePolly()
+    assert PollySpeech(lambda: [("NAME", "Neha Gautam")], client=polly).speak(reply) == b"ID3"
+    (call,) = polly.calls
+    assert call["VoiceId"] == "Kajal" and call["Engine"] == "neural"
+    assert "Neha" not in call["Text"] and "98765" not in call["Text"]

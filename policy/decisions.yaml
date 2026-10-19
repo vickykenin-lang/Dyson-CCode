@@ -211,13 +211,16 @@ decisions:
 - id: D-024
   date: '2026-10-19'
   closes: Implementation gate 5 (voice), reopened; amends D-016
-  topic: Voice starts, in Sydney only
+  topic: Voice starts, heard on Dyson's own server
   decision: >-
-    Voice is built and benchmarked now. The Founder's voice goes only to Amazon Transcribe and
-    replies are spoken only by Amazon Polly, both in ap-southeast-2 (Sydney), inside Dyson's own
-    AWS account; no other region and no other voice vendor. Audio is streamed and never stored
-    (D-017). A transcript is text like any other: C hides personal data before any model sees it,
-    and every command goes through B, D and governance as before. A transcript Dyson is unsure of
-    is shown to the Founder to confirm, never acted on silently. STOP, PAUSE and approvals stay on
-    Direct Founder Controls. The thresholds for accuracy and speed are set from the benchmark on
-    the Founder's own recordings, then confirmed by the Founder.
+    Voice is built now and kept central. The Founder's voice is heard on Dyson's own server in
+    Sydney by an open speech model (AI4Bharat IndicConformer for Hindi, MIT, fetched once at a
+    pinned version and checked by hash), in a container with no internet, no secrets and no
+    database that only Layer A can reach. No outside speech service hears the Founder. Audio is
+    never stored (D-017). Dyson's replies are spoken by Amazon Polly in Sydney, which never
+    receives a personal identifier. A transcript is text like any other: C hides personal data
+    before any model sees it, and every command goes through B, D and governance as before. A
+    transcript Dyson is unsure of is shown to the Founder to confirm, never acted on silently.
+    STOP, PAUSE and approvals stay on Direct Founder Controls. Amazon Transcribe is not used: the
+    account stays on the AWS free plan, where it is closed. Accuracy and speed thresholds are set
+    from a benchmark on the Founder's own recordings, then confirmed by the Founder.

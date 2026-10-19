@@ -73,11 +73,9 @@
       }
     },
     {
-      "Sid": "VoiceInSydneyOnly",
+      "Sid": "SpeakRepliesInSydneyOnly",
       "Effect": "Allow",
       "Action": [
-        "transcribe:StartStreamTranscription",
-        "transcribe:StartStreamTranscriptionWebSocket",
         "polly:SynthesizeSpeech"
       ],
       "Resource": "*",

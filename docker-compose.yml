@@ -10,9 +10,11 @@
 # Gateway API http://localhost:8080 · Founder app http://localhost:8081
 # Direct Founder Controls http://localhost:8082 (dyson-control) · J read-only http://localhost:8083
 #
-# Three containers, as on AWS (LA-DEP-01 to LA-DEP-03): layer-a (A, B, C, D, G, I, E, F, H, J),
-# controls (Direct Founder Controls alone, so STOP works when B, C or Hermes is down) and hermes
-# (on a network with no internet, no database and only Layer A's Hermes edge on it).
+# Four containers, as on AWS (LA-DEP-01 to LA-DEP-03): layer-a (A, B, C, D, G, I, E, F, H, J),
+# controls (Direct Founder Controls alone, so STOP works when B, C or Hermes is down), hermes
+# (on a network with no internet, no database and only Layer A's Hermes edge on it) and voice
+# (the speech model that hears the Founder, D-024: no secrets, no database, no internet, and
+# only Layer A on its network).
 # The Founder's device key for dyson-control is in the secret store file inside the dyson-data
 # volume (core.device_key); copy it to the device yourself. It is never printed.
 services:
@@ -55,6 +57,8 @@ services:
       DYSON_PASSKEY_RP_ID: ${DYSON_PASSKEY_RP_ID:-localhost}
       DYSON_PASSKEY_ORIGIN: ${DYSON_PASSKEY_ORIGIN:-http://localhost:8082}
       DYSON_BEDROCK: ${DYSON_BEDROCK:-0}  # 1 only on the server (D-013)
+      DYSON_POLLY: ${DYSON_POLLY:-0}  # 1 only on the server: spoken replies (D-024)
+      DYSON_VOICE_URL: http://172.32.0.10:8096
       DYSON_ENVIRONMENT: ${DYSON_ENVIRONMENT:-local}
       DYSON_RELEASE: ${DYSON_RELEASE:-}
       AWS_SHARED_CREDENTIALS_FILE: /run/aws/credentials
@@ -67,6 +71,7 @@ services:
     networks:
       core_net: {ipv4_address: 172.30.0.10}
       hermes_net: {ipv4_address: 172.31.0.10}
+      voice_net: {ipv4_address: 172.32.0.2}
     ports:
       - "127.0.0.1:8080:8080"
       - "127.0.0.1:8081:8081"
@@ -111,12 +116,31 @@ services:
     networks:
       hermes_net: {ipv4_address: 172.31.0.20}
 
+  voice:
+    build:
+      context: .
+      dockerfile: services/voice/Dockerfile
+      args:
+        BASE_IMAGE: ${DYSON_PYTHON_IMAGE:-python:3.12-slim}
+    image: dyson/voice:local
+    read_only: true
+    tmpfs: [/tmp]
+    cpus: 1.0  # hearing never starves the rest of Layer A
+    mem_limit: 1g
+    environment:
+      DYSON_VOICE_BIND: 172.32.0.10
+    networks:
+      voice_net: {ipv4_address: 172.32.0.10}
+
 networks:
   core_net:
     ipam: {config: [{subnet: 172.30.0.0/24}]}
   hermes_net:
     internal: true  # no route out: Hermes reaches only Layer A's edge
     ipam: {config: [{subnet: 172.31.0.0/24}]}
+  voice_net:
+    internal: true  # no route out: the voice model talks only to Layer A
+    ipam: {config: [{subnet: 172.32.0.0/24}]}
 
 volumes:
   pgdata: {}

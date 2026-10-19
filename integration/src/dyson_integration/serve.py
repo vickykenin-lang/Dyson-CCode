@@ -26,6 +26,8 @@ Environment:
   DYSON_NOMINEE_FILE    the nominee's details; when set, Survival Mode notices go by email
   DYSON_BEDROCK         1 to put Amazon Bedrock behind C (role credentials from
                         AWS_SHARED_CREDENTIALS_FILE, refreshed by the host)
+  DYSON_VOICE_URL       core: the voice container that hears the Founder (D-024)
+  DYSON_POLLY           1 to speak Dyson's replies through Amazon Polly in Sydney (D-024)
 """
 
 import asyncio
@@ -42,7 +44,7 @@ from psycopg.conninfo import make_conninfo
 
 from dyson_founder_app.app import create_app as create_founder_app
 from dyson_founder_app.gateway_client import GatewayClient
-from dyson_founder_app.voice import NoVoice
+from dyson_founder_app.voice import NoVoice, RemoteVoice
 from dyson_memory.register_seed import seed_register
 
 from . import db
@@ -168,9 +170,17 @@ def main() -> None:
             time.sleep(2)
 
     threading.Thread(target=work, daemon=True).start()
+    speech = None
+    if os.environ.get("DYSON_POLLY") == "1":
+        from .adapters import nominee_details
+        from .speech_polly import PollySpeech
+
+        speech = PollySpeech(lambda: nominee_details(settings.nominee_file))
+    voice_url = os.environ.get("DYSON_VOICE_URL")
     app = create_founder_app(
         GatewayClient(TestClient(layer.gateway)),
-        NoVoice(),
+        RemoteVoice(voice_url) if voice_url else NoVoice(),
+        speech=speech,
         secure_cookies=os.environ.get("DYSON_SECURE_COOKIES") == "1",  # 0 for local http
     )
     bind = os.environ.get("DYSON_BIND", "0.0.0.0")

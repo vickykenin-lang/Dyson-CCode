@@ -11,7 +11,7 @@ select = ["E", "F", "W", "I", "B", "UP"]
 "apps/founder-app/src/dyson_founder_app/dashboard_page.py" = ["E501"]
 
 [tool.pytest.ini_options]
-testpaths = ["contracts/tests", "tests", "services/memory/tests", "services/governance/tests", "services/toolhub/tests", "services/orchestrator/tests", "services/assurance/tests", "services/intelligence/tests", "services/gateway/tests", "services/founder-controls/tests", "apps/founder-app/tests", "integration/tests"]
+testpaths = ["contracts/tests", "tests", "services/memory/tests", "services/governance/tests", "services/toolhub/tests", "services/orchestrator/tests", "services/assurance/tests", "services/intelligence/tests", "services/gateway/tests", "services/founder-controls/tests", "services/voice/tests", "apps/founder-app/tests", "integration/tests"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["dyson_contracts", "dyson_memory", "dyson_governance", "dyson_toolhub", "dyson_orchestrator", "dyson_assurance", "dyson_intelligence", "dyson_gateway", "dyson_founder_controls", "dyson_founder_app", "dyson_integration"]
+known-first-party = ["dyson_contracts", "dyson_memory", "dyson_governance", "dyson_toolhub", "dyson_orchestrator", "dyson_assurance", "dyson_intelligence", "dyson_gateway", "dyson_founder_controls", "dyson_voice", "dyson_founder_app", "dyson_integration"]
