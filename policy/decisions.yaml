@@ -208,3 +208,16 @@ decisions:
     wants in view is archived: it leaves the open list, stays complete in memory, evidence and
     the audit log, and can be restored at any time. Archiving needs no approval because it
     removes nothing. D-017's "deleted only on the Founder's request" now means archived.
+- id: D-024
+  date: '2026-10-19'
+  closes: Implementation gate 5 (voice), reopened; amends D-016
+  topic: Voice starts, in Sydney only
+  decision: >-
+    Voice is built and benchmarked now. The Founder's voice goes only to Amazon Transcribe and
+    replies are spoken only by Amazon Polly, both in ap-southeast-2 (Sydney), inside Dyson's own
+    AWS account; no other region and no other voice vendor. Audio is streamed and never stored
+    (D-017). A transcript is text like any other: C hides personal data before any model sees it,
+    and every command goes through B, D and governance as before. A transcript Dyson is unsure of
+    is shown to the Founder to confirm, never acted on silently. STOP, PAUSE and approvals stay on
+    Direct Founder Controls. The thresholds for accuracy and speed are set from the benchmark on
+    the Founder's own recordings, then confirmed by the Founder.

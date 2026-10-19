@@ -73,6 +73,21 @@
       }
     },
     {
+      "Sid": "VoiceInSydneyOnly",
+      "Effect": "Allow",
+      "Action": [
+        "transcribe:StartStreamTranscription",
+        "transcribe:StartStreamTranscriptionWebSocket",
+        "polly:SynthesizeSpeech"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-southeast-2"
+        }
+      }
+    },
+    {
       "Sid": "NeverDelete",
       "Effect": "Deny",
       "Action": [
