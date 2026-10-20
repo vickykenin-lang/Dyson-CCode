@@ -335,3 +335,26 @@ def test_spoken_replies_never_carry_personal_data():  # D-017, D-024
     (call,) = polly.calls
     assert call["VoiceId"] == "Kajal" and call["Engine"] == "neural"
     assert "Neha" not in call["Text"] and "98765" not in call["Text"]
+
+
+def test_hermes_agent_is_installed_isolated_and_not_admitted(layer):  # LA-GOV-06, D-025
+    import yaml
+
+    from dyson_contracts.integrations import IntegrationStatus
+    from dyson_integration.hermes_agent_record import INTEGRATION_ID, VERSION, record
+
+    compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
+    agent = compose["services"]["hermes-agent"]
+    assert agent["image"].endswith(VERSION)  # the image that runs is the one recorded
+    assert agent["networks"] == ["hermes_agent_net"]
+    assert compose["networks"]["hermes_agent_net"]["internal"] is True
+    others = [n for name, s in compose["services"].items() if name != "hermes-agent"
+              for n in (s.get("networks") or [])]  # fmt: skip
+    assert "hermes_agent_net" not in others  # alone on its network
+    assert not {"ports", "secrets", "environment", "privileged"} & agent.keys()
+    assert all("docker.sock" not in v for v in agent["volumes"])
+
+    first = record(layer.core)
+    assert first.integration_id == INTEGRATION_ID and first.risk is RiskLevel.HIGH
+    assert first.status is IntegrationStatus.ISOLATED and first.security_checked
+    assert record(layer.core) == first

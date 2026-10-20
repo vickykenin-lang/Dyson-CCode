@@ -132,6 +132,18 @@ services:
     networks:
       voice_net: {ipv4_address: 172.32.0.10}
 
+  hermes-agent:
+    # Nous Research Hermes Agent v0.22.2, the full image (with its desktop), pinned by digest
+    # (D-025). Installed and isolated: no route anywhere, no model, no secrets, nothing calls
+    # it. The Founder decides its wiring before it is admitted.
+    image: nousresearch/hermes-agent:v0.22.2-desktop@sha256:79c98751d8d772ac0f7bfc31a75b123b9cfac254c2e15e4d0ac8762d6b119212
+    command: ["sleep", "infinity"]
+    cpus: 1.0
+    mem_limit: 1536m
+    security_opt: ["no-new-privileges:true"]
+    volumes: [hermes-agent-data:/opt/data]
+    networks: [hermes_agent_net]
+
 networks:
   core_net:
     ipam: {config: [{subnet: 172.30.0.0/24}]}
@@ -141,11 +153,15 @@ networks:
   voice_net:
     internal: true  # no route out: the voice model talks only to Layer A
     ipam: {config: [{subnet: 172.32.0.0/24}]}
+  hermes_agent_net:
+    internal: true  # Hermes Agent alone: no internet, no Layer A, nothing else
+    ipam: {config: [{subnet: 172.33.0.0/24}]}
 
 volumes:
   pgdata: {}
   dyson-data: {}
   hermes-secrets: {}
+  hermes-agent-data: {}
 
 secrets:
   postgres_password:

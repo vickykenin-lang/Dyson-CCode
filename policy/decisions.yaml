@@ -224,3 +224,16 @@ decisions:
     STOP, PAUSE and approvals stay on Direct Founder Controls. Amazon Transcribe is not used: the
     account stays on the AWS free plan, where it is closed. Accuracy and speed thresholds are set
     from a benchmark on the Founder's own recordings, then confirmed by the Founder.
+- id: D-025
+  date: '2026-10-20'
+  closes: Hermes installation (zone 4); amends nothing
+  topic: Hermes Agent installed on Dyson's server, isolated until its wiring is decided
+  decision: >-
+    Nous Research's Hermes Agent (MIT) is installed at full capacity: the official v0.22.2 image
+    with its desktop, pinned by digest, in its own container on Dyson's server in Sydney. It sits
+    alone on a network with no route to the internet, to Layer A or to anything else, holds no
+    model, key or secret, and nothing calls it. The Supply Chain / Integration Gate records it as
+    high risk and ISOLATED. The Founder decides later which providers, gateways and models it
+    uses, how it is wired and its place in Dyson; it is admitted only on that decision and an
+    approval on Direct Founder Controls. Until then every Hermes rule stands (LA-HER-01 to
+    LA-HER-08): models only through C, tools only through G, the Founder talks only to Dyson.
