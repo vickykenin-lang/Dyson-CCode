@@ -136,6 +136,13 @@ services:
     # Nous Research Hermes Agent v0.22.2, the full image (with its desktop), pinned by digest
     # (D-025). Installed and isolated: no route anywhere, no model, no secrets, nothing calls
     # it. The Founder decides its wiring before it is admitted.
+    #
+    # Archived after the Milestone A benchmark (D-027, D-023): Dyson's own engine matched it on
+    # completion and beat it on latency and governance, so the Nous agent is no longer run. The
+    # image stays pinned and its data volume is kept (archive, never delete), but the "archived"
+    # compose profile keeps `docker compose up` from starting it. To bring it back for a future,
+    # Founder-admitted purpose: docker compose --profile archived up -d hermes-agent.
+    profiles: ["archived"]
     image: nousresearch/hermes-agent:v0.22.2-desktop@sha256:79c98751d8d772ac0f7bfc31a75b123b9cfac254c2e15e4d0ac8762d6b119212
     command: ["sleep", "infinity"]
     cpus: 1.0

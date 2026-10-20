@@ -276,3 +276,15 @@ decisions:
     the benchmark, and afterwards Hermes is re-isolated and then archived once Dyson's engine
     matches or beats it (D-025, D-023). The model spend stays inside C's budget and the hourly
     guard.
+  outcome: >-
+    Ran 2026-10-20. Dyson's engine completed 5 of 6 tasks at a median near 2s; the Nous agent
+    completed 6 of 6 but about 10x slower and with zero governed tool calls. The head-to-head
+    surfaced five Dyson weaknesses. Fixed in code (commit on main): the engine now re-plans after
+    an off-limits tool or a malformed decision instead of stopping, has a wall-clock latency guard
+    (StopReason.TIMEOUT), and the shim now serves SSE streaming; a live route health probe
+    (routecheck) was added so a model dead at runtime is caught despite passing qualification. The
+    production model finding was already fixed by the governed switch of C to Nova micro. After the
+    run the benchmark was torn down: the shim container and bench_net removed, the Nous agent's
+    config reset (provider auto, benchmark base_url and streaming override removed) and the agent
+    archived behind the "archived" compose profile (image pinned and data volume kept), and the
+    dyson.benchmark.hermes-wiring capability disabled in governance.
