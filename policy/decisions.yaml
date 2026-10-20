@@ -260,3 +260,19 @@ decisions:
     external, or all three Rule-of-Two flags need a Founder approval on Direct Founder Controls.
     REA (morluto/rea, MIT) is recorded as a development-only reverse-engineering tool, never on the
     production server.
+- id: D-027
+  date: '2026-10-20'
+  closes: Milestone A; amends nothing (bounded by D-025)
+  topic: Hermes is wired to a model through C for a time-boxed benchmark, then re-isolated
+  decision: >-
+    For the Milestone A benchmark the installed Nous Hermes Agent is given a model, and only a
+    model, through the Model Router (C): an OpenAI-compatible shim inside Layer A forwards its
+    chat calls to C with the Hermes credential and a fixed benchmark task class, so Hermes holds
+    no key of its own, reaches no provider directly, and cannot change the model or the budget
+    (LA-HER-02, LA-RTR-01). Its network gains a route to that shim and to nothing else; it still
+    has no internet, no Layer A data and no secrets. Its tools for the benchmark run through G
+    with real side effects denied, so the run measures reasoning and tool-choice, not live action.
+    This is a bounded change: the Founder admits it on Direct Founder Controls, it lasts only for
+    the benchmark, and afterwards Hermes is re-isolated and then archived once Dyson's engine
+    matches or beats it (D-025, D-023). The model spend stays inside C's budget and the hourly
+    guard.

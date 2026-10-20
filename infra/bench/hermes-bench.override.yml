@@ -1,0 +1,26 @@
+# Benchmark-only overlay (D-027). Applied at benchmark time, torn down after. It adds the OpenAI
+# shim and a private network shared only with hermes-agent, and gives hermes-agent a route to the
+# shim and nothing else. It never changes the main compose. See README.md for the run order.
+services:
+  bench-shim:
+    image: dyson/layer-a:local
+    pull_policy: never
+    depends_on:
+      layer-a: {condition: service_healthy}
+    entrypoint: ["python", "-m", "dyson_integration.bench_shim"]
+    environment:
+      DYSON_ROLE: bench_shim
+      DYSON_ROUTER_URL: http://172.31.0.10:8090/c   # C's edge, as served to Hermes
+      DYSON_SHIM_BIND: 172.34.0.10
+    volumes: [hermes-secrets:/hermes:ro]            # reads only the Hermes router token
+    networks:
+      bench_net: {ipv4_address: 172.34.0.10}
+
+  hermes-agent:
+    networks:
+      bench_net: {ipv4_address: 172.34.0.20}        # a route to the shim, and nothing else
+
+networks:
+  bench_net:
+    internal: true
+    ipam: {config: [{subnet: 172.34.0.0/24}]}
