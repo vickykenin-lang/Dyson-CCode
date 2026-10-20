@@ -76,6 +76,36 @@ def test_an_open_world_operation_must_name_its_hosts():
     assert m.needs_founder_admission  # open world always goes to the Founder
 
 
+def test_a_sealed_sandbox_may_reach_the_open_web_without_a_host_list():
+    # An open-world op with no egress hosts is allowed when the capability is a sealed sandbox:
+    # its web reach is isolated at the network layer, not host-gated.
+    browse = Operation(name="navigate", summary="open any site", open_world=True)
+    m = _manifest(
+        operations=(browse,),
+        requests=Requests(open_web_sealed=True, models=("dyson-router",)),
+        isolation=IsolationTier.CONTAINER,
+        risk=RiskLevel.HIGH,
+    )
+    assert m.needs_founder_admission
+
+
+def test_a_sealed_sandbox_must_be_contained_and_hold_nothing_sensitive():
+    browse = Operation(name="navigate", summary="open any site", open_world=True)
+    # Not a container -> refused.
+    with pytest.raises(ValidationError):
+        _manifest(operations=(browse,), isolation=IsolationTier.GVISOR,
+                  requests=Requests(open_web_sealed=True), risk=RiskLevel.HIGH)  # fmt: skip
+    # Sealed but also claims sensitive access -> not sealed, refused.
+    with pytest.raises(ValidationError):
+        _manifest(operations=(browse,), isolation=IsolationTier.CONTAINER, risk=RiskLevel.HIGH,
+                  requests=Requests(open_web_sealed=True),
+                  rule_of_two=RuleOfTwo(sensitive_access=True))  # fmt: skip
+    # Sealed but asks for a secret -> something could leak out, refused.
+    with pytest.raises(ValidationError):
+        _manifest(operations=(browse,), isolation=IsolationTier.CONTAINER, risk=RiskLevel.HIGH,
+                  requests=Requests(open_web_sealed=True, secrets=("x",)))  # fmt: skip
+
+
 def test_overall_risk_cannot_be_below_an_operation():
     hot = Operation(name="pay", summary="moves money", risk=RiskLevel.HIGH, requires_approval=True)
     with pytest.raises(ValidationError):

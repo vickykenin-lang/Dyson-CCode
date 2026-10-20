@@ -113,6 +113,10 @@ class Requests(Contract):
     secrets: tuple[NonEmptyStr, ...] = ()  # by name; Hub injects, capability never reads the store
     models: tuple[NonEmptyStr, ...] = ()  # reached only through the Model Router (C)
     fs_paths: tuple[NonEmptyStr, ...] = ()  # inside its own sandbox
+    open_web_sealed: bool = False  # runs in a sandbox with its own internet egress and NO route
+    # to the core, Layer A data or secrets. Its web reach is isolated at the network layer, not
+    # host-gated — so an open-world operation may leave egress_hosts empty. The manifest's checks
+    # force the containment that makes this safe (a container, no sensitive access, no secrets).
 
 
 class Provenance(Contract):
@@ -147,8 +151,21 @@ class CapabilityManifest(Contract):
         names = [op.name for op in self.operations]
         if len(names) != len(set(names)):
             raise ValueError("operation names must be unique")
-        if any(op.open_world for op in self.operations) and not self.requests.egress_hosts:
-            raise ValueError("an open-world operation must name the hosts it reaches")
+        if (
+            any(op.open_world for op in self.operations)
+            and not self.requests.egress_hosts
+            and not self.requests.open_web_sealed
+        ):
+            raise ValueError("an open-world operation must name its hosts or be open_web_sealed")
+        # A sealed-sandbox capability earns its unlisted web reach by being contained: at least a
+        # hardened container, no access to the Founder's data, and no secrets to leak out.
+        if self.requests.open_web_sealed:
+            if self.isolation not in (IsolationTier.CONTAINER, IsolationTier.REMOTE):
+                raise ValueError("open_web_sealed needs a container (or remote) isolation tier")
+            if self.rule_of_two.sensitive_access:
+                raise ValueError("open_web_sealed cannot also hold sensitive access (not sealed)")
+            if self.requests.secrets:
+                raise ValueError("open_web_sealed cannot hold secrets (nothing to leak out)")
         # In-process WASM cannot own a browser or a desktop; those need at least a container.
         if self.isolation is IsolationTier.WASM and self.kind in (
             CapabilityKind.PROCESS,
