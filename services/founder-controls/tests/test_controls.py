@@ -6,7 +6,17 @@ from pathlib import Path
 
 import pytest
 from controls_testkit import DEVICE_KEY
-from httpx import HTTPStatusError
+from httpx import HTTPStatusError as _HTTPStatusError
+
+# FastAPI's TestClient may be built on either `httpx` or the newer `httpx2`, and a response
+# raises its own package's HTTPStatusError. When both are installed they are distinct classes,
+# so `pytest.raises` must accept whichever the active TestClient actually throws.
+try:
+    from httpx2 import HTTPStatusError as _HTTPStatusError2
+except ImportError:  # only the single httpx package is present
+    HTTPStatusError: object = _HTTPStatusError
+else:
+    HTTPStatusError = (_HTTPStatusError, _HTTPStatusError2)
 
 from dyson_contracts.common import Component
 from dyson_contracts.control import ControlScope
