@@ -237,3 +237,26 @@ decisions:
     uses, how it is wired and its place in Dyson; it is admitted only on that decision and an
     approval on Direct Founder Controls. Until then every Hermes rule stands (LA-HER-01 to
     LA-HER-08): models only through C, tools only through G, the Founder talks only to Dyson.
+- id: D-026
+  date: '2026-10-20'
+  closes: Opens the Jarvis build; sets the extension contract
+  topic: Dyson builds Hermes's abilities into its own engine; anything new enters as a capability
+  decision: >-
+    Dyson will build the technical abilities of Hermes Agent into its own governed engine (zone 7,
+    the Power Cluster): an agent loop, subagents, long-term personal memory, self-written and
+    self-improving skills, a browser and desktop, and scheduled work. The engine uses models only
+    through C and tools only through G; a new skill it writes stays proposed until the Supply Chain
+    Gate admits it; it never grades its own work (F verifies), and memory changes go through a
+    proposal queue, not silent rewrites. Hermes's own outside paths and paid services are not
+    taken: no messaging gateways, no Nous Portal or Tool Gateway, no other compute backends, no
+    model-training trajectory tooling. The installed Hermes Agent stays isolated as the study and
+    benchmark copy, and is archived (not deleted, D-023) once Dyson's engine matches or beats it.
+    To let any new thing be adopted later without changing the core, every new capability — a
+    tool, model, connector, skill, agent, process, channel or whole cluster — enters through the
+    Gate as a signed, digest-pinned manifest (dyson_contracts.capability) that declares its
+    operations, risk, Rule-of-Two data flags, requested hosts/secrets/models, budget and isolation
+    tier. The Gate verifies it (never trusts its hints), pins each operation's hash, and a later
+    hash change auto-disables it. Low and medium risk admit once checked; high risk, anything
+    external, or all three Rule-of-Two flags need a Founder approval on Direct Founder Controls.
+    REA (morluto/rea, MIT) is recorded as a development-only reverse-engineering tool, never on the
+    production server.
