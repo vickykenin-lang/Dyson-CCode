@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import JsonValue
 
 from dyson_contracts.approvals import ApprovalDecision, ApprovalDecisionKind, ApprovalRequest
+from dyson_contracts.capability import CapabilityRecord
 from dyson_contracts.common import Timestamp
 from dyson_contracts.control import ControlCommandType, ControlMode, ControlScope, ControlState
 from dyson_contracts.integrations import IntegrationRecord
@@ -15,6 +16,7 @@ from dyson_contracts.receptor import ReceptorManifest
 from .events import (
     ApprovalConsumed,
     BreachDeclared,
+    CapabilityRecorded,
     ComplianceItemRecorded,
     ControlApplied,
     DecisionRecorded,
@@ -87,6 +89,7 @@ class GovernanceState:
     limits: dict[str, ReceptorLimits] = field(default_factory=dict)
     recommendations: list[LimitsRecommended] = field(default_factory=list)
     integrations: dict[str, IntegrationRecord] = field(default_factory=dict)
+    capabilities: dict[str, CapabilityRecord] = field(default_factory=dict)
     receptors: dict[str, Receptor] = field(default_factory=dict)
     compliance: dict[UUID, ComplianceItem] = field(default_factory=dict)
     # AMD-12 v1.1: Survival Mode, entered and left only by A from observed Founder presence.
@@ -149,6 +152,8 @@ class GovernanceState:
                 self.survival_since = e.at if e.active else None
             case IntegrationRecorded():
                 self.integrations[e.record.integration_id] = e.record
+            case CapabilityRecorded():
+                self.capabilities[e.record.manifest.id] = e.record
             case ReceptorRegistered():
                 self.receptors[e.manifest.receptor_id] = Receptor(e.manifest)
             case ReceptorStatusChanged():

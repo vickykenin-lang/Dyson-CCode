@@ -11,6 +11,7 @@ from uuid import UUID
 from pydantic import Field, JsonValue, TypeAdapter
 
 from dyson_contracts.approvals import ApprovalCategory, ApprovalDecision, ApprovalRequest
+from dyson_contracts.capability import CapabilityRecord
 from dyson_contracts.common import Component, Contract, Money, NonEmptyStr, ReceptorId, Timestamp
 from dyson_contracts.control import ControlCommand, ControlScope
 from dyson_contracts.digests import canonical_digest as contracts_canonical_digest
@@ -25,6 +26,7 @@ class ProposalKind(StrEnum):
     SET_PARAMETER = "set_parameter"
     SET_LIMITS = "set_limits"
     ADMIT_INTEGRATION = "admit_integration"
+    ADMIT_CAPABILITY = "admit_capability"
     ACTIVATE_RECEPTOR = "activate_receptor"
     ARCHIVE_RECEPTOR = "archive_receptor"
     REPLACE_RECEPTOR = "replace_receptor"
@@ -43,6 +45,7 @@ KIND_CATEGORY = {
     ProposalKind.SET_PARAMETER: ApprovalCategory.RULE_CHANGE,
     ProposalKind.SET_LIMITS: ApprovalCategory.RECEPTOR_LIMITS,
     ProposalKind.ADMIT_INTEGRATION: ApprovalCategory.INTEGRATION,
+    ProposalKind.ADMIT_CAPABILITY: ApprovalCategory.INTEGRATION,
     ProposalKind.ACTIVATE_RECEPTOR: ApprovalCategory.RECEPTOR_LIFECYCLE,
     ProposalKind.ARCHIVE_RECEPTOR: ApprovalCategory.RECEPTOR_LIFECYCLE,
     ProposalKind.REPLACE_RECEPTOR: ApprovalCategory.RECEPTOR_LIFECYCLE,
@@ -168,6 +171,11 @@ class IntegrationRecorded(_Event):
     record: IntegrationRecord
 
 
+class CapabilityRecorded(_Event):
+    type: Literal["capability_recorded"] = "capability_recorded"
+    record: CapabilityRecord
+
+
 class ReceptorRegistered(_Event):
     type: Literal["receptor_registered"] = "receptor_registered"
     manifest: ReceptorManifest
@@ -223,6 +231,7 @@ GovernanceEvent = Annotated[
     | LimitsRecommended
     | LimitsSet
     | IntegrationRecorded
+    | CapabilityRecorded
     | ReceptorRegistered
     | ReceptorStatusChanged
     | ComplianceItemRecorded

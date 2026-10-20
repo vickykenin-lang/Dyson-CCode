@@ -19,6 +19,7 @@ from pydantic import JsonValue
 
 from dyson_contracts.approvals import ApprovalDecision, ApprovalDecisionKind, ApprovalRequest
 from dyson_contracts.audit import AuditEvent, AuditKind
+from dyson_contracts.capability import CapabilityManifest, CapabilityRecord, Lifecycle
 from dyson_contracts.common import Component, Money, RiskLevel
 from dyson_contracts.control import (
     ControlCommand,
@@ -37,6 +38,7 @@ from .events import (
     ApprovalConsumed,
     BreachDeclared,
     BreachKind,
+    CapabilityRecorded,
     ComplianceItemRecorded,
     ComplianceKind,
     ControlApplied,
@@ -331,6 +333,13 @@ class GovernanceCore:
                 ):
                     raise GovernanceError("integration must be proposed and security-checked")
                 return [self._integration(rec, IntegrationStatus.ADMITTED, approval_id)]
+            case ProposalKind.ADMIT_CAPABILITY:
+                return [
+                    self._new(
+                        CapabilityRecorded,
+                        record=self._admitted(s, str(d["capability_id"]), approval_id),
+                    )
+                ]
             case ProposalKind.ACTIVATE_RECEPTOR:
                 return [self._activation(s, d, approval_id)]
             case ProposalKind.ARCHIVE_RECEPTOR | ProposalKind.REPLACE_RECEPTOR:
@@ -645,6 +654,142 @@ class GovernanceCore:
 
     def registry(self) -> dict[str, IntegrationRecord]:
         return dict(self.sync().integrations)
+
+    # Capabilities: the extension contract (D-026, LA-GOV-06) ------------------------------
+    def propose_capability(self, manifest: CapabilityManifest, report_ref: str) -> CapabilityRecord:
+        """Record a new capability as SHADOW: not yet checked, not yet admitted, hashes pinned."""
+        record = CapabilityRecord(
+            manifest=manifest,
+            lifecycle=Lifecycle.SHADOW,
+            admitted=False,
+            security_checked=False,
+            pinned=manifest.pinned_hashes(),
+            updated_at=self._clock(),
+        )
+
+        def build(s: GovernanceState):
+            existing = s.capabilities.get(manifest.id)
+            if existing is not None and existing.manifest.version == manifest.version:
+                raise GovernanceError("capability already recorded; propose a new version")
+            return [self._new(CapabilityRecorded, record=record)]
+
+        self._commit(build)
+        return self.sync().capabilities[manifest.id]
+
+    def check_capability(
+        self, capability_id: str, passed: bool, report_ref: str
+    ) -> CapabilityRecord:
+        """Record the Gate's security check. A failed check disables the capability at once."""
+
+        def build(s: GovernanceState):
+            rec = s.capabilities[capability_id]
+            if rec.admitted:
+                raise GovernanceError("only a capability not yet admitted is checked")
+            updated = rec.model_copy(
+                update={
+                    "security_checked": passed,
+                    "lifecycle": Lifecycle.SHADOW if passed else Lifecycle.DISABLED,
+                    "updated_at": self._clock(),
+                }
+            )
+            return [self._new(CapabilityRecorded, record=updated)]
+
+        self._commit(build)
+        return self.sync().capabilities[capability_id]
+
+    def admit_capability(self, capability_id: str) -> CapabilityRecord | ApprovalRequest:
+        """Admit a checked capability. High-risk or external ones return a Founder approval."""
+        rec = self.sync().capabilities[capability_id]
+        if not rec.security_checked or rec.lifecycle is Lifecycle.DISABLED:
+            raise GovernanceError("capability must be security-checked and not disabled")
+        if rec.manifest.needs_founder_admission:
+            return self.propose(
+                ProposalKind.ADMIT_CAPABILITY,
+                {"capability_id": capability_id, "version": rec.manifest.version},
+                f"Admit {rec.manifest.kind} {rec.manifest.id} {rec.manifest.version}",
+                Component.GOVERNANCE_CORE,
+            )
+        self._commit(
+            lambda s: [self._new(CapabilityRecorded, record=self._admitted(s, capability_id))]
+        )
+        return self.sync().capabilities[capability_id]
+
+    def _admitted(self, s: GovernanceState, capability_id: str, approval_id: UUID | None = None):
+        rec = s.capabilities[capability_id]
+        if not rec.security_checked or rec.lifecycle is Lifecycle.DISABLED:
+            raise GovernanceError("capability must be security-checked and not disabled")
+        return rec.model_copy(
+            update={
+                "admitted": True,
+                "founder_approval_id": str(approval_id) if approval_id else rec.founder_approval_id,
+                "updated_at": self._clock(),
+            }
+        )
+
+    def promote_capability(self, capability_id: str, lifecycle: Lifecycle) -> CapabilityRecord:
+        """Move an admitted capability to CANARY or ENABLED (depended on only at ENABLED)."""
+        if lifecycle not in (Lifecycle.CANARY, Lifecycle.ENABLED):
+            raise GovernanceError("promote only moves to canary or enabled")
+
+        def build(s: GovernanceState):
+            rec = s.capabilities[capability_id]
+            if not rec.live:
+                raise GovernanceError("only an admitted, non-disabled capability is promoted")
+            return [
+                self._new(
+                    CapabilityRecorded,
+                    record=rec.model_copy(
+                        update={"lifecycle": lifecycle, "updated_at": self._clock()}
+                    ),
+                )
+            ]
+
+        self._commit(build)
+        return self.sync().capabilities[capability_id]
+
+    def check_capability_integrity(self, capability_id: str, operations: tuple) -> CapabilityRecord:
+        """Rug-pull guard: if the operations no longer match the pinned hashes, disable at once."""
+
+        def build(s: GovernanceState):
+            rec = s.capabilities[capability_id]
+            if rec.matches(tuple(operations)):
+                return []
+            return [
+                self._new(
+                    CapabilityRecorded,
+                    record=rec.model_copy(
+                        update={
+                            "lifecycle": Lifecycle.DISABLED,
+                            "admitted": False,
+                            "updated_at": self._clock(),
+                        }
+                    ),
+                )
+            ]
+
+        self._commit(build)
+        return self.sync().capabilities[capability_id]
+
+    def disable_capability(self, capability_id: str) -> CapabilityRecord:
+        """Stop a capability at once. Making things safer never waits for approval."""
+        self._commit(
+            lambda s: [
+                self._new(
+                    CapabilityRecorded,
+                    record=s.capabilities[capability_id].model_copy(
+                        update={
+                            "lifecycle": Lifecycle.DISABLED,
+                            "admitted": False,
+                            "updated_at": self._clock(),
+                        }
+                    ),
+                )
+            ]
+        )
+        return self.sync().capabilities[capability_id]
+
+    def capabilities(self) -> dict[str, CapabilityRecord]:
+        return dict(self.sync().capabilities)
 
     # Legal and compliance (LA-GOV-07, AMD-9) ---------------------------------------------
     def record_compliance_item(

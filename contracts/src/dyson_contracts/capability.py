@@ -17,7 +17,7 @@ from typing import Annotated
 
 from pydantic import Field, StringConstraints, model_validator
 
-from .common import Contract, Money, NonEmptyStr, RiskLevel, Sha256Hex
+from .common import Contract, Money, NonEmptyStr, RiskLevel, Sha256Hex, Timestamp
 
 # Reverse-DNS id, e.g. "dyson.jarvis.engine" or "com.google.gmail".
 _LABEL = r"[a-z0-9]([a-z0-9-]*[a-z0-9])?"
@@ -169,3 +169,41 @@ class CapabilityManifest(Contract):
             or self.rule_of_two.all_three
             or any(op.open_world or op.destructive for op in self.operations)
         )
+
+    def pinned_hashes(self) -> dict[str, Sha256Hex]:
+        """One hash per operation definition. A later change to any of these is a rug pull."""
+        return {op.name: operation_digest(op) for op in self.operations}
+
+
+def operation_digest(op: Operation) -> Sha256Hex:
+    """The sha256 the Gate pins. Covers the shape and the risk, not just the description."""
+    from .digests import canonical_digest
+
+    return canonical_digest(op.model_dump(mode="json"))
+
+
+class CapabilityRecord(Contract):
+    """A capability in the registry: its manifest, its life stage, and the hashes the Gate pinned.
+
+    The record is how G enforces what A admitted. A capability runs only when admitted and not
+    disabled; nothing may depend on it below ENABLED. If the artifact's operations no longer
+    hash to `pinned`, the Gate disables it and asks the Founder to admit the new version.
+    """
+
+    manifest: CapabilityManifest
+    lifecycle: Lifecycle = Lifecycle.SHADOW
+    admitted: bool = False
+    security_checked: bool = False
+    pinned: dict[str, Sha256Hex]
+    founder_approval_id: str = ""
+    updated_at: Timestamp
+
+    @property
+    def live(self) -> bool:
+        """May the capability actually run: admitted, checked, and not disabled."""
+        return self.admitted and self.security_checked and self.lifecycle is not Lifecycle.DISABLED
+
+    def matches(self, operations: tuple[Operation, ...]) -> bool:
+        """True only if every pinned operation still hashes the same (no rug pull)."""
+        now = {op.name: operation_digest(op) for op in operations}
+        return now == self.pinned
