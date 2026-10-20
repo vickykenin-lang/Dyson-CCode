@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from .models import ChatMessage, ModelRequest, RoutedResponse
 
-BENCH_TASK_CLASS = "hermes.benchmark"
+BENCH_TASK_CLASS = "conversation.interpret"
 MODEL_NAME = "dyson-router"  # the only "model" the shim advertises; C picks the real one
 
 

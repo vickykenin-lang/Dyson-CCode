@@ -58,7 +58,7 @@ def test_the_shim_forwards_to_c_and_returns_openai_shape():
     data = r.json()
     assert data["choices"][0]["message"]["content"] == "hello from C"
     assert data["usage"]["total_tokens"] == 17
-    assert seen["task_class"] == "hermes.benchmark"  # a fixed class; the caller cannot choose
+    assert seen["task_class"] == "conversation.interpret"  # a fixed class; the caller cannot choose
 
 
 def test_models_endpoint_advertises_only_the_router():
