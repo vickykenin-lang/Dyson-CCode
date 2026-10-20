@@ -157,7 +157,8 @@ def test_ledger_is_append_only(finance, db):
 # No bank, no payments, no model ---------------------------------------------------------
 ALLOWED = {
     "collections", "csv", "datetime", "decimal", "enum", "hashlib", "importlib", "io", "json",
-    "re", "typing", "uuid", "fastapi", "psycopg", "pydantic", "dyson_contracts", "dyson_assurance",
+    "re", "statistics", "typing", "uuid", "fastapi", "psycopg", "pydantic", "dyson_contracts",
+    "dyson_assurance",
 }  # fmt: skip
 
 
