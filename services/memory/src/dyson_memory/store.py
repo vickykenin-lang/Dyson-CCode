@@ -20,6 +20,7 @@ from .models import (
     LOCKED_STATUSES,
     ArchivedMessage,
     Citation,
+    Fact,
     MemoryItem,
     MessageHit,
     RegisterEntry,
@@ -177,6 +178,83 @@ class MemoryStore:
                 [query, limit],
             ).fetchall()
         return [_memory(r) for r in rows]
+
+    # Bi-temporal personal facts (phase 2) -----------------------------------------------
+    def record_fact(self, fact: Fact) -> Fact:
+        """Store a fact. A newer fact may name the one it supersedes; both are kept."""
+        self._guard.check(fact.subject, fact.value, fact.statement)
+        with self._tx() as c:
+            c.execute(
+                "INSERT INTO memory.facts (fact_id, receptor_id, subject, attribute, value,"
+                " statement, valid_from, valid_to, sources, confidence, supersedes, recorded_at)"
+                " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                [
+                    fact.fact_id,
+                    fact.receptor_id,
+                    fact.subject,
+                    fact.attribute,
+                    fact.value,
+                    fact.statement,
+                    fact.valid_from,
+                    fact.valid_to,
+                    Jsonb([s.model_dump() for s in fact.sources]),
+                    fact.confidence,
+                    fact.supersedes,
+                    fact.recorded_at,
+                ],
+            )
+        return fact
+
+    def current_facts(self, subject: str | None = None, attribute: str | None = None) -> list[Fact]:
+        """Facts true now: not superseded, and inside their valid window."""
+        with self._tx() as c:
+            rows = c.execute(
+                "SELECT f.* FROM memory.facts f"
+                " WHERE NOT EXISTS (SELECT 1 FROM memory.facts n WHERE n.supersedes = f.fact_id)"
+                "   AND f.valid_from <= now() AND (f.valid_to IS NULL OR f.valid_to > now())"
+                "   AND (%s::text IS NULL OR f.subject = %s::text)"
+                "   AND (%s::text IS NULL OR f.attribute = %s::text)"
+                " ORDER BY f.recorded_at DESC",
+                [subject, subject, attribute, attribute],
+            ).fetchall()
+        return [_fact(r) for r in rows]
+
+    def facts_as_of(
+        self, when: datetime, subject: str | None = None, attribute: str | None = None
+    ) -> list[Fact]:
+        """Point in time: what Dyson knew to be true at `when` (bi-temporal query)."""
+        with self._tx() as c:
+            rows = c.execute(
+                "SELECT f.* FROM memory.facts f"
+                " WHERE f.recorded_at <= %s"
+                "   AND f.valid_from <= %s AND (f.valid_to IS NULL OR f.valid_to > %s)"
+                "   AND NOT EXISTS (SELECT 1 FROM memory.facts n"
+                "       WHERE n.supersedes = f.fact_id AND n.recorded_at <= %s)"
+                "   AND (%s::text IS NULL OR f.subject = %s::text)"
+                "   AND (%s::text IS NULL OR f.attribute = %s::text)"
+                " ORDER BY f.recorded_at DESC",
+                [when, when, when, when, subject, subject, attribute, attribute],
+            ).fetchall()
+        return [_fact(r) for r in rows]
+
+    def search_facts(self, query: str, limit: int = 10) -> list[Fact]:
+        """Current facts matching the query by meaning (full text) or spelling (trigram)."""
+        with self._tx() as c:
+            rows = c.execute(
+                "SELECT f.*,"
+                "   ts_rank(f.search, websearch_to_tsquery('simple', %s)) AS r,"
+                "   GREATEST(similarity(f.subject, %s), similarity(f.value, %s)) AS sim"
+                " FROM memory.facts f"
+                " WHERE NOT EXISTS (SELECT 1 FROM memory.facts n WHERE n.supersedes = f.fact_id)"
+                "   AND f.valid_from <= now() AND (f.valid_to IS NULL OR f.valid_to > now())"
+                "   AND (f.search @@ websearch_to_tsquery('simple', %s)"
+                "        OR similarity(f.subject, %s) > 0.2 OR similarity(f.value, %s) > 0.2)"
+                " ORDER BY (ts_rank(f.search, websearch_to_tsquery('simple', %s))"
+                "           + GREATEST(similarity(f.subject, %s), similarity(f.value, %s))) DESC,"
+                "          f.recorded_at DESC LIMIT %s",
+                [query, query, query, query, query, query, query, query, query, limit],
+            ).fetchall()
+        return [_fact(r) for r in rows]
 
     def add_shared_learning(self, learning: SharedLearning) -> None:
         self._guard.check(learning.content)
@@ -340,6 +418,11 @@ def _message(r: dict) -> ArchivedMessage:
 def _memory(r: dict) -> MemoryItem:
     fields = MemoryItem.model_fields
     return MemoryItem(**{k: v for k, v in r.items() if k in fields})
+
+
+def _fact(r: dict) -> Fact:
+    fields = Fact.model_fields
+    return Fact(**{k: v for k, v in r.items() if k in fields})
 
 
 def _register(r: dict) -> RegisterEntry:

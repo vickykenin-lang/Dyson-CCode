@@ -81,6 +81,34 @@ class MemoryItem(Contract):
     created_at: Timestamp
 
 
+class Fact(Contract):
+    """A bi-temporal personal fact (phase 2): what is true, for how long, and when learned.
+
+    valid_from/valid_to are world time; recorded_at is when Dyson learned it. A newer fact may
+    supersede an older one by naming it, so a point-in-time question has an honest answer. Every
+    fact cites at least one source (LA-MEM-09).
+    """
+
+    fact_id: UUID
+    receptor_id: ReceptorId | None = None  # None = a core (personal) fact about the Founder
+    subject: NonEmptyStr
+    attribute: NonEmptyStr
+    value: NonEmptyStr
+    statement: NonEmptyStr
+    valid_from: Timestamp
+    valid_to: Timestamp | None = None
+    sources: tuple[Citation, ...] = Field(min_length=1)
+    confidence: Annotated[float, Field(gt=0, le=1)] = 1.0
+    supersedes: UUID | None = None
+    recorded_at: Timestamp
+
+    @model_validator(mode="after")
+    def _checks(self) -> "Fact":
+        if self.valid_to is not None and self.valid_to < self.valid_from:
+            raise ValueError("valid_to cannot be before valid_from")
+        return self
+
+
 class SharedLearning(Contract):
     learning_id: UUID
     content: NonEmptyStr
