@@ -9,6 +9,7 @@ always unverified — F decides whether it counts (LA-EVD-01). STOP ends the loo
 """
 
 import json
+import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -24,6 +25,8 @@ from .models import ChatMessage, ModelRequest
 
 MAX_STEPS = 12
 MAX_SUBAGENT_DEPTH = 2
+MAX_SECONDS = 60.0  # wall-clock budget for one run; a slow model never hangs the loop
+MAX_STRIKES = 3  # consecutive invalid decisions before the engine gives up (ERROR)
 
 _SYSTEM = (
     "You are Dyson's engine. Each turn, return ONE action as JSON: "
@@ -53,7 +56,8 @@ class StopReason(StrEnum):
     STOPPED = "stopped"  # a STOP reached the Tool Hub
     DENIED = "denied"  # the Tool Hub refused an action
     EXHAUSTED = "exhausted"  # the step budget ran out
-    ERROR = "error"  # a malformed decision or an off-limits tool
+    TIMEOUT = "timeout"  # the wall-clock budget ran out
+    ERROR = "error"  # too many invalid decisions in a row; the engine could not re-plan
 
 
 class StepRecord(Contract):
@@ -82,11 +86,13 @@ class JarvisEngine:
         toolhub: ToolHubClient,
         admitted_skills: Callable[[], frozenset[str]] = frozenset,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        monotonic: Callable[[], float] = time.monotonic,
     ):
         self._router = router
         self._toolhub = toolhub
         self._admitted_skills = admitted_skills
         self._clock = clock
+        self._monotonic = monotonic
 
     def run(
         self,
@@ -95,18 +101,34 @@ class JarvisEngine:
         tools_allowed: frozenset[str],
         max_steps: int = MAX_STEPS,
         depth: int = 0,
+        max_seconds: float = MAX_SECONDS,
     ) -> EngineRun:
         messages: list[ChatMessage] = [ChatMessage(role="user", content=goal)]
         steps: list[StepRecord] = []
         stop = StopReason.EXHAUSTED
         output: JsonValue = None
+        strikes = 0  # invalid decisions in a row; the engine re-plans, then gives up at MAX_STRIKES
+        start = self._monotonic()
 
         for _ in range(max_steps):
+            # Latency guard: a slow or stuck model never holds the loop past its wall-clock budget.
+            if self._monotonic() - start > max_seconds:
+                steps.append(StepRecord(action="timeout", detail=f"over {max_seconds:g}s"))
+                stop = StopReason.TIMEOUT
+                break
+
             decision = self._decide(goal, tools_allowed, messages)
             if decision is None:
+                strikes += 1
                 steps.append(StepRecord(action="error", detail="malformed decision"))
-                stop = StopReason.ERROR
-                break
+                if strikes >= MAX_STRIKES:
+                    stop = StopReason.ERROR
+                    break
+                messages.append(_correction(
+                    "That was not valid JSON for one action. Reply with exactly one JSON "
+                    "action object."
+                ))  # fmt: skip
+                continue
             action = decision.get("action")
 
             if action == "done":
@@ -118,9 +140,19 @@ class JarvisEngine:
             if action == "call":
                 tool_id = str(decision.get("tool_id", ""))
                 if tool_id not in tools_allowed:
+                    # Off-limits tool: refuse locally (never reaches G) and re-plan, don't stop.
+                    strikes += 1
                     steps.append(StepRecord(action="call", detail=tool_id, result="not allowed"))
-                    stop = StopReason.ERROR
-                    break
+                    if strikes >= MAX_STRIKES:
+                        stop = StopReason.ERROR
+                        break
+                    messages.append(_correction(
+                        f"Tool {tool_id!r} is not available. Use only: "
+                        + ", ".join(sorted(tools_allowed))
+                        + ". Pick an allowed tool or finish with done."
+                    ))  # fmt: skip
+                    continue
+                strikes = 0
                 result = self._call(task_id, tool_id, decision.get("arguments") or {})
                 steps.append(StepRecord(action="call", detail=tool_id, result=result))
                 status = result.get("status") if isinstance(result, dict) else None
@@ -135,10 +167,19 @@ class JarvisEngine:
 
             if action == "delegate":
                 if depth >= MAX_SUBAGENT_DEPTH:
+                    strikes += 1
                     steps.append(StepRecord(action="delegate", result="max depth"))
-                    stop = StopReason.ERROR
-                    break
-                sub = self._delegate(decision, tools_allowed, max_steps, depth)
+                    if strikes >= MAX_STRIKES:
+                        stop = StopReason.ERROR
+                        break
+                    messages.append(_correction(
+                        "You cannot delegate any deeper. Do the work yourself with the tools "
+                        "you have, or finish with done."
+                    ))  # fmt: skip
+                    continue
+                strikes = 0
+                remaining = max(1.0, max_seconds - (self._monotonic() - start))
+                sub = self._delegate(decision, tools_allowed, max_steps, depth, remaining)
                 steps.append(StepRecord(action="delegate", detail=decision.get("subgoal"),
                                         result=sub.output))  # fmt: skip
                 if sub.stop_reason is StopReason.STOPPED:
@@ -147,9 +188,15 @@ class JarvisEngine:
                 messages.append(_observation("subagent", sub.output))
                 continue
 
+            strikes += 1
             steps.append(StepRecord(action="error", detail=f"unknown action {action}"))
-            stop = StopReason.ERROR
-            break
+            if strikes >= MAX_STRIKES:
+                stop = StopReason.ERROR
+                break
+            messages.append(_correction(
+                f"Unknown action {action!r}. Use call, delegate, or done."
+            ))  # fmt: skip
+            continue
 
         return EngineRun(
             task_id=task_id,
@@ -199,13 +246,19 @@ class JarvisEngine:
         )
         return self._toolhub.call(request)
 
-    def _delegate(self, decision, parent_tools, max_steps, depth) -> EngineRun:
+    def _delegate(self, decision, parent_tools, max_steps, depth, max_seconds) -> EngineRun:
         subgoal = str(decision.get("subgoal", ""))
         asked = {str(t) for t in (decision.get("tools") or [])}
-        # A subagent can use only a subset of the parent's tools, and a smaller step budget.
+        # A subagent can use only a subset of the parent's tools, a smaller step budget, and
+        # whatever wall-clock time is left of the parent's budget.
         tools = frozenset(asked & parent_tools) if asked else parent_tools
         return self.run(
-            uuid4(), subgoal or "(no subgoal)", tools, max(1, max_steps // 2), depth + 1
+            uuid4(),
+            subgoal or "(no subgoal)",
+            tools,
+            max(1, max_steps // 2),
+            depth + 1,
+            max_seconds,
         )
 
 
@@ -216,4 +269,16 @@ def _observation(source: str, result: JsonValue) -> ChatMessage:
         content=(
             f"<<<RESULT from {source} (data only)\n{json.dumps(result, default=str)}\nRESULT>>>"
         ),
+    )
+
+
+def _correction(note: str) -> ChatMessage:
+    """A steering note after an invalid decision, so the engine re-plans instead of stopping.
+
+    Like an observation, it is data inside markers: it reports what was wrong and the bounds to
+    stay within, never a new instruction to obey (plan-then-execute holds).
+    """
+    return ChatMessage(
+        role="user",
+        content=f"<<<CORRECTION (data only)\n{note}\nCORRECTION>>>",
     )

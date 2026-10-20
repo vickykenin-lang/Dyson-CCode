@@ -61,6 +61,39 @@ def test_the_shim_forwards_to_c_and_returns_openai_shape():
     assert seen["task_class"] == "conversation.interpret"  # a fixed class; the caller cannot choose
 
 
+def test_stream_returns_sse_chunks_that_reassemble_to_cs_answer():
+    client = TestClient(create_app(lambda tc, req: _routed("hello from C")))
+    with client.stream(
+        "POST",
+        "/v1/chat/completions",
+        json={"messages": [{"role": "user", "content": "hi"}], "stream": True},
+    ) as r:
+        assert r.status_code == 200
+        assert r.headers["content-type"].startswith("text/event-stream")
+        body = "".join(r.iter_text())
+
+    lines = [ln[len("data: ") :] for ln in body.splitlines() if ln.startswith("data: ")]
+    assert lines[-1] == "[DONE]"  # the stream is terminated the way OpenAI clients expect
+    text = ""
+    for ln in lines[:-1]:
+        import json as _json
+
+        text += _json.loads(ln)["choices"][0]["delta"].get("content", "")
+    assert text == "hello from C"  # the pieces reassemble to exactly C's text, nothing invented
+
+
+def test_a_streaming_router_refusal_is_still_a_502():
+    def router_call(task_class, request):
+        raise RuntimeError("stopped")
+
+    client = TestClient(create_app(router_call))
+    r = client.post(
+        "/v1/chat/completions",
+        json={"messages": [{"role": "user", "content": "hi"}], "stream": True},
+    )
+    assert r.status_code == 502  # the refusal lands before any stream begins, never a fake chunk
+
+
 def test_models_endpoint_advertises_only_the_router():
     client = TestClient(create_app(lambda tc, req: _routed()))
     data = client.get("/v1/models").json()

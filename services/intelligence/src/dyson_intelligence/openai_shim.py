@@ -7,9 +7,11 @@ LA-RTR-01): no key of its own, no direct provider, no way to change the model or
 a thin translator, nothing more — it holds no model and makes no decision.
 """
 
-from collections.abc import Callable
+import json
+from collections.abc import Callable, Iterator
 
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from .models import ChatMessage, ModelRequest, RoutedResponse
@@ -27,6 +29,7 @@ class _ChatIn(BaseModel):
     model: str = MODEL_NAME
     messages: list[_Msg]
     max_tokens: int = 1024
+    stream: bool = False
 
 
 def to_model_request(body: _ChatIn) -> ModelRequest:
@@ -63,6 +66,36 @@ def to_openai_response(routed: RoutedResponse) -> dict:
     }
 
 
+def _chunk(call_id, model, delta: dict, finish: str | None) -> str:
+    """One OpenAI chat.completion.chunk as an SSE `data:` line."""
+    payload = {
+        "id": f"chatcmpl-{call_id}",
+        "object": "chat.completion.chunk",
+        "model": model,
+        "choices": [{"index": 0, "delta": delta, "finish_reason": finish}],
+    }
+    return f"data: {json.dumps(payload)}\n\n"
+
+
+def to_openai_chunks(routed: RoutedResponse) -> Iterator[str]:
+    """Frame C's finished answer as an OpenAI SSE stream.
+
+    C does not stream, so the shim holds the whole answer and re-emits it as chunks: a role chunk,
+    the text split into word-sized pieces, a final stop chunk, then the [DONE] sentinel. Clients
+    that speak only streaming (the Nous Hermes Agent among them) get the framing they require,
+    without the shim inventing anything — every piece is C's own text.
+    """
+    text = routed.response.text
+    yield _chunk(routed.call_id, routed.model_id, {"role": "assistant"}, None)
+    pieces = text.split(" ")
+    for i, piece in enumerate(pieces):
+        content = piece if i == len(pieces) - 1 else piece + " "
+        if content:
+            yield _chunk(routed.call_id, routed.model_id, {"content": content}, None)
+    yield _chunk(routed.call_id, routed.model_id, {}, "stop")
+    yield "data: [DONE]\n\n"
+
+
 # The shim's one job: hand an OpenAI call to C and hand C's answer back in OpenAI's shape.
 RouterCall = Callable[[str, ModelRequest], RoutedResponse]
 
@@ -76,11 +109,14 @@ def create_app(router_call: RouterCall, task_class: str = BENCH_TASK_CLASS) -> F
         return {"object": "list", "data": [{"id": MODEL_NAME, "object": "model"}]}
 
     @app.post("/v1/chat/completions")
-    def chat(body: _ChatIn, authorization: str = Header(default="")) -> dict:
+    def chat(body: _ChatIn, authorization: str = Header(default="")):
+        # Call C first, so a refusal or STOP is still a clean 502 before any stream has begun.
         try:
             routed = router_call(task_class, to_model_request(body))
         except Exception as exc:  # C refused, was stopped, or is unreachable: report, do not guess
             raise HTTPException(status_code=502, detail=f"router: {type(exc).__name__}") from exc
+        if body.stream:
+            return StreamingResponse(to_openai_chunks(routed), media_type="text/event-stream")
         return to_openai_response(routed)
 
     return app

@@ -79,10 +79,48 @@ def test_a_tool_step_then_done():
 
 
 def test_a_tool_outside_the_allowed_set_is_refused_locally():
+    # The model keeps asking for a tool it was never given. Each attempt is refused locally and
+    # fed back as a correction; it never reaches G, and after MAX_STRIKES the engine gives up.
     router = ScriptRouter({"action": "call", "tool_id": "shell.run", "arguments": {}})
     hub = Hub()
     run = JarvisEngine(router, hub).run(uuid4(), "do something", TOOLS)
     assert run.stop_reason is StopReason.ERROR and hub.calls == []  # never reached G
+    assert sum(1 for s in run.steps if s.result == "not allowed") == 3  # tried, then gave up
+
+
+def test_the_engine_recovers_after_an_off_limits_tool():
+    # First the model reaches for a tool it does not have; the engine refuses locally and re-plans.
+    # On the next turn it picks an allowed tool and finishes — no stop, no wasted run.
+    router = ScriptRouter(
+        {"action": "call", "tool_id": "shell.run", "arguments": {}},
+        {"action": "call", "tool_id": "calendar.list", "arguments": {}},
+        {"action": "done", "output": "clear"},
+    )
+    hub = Hub({"status": "ok", "events": 0})
+    run = JarvisEngine(router, hub).run(uuid4(), "what's on today?", TOOLS)
+    assert run.stop_reason is StopReason.DONE and run.output == "clear"
+    assert [c.tool_id for c in hub.calls] == ["calendar.list"]  # shell.run never reached G
+    assert any(s.result == "not allowed" for s in run.steps)  # the refusal is on the record
+
+
+def test_the_engine_recovers_after_a_malformed_decision():
+    router = ScriptRouter("not json", {"action": "done", "output": "ok"})
+    run = JarvisEngine(router, Hub()).run(uuid4(), "x", TOOLS)
+    assert run.stop_reason is StopReason.DONE and run.output == "ok"
+
+
+def test_a_latency_budget_stops_a_slow_run():
+    # A fake monotonic clock jumps 7s per reading; with a 10s budget the run times out after the
+    # first completed step instead of grinding through the whole step budget.
+    from itertools import count
+
+    ticks = count(0, 7)
+    router = ScriptRouter({"action": "call", "tool_id": "calendar.list", "arguments": {}})
+    hub = Hub({"status": "ok"})
+    engine = JarvisEngine(router, hub, monotonic=lambda: next(ticks))
+    run = engine.run(uuid4(), "loop", TOOLS, max_steps=10, max_seconds=10)
+    assert run.stop_reason is StopReason.TIMEOUT
+    assert len(hub.calls) == 1  # one step done, then the budget cut it off
 
 
 def test_stop_ends_the_loop_at_once():
@@ -101,7 +139,8 @@ def test_a_denied_tool_ends_the_run():
     assert run.stop_reason is StopReason.DENIED
 
 
-def test_a_malformed_decision_is_an_error_not_an_action():
+def test_relentlessly_malformed_decisions_give_up_as_error():
+    # The model never returns valid JSON. The engine re-plans, then gives up after MAX_STRIKES.
     run = JarvisEngine(ScriptRouter("not json"), Hub()).run(uuid4(), "x", TOOLS)
     assert run.stop_reason is StopReason.ERROR
 
