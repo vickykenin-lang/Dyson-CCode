@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dyson-sandbox"
+version = "0.1.0"
+description = "Dyson Sphere Layer A sandbox: a sealed cloud browser the Founder drives (D-026)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+]
+
+[project.optional-dependencies]
+# The browser runtime, only in the sandbox image (tests use a fake driver).
+browser = ["playwright==1.56.0"]
+dev = ["pytest", "httpx"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

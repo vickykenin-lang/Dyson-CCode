@@ -72,6 +72,7 @@ services:
       core_net: {ipv4_address: 172.30.0.10}
       hermes_net: {ipv4_address: 172.31.0.10}
       voice_net: {ipv4_address: 172.32.0.2}
+      sandbox_net: {ipv4_address: 172.35.0.2}  # to drive the sandbox and relay its screen
     ports:
       - "127.0.0.1:8080:8080"
       - "127.0.0.1:8081:8081"
@@ -151,6 +152,29 @@ services:
     volumes: [hermes-agent-data:/opt/data]
     networks: [hermes_agent_net]
 
+  sandbox:
+    # The Founder's sealed cloud sandbox (D-026, Dyson-native): Chromium via Playwright, its screen
+    # relayed view-only to the dashboard. Starts only under the "sandbox" profile, and only after
+    # the Founder admits dyson.receptor.sandbox on Direct Founder Controls. It sits on sandbox_net,
+    # which has internet (to browse) but — by Docker network isolation and the entrypoint's egress
+    # firewall — no route to the core, Layer A or the database. It holds no secret and no model;
+    # Layer A's engine does the thinking through C and drives it over this network.
+    profiles: ["sandbox"]
+    build:
+      context: .
+      dockerfile: services/sandbox/Dockerfile
+      args:
+        BASE_IMAGE: ${DYSON_PYTHON_IMAGE:-python:3.12-slim}
+    image: dyson/sandbox:local
+    cpus: 1.0
+    mem_limit: 1536m
+    cap_add: ["NET_ADMIN"]  # only to install its own egress firewall at start-up
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      DYSON_SANDBOX_BIND: 172.35.0.10
+    networks:
+      sandbox_net: {ipv4_address: 172.35.0.10}
+
 networks:
   core_net:
     ipam: {config: [{subnet: 172.30.0.0/24}]}
@@ -163,6 +187,11 @@ networks:
   hermes_agent_net:
     internal: true  # Hermes Agent alone: no internet, no Layer A, nothing else
     ipam: {config: [{subnet: 172.33.0.0/24}]}
+  sandbox_net:
+    # NOT internal: the sandbox browser needs the open web. Docker still isolates this network
+    # from the others, and the sandbox's egress firewall refuses every private range, so it
+    # cannot reach the core, Layer A or the database. Only Layer A joins it, to drive the sandbox.
+    ipam: {config: [{subnet: 172.35.0.0/24}]}
 
 volumes:
   pgdata: {}
