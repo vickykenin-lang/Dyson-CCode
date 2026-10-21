@@ -250,6 +250,8 @@ def test_no_bank_api_credential_or_payment_path_exists():  # LA-VLT-02
                     or n.startswith("dyson_")
                     # the speech model, in the voice container only (D-024)
                     or (n.split(".")[0] in {"numpy", "onnx_asr"} and "/services/voice/" in str(src))
+                    # the browser, in the sealed sandbox container only (D-026)
+                    or (n.split(".")[0] == "playwright" and "/services/sandbox/" in str(src))
                 ), f"{src}: unexpected dependency {n}"
 
 

@@ -93,6 +93,7 @@ from .adapters import (
 from .hermes_service import RemoteHermes, create_edge, hermes_job
 from .live_status import LiveStatus
 from .rules_model import MODEL_ID, PROVIDER, RulesModel
+from .sandbox_client import SandboxClient
 
 Clock = Callable[[], datetime]
 HERMES_TASKS = "hermes.research"
@@ -569,6 +570,32 @@ class LayerA:
                 tool_id="qa.audit", connector_id="f", allowed_callers=orch, scope=ToolScope.CORE
             ),
             lambda args: {"verdicts": len(self.qa.audit_task(UUID(str(args["task_id"]))))},
+        )
+        # The Founder's sealed sandbox (D-026): safe browsing on its own; a sensitive act is
+        # min_risk HIGH, so G always demands a Founder approval before it runs. Callable only once
+        # the sandbox integrations are admitted and the sandbox container is up. Both tools reach
+        # the sandbox over sandbox_net; neither moves money or touches Layer A data.
+        sandbox = SandboxClient()
+        both = frozenset({Component.ORCHESTRATOR, Component.HERMES})
+        reg(
+            ToolSpec(
+                tool_id="sandbox.browse",
+                connector_id="dyson.receptor.sandbox",
+                allowed_callers=both,
+                scope=ToolScope.CORE,
+                min_risk=RiskLevel.MEDIUM,
+            ),
+            lambda args: sandbox.browse(args),
+        )
+        reg(
+            ToolSpec(
+                tool_id="sandbox.act",
+                connector_id="dyson.receptor.sandbox",
+                allowed_callers=both,
+                scope=ToolScope.CORE,
+                min_risk=RiskLevel.HIGH,  # a sensitive action never runs without a Founder approval
+            ),
+            LaneAdapter(sandbox.act),
         )
 
     # Dashboard probes (gate 8): is each separate process answering? Read only.

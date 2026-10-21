@@ -36,6 +36,9 @@ from dyson_contracts.capability import (
 from dyson_contracts.common import RiskLevel
 
 CAPABILITY_ID = "dyson.receptor.sandbox"
+# The two tools G gates at runtime (browse is safe; act is min_risk HIGH, so it always needs a
+# Founder approval). G's registry check admits by tool id, so each is recorded as an integration.
+TOOL_IDS = ("sandbox.browse", "sandbox.act")
 # The artifact is Dyson's own sandbox image; the real digest is pinned once that image is built.
 _PENDING = "0" * 64
 
@@ -83,21 +86,41 @@ def manifest() -> CapabilityManifest:
     )
 
 
+def _propose_tools(core) -> None:
+    """Record the two sandbox tools in A's integration registry so G can gate them by id."""
+    from dyson_contracts.integrations import IntegrationKind
+
+    for tid in TOOL_IDS:
+        if core.registry().get(tid) is None:
+            core.propose_integration(
+                tid, IntegrationKind.INTEGRATION, f"Dyson sandbox tool ({tid})", "0.1.0",
+                RiskLevel.HIGH, "D-026 sandbox receptor",
+            )  # fmt: skip
+            core.record_security_check(
+                tid, True, "sealed sandbox; model via C; no secrets; sensitive acts need approval"
+            )
+
+
 def main() -> None:
     from .serve import build_from_env
 
     core = build_from_env().core
-    m = manifest()
     if sys.argv[1:] == ["propose"]:
+        m = manifest()
         if core.capabilities().get(CAPABILITY_ID) is None:
             core.propose_capability(m, "Founder sandbox receptor (dashboard panel)")
             core.check_capability(CAPABILITY_ID, True, "sealed sandbox; model via C; no secrets")
-        result = core.admit_capability(CAPABILITY_ID)
-        approval_id = getattr(result, "approval_id", None)
-        print(f"admission request on Direct Founder Controls: {approval_id}")
+        _propose_tools(core)
+        print("admission requests on Direct Founder Controls:")
+        for tid in TOOL_IDS:
+            result = core.admit_integration(tid)
+            print(f"  {tid}: {getattr(result, 'approval_id', None)}")
     elif sys.argv[1:] == ["status"]:
-        rec = core.capabilities().get(CAPABILITY_ID)
-        print("admitted" if rec and rec.admitted else "waiting for the Founder")
+        cap = core.capabilities().get(CAPABILITY_ID)
+        print("capability:", "recorded" if cap else "absent")
+        for tid in TOOL_IDS:
+            rec = core.registry().get(tid)
+            print(f"  {tid}:", rec.status.value if rec else "absent")
     else:
         raise SystemExit("usage: sandbox_receptor propose|status")
 
