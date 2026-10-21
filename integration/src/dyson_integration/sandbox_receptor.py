@@ -1,10 +1,11 @@
 """The Founder's sandbox receptor: a governed cloud computer shown live on the dashboard.
 
-The Nous Hermes Agent (installed and archived under D-025/D-027) is wired back as a governed
-receptor — a sealed cloud sandbox with a browser and a desktop. The Founder speaks or types a task
-("open YouTube"), the sandbox does it, and the Founder watches it live in a view-only panel on the
-dashboard with a STOP always in reach (the ScreenRelaySession contract). It is cloud-only: nothing
-touches the Founder's own machine.
+A Dyson-built sandbox — Chromium driven by Playwright, with a virtual display relayed view-only to
+the dashboard. The Founder speaks or types a task ("open YouTube"), Dyson's own engine does it in
+the sandbox, and the Founder watches it live with a STOP always in reach (the ScreenRelaySession
+contract). It is cloud-only: nothing touches the Founder's own machine, and it carries NO Hermes
+dependency — the smartness is Dyson's engine, the browser is open-source Chromium. (The archived
+Nous agent is kept for a later, separate purpose, not for this.)
 
 Containment (why an open web is safe here): the sandbox has its own internet egress but NO route to
 the core, to Layer A's data, or to any secret — it is sealed at the network layer, so it may reach
@@ -34,11 +35,9 @@ from dyson_contracts.capability import (
 )
 from dyson_contracts.common import RiskLevel
 
-from .hermes_agent_record import VERSION
-
 CAPABILITY_ID = "dyson.receptor.sandbox"
-# The artifact is the pinned Hermes image; reuse its digest so a later image swap is a rug pull.
-DIGEST = VERSION.split("sha256:")[1]
+# The artifact is Dyson's own sandbox image; the real digest is pinned once that image is built.
+_PENDING = "0" * 64
 
 
 def manifest() -> CapabilityManifest:
@@ -49,8 +48,8 @@ def manifest() -> CapabilityManifest:
         contract_version="1.0.0",
         publisher="Dyson",
         license="MIT",
-        summary="A sealed cloud sandbox (browser + desktop) the Founder drives and watches live",
-        provenance=Provenance(source_url="dyson://receptors/sandbox", artifact_digest=DIGEST),
+        summary="A sealed cloud sandbox (Chromium via Playwright) the Founder drives and watches",
+        provenance=Provenance(source_url="dyson://receptors/sandbox", artifact_digest=_PENDING),
         operations=(
             Operation(
                 name="navigate",

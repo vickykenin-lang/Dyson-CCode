@@ -2,7 +2,6 @@
 
 from dyson_contracts.capability import CapabilityKind, IsolationTier
 from dyson_contracts.common import RiskLevel
-from dyson_integration.hermes_agent_record import VERSION
 from dyson_integration.sandbox_receptor import CAPABILITY_ID, manifest
 
 
@@ -20,9 +19,12 @@ def test_it_reaches_a_model_only_through_c():
     assert manifest().requests.models == ("dyson-router",)
 
 
-def test_it_is_pinned_to_the_exact_hermes_image():
-    # A later image swap changes this digest and the Gate auto-disables the capability (rug pull).
-    assert manifest().provenance.artifact_digest == VERSION.split("sha256:")[1]
+def test_it_is_dyson_native_not_a_hermes_image():
+    # The sandbox is Dyson's own Chromium/Playwright image, not the Nous Hermes image.
+    prov = manifest().provenance
+    assert prov.source_url == "dyson://receptors/sandbox"
+    assert "hermes" not in prov.source_url.lower()
+    assert prov.artifact_digest == "0" * 64  # pending the Dyson image build, then pinned
 
 
 def test_only_sensitive_actions_wait_for_a_founder_approval():
