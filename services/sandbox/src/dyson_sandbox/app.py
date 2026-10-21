@@ -52,32 +52,32 @@ def create_app(
         return {"ok": True, "stopped": state["stopped"]}
 
     @app.get("/state")
-    def current() -> dict:
-        return {**driver.state(), "stopped": state["stopped"]}
+    async def current() -> dict:
+        return {**await driver.state(), "stopped": state["stopped"]}
 
     @app.post("/navigate")
-    def navigate(body: _Navigate) -> dict:
+    async def navigate(body: _Navigate) -> dict:
         _guard_running()
         try:
             url = safe_public_url(body.url)
         except UnsafeUrl as exc:
             raise HTTPException(422, str(exc)) from None
-        return driver.navigate(url)
+        return await driver.navigate(url)
 
     @app.post("/interact")
-    def interact(body: _Interact) -> dict:
+    async def interact(body: _Interact) -> dict:
         _guard_running()
         if body.action not in SAFE_ACTIONS:
             # Anything not on the safe list is a sensitive action and must go through /act.
             raise HTTPException(403, f"{body.action!r} is not safe; use /act with approval")
-        return driver.interact(body.action, body.selector, body.text)
+        return await driver.interact(body.action, body.selector, body.text)
 
     @app.post("/act")
-    def act(body: _Act) -> dict:
+    async def act(body: _Act) -> dict:
         _guard_running()
         if not ok_approval(body.approval):
             raise HTTPException(403, "a sensitive action needs a Founder approval proof")
-        return driver.interact(body.action, body.selector, body.text)
+        return await driver.interact(body.action, body.selector, body.text)
 
     @app.post("/stop")
     def stop() -> dict:

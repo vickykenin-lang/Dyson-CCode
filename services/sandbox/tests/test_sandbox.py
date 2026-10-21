@@ -13,19 +13,19 @@ class FakeDriver:
         self.calls: list = []
         self._url = "about:blank"
 
-    def navigate(self, url: str) -> dict:
+    async def navigate(self, url: str) -> dict:
         self.calls.append(("navigate", url))
         self._url = url
-        return self.state()
+        return await self.state()
 
-    def interact(self, action, selector, text) -> dict:
+    async def interact(self, action, selector, text) -> dict:
         self.calls.append(("interact", action, selector, text))
-        return self.state()
+        return await self.state()
 
-    def state(self) -> dict:
+    async def state(self) -> dict:
         return {"url": self._url, "title": "Fake"}
 
-    def close(self) -> None:
+    async def close(self) -> None:
         self.calls.append(("close",))
 
 

@@ -1,10 +1,13 @@
-"""The browser the sandbox drives. A small, typed surface so the engine never touches Playwright.
+"""The browser the sandbox drives: a small, typed async surface over Playwright.
 
 BrowserDriver is the interface the control server calls. PlaywrightDriver is the real one (Chromium
-on a virtual display); tests use a fake. Every method returns a small, plain dict of what is on
-screen now — it is data for the engine to observe, never an instruction (plan-then-execute holds).
+on a virtual display); tests use a fake. It is async so it shares the server's event loop — sync
+Playwright would start its own loop and clash with uvicorn. Chromium launches lazily on the first
+navigate, so the server stays up even if the browser is slow to start. Every method returns a small,
+plain dict of what is on screen now — data for the engine to observe, never an instruction.
 """
 
+import asyncio
 from typing import Protocol, runtime_checkable
 
 from .net import safe_public_url
@@ -15,47 +18,68 @@ SAFE_ACTIONS = ("click", "type", "scroll", "key", "back")
 
 @runtime_checkable
 class BrowserDriver(Protocol):
-    def navigate(self, url: str) -> dict: ...
-    def interact(self, action: str, selector: str | None, text: str | None) -> dict: ...
-    def state(self) -> dict: ...
-    def close(self) -> None: ...
+    async def navigate(self, url: str) -> dict: ...
+    async def interact(self, action: str, selector: str | None, text: str | None) -> dict: ...
+    async def state(self) -> dict: ...
+    async def close(self) -> None: ...
 
 
 class PlaywrightDriver:
     """The real driver: one Chromium page on the sandbox's virtual display. Deploy-tested.
 
-    Lazy-imports Playwright so the package imports (and unit tests run) without it installed.
+    Lazy-launches Chromium on first use (inside the event loop), so the package imports and the
+    server starts without Playwright running, and a browser problem surfaces per request.
     """
 
     def __init__(self, headless: bool = False) -> None:
-        from playwright.sync_api import sync_playwright  # lazy: only in the sandbox image
+        self._headless = headless
+        self._pw = None
+        self._browser = None
+        self._page = None
+        self._lock = asyncio.Lock()
 
-        self._pw = sync_playwright().start()
-        self._browser = self._pw.chromium.launch(headless=headless)
-        self._page = self._browser.new_page()
+    async def _ensure(self) -> None:
+        if self._page is None:
+            from playwright.async_api import async_playwright  # lazy: only in the sandbox image
 
-    def navigate(self, url: str) -> dict:
-        self._page.goto(safe_public_url(url), wait_until="domcontentloaded")
-        return self.state()
+            self._pw = await async_playwright().start()
+            self._browser = await self._pw.chromium.launch(headless=self._headless)
+            self._page = await self._browser.new_page()
 
-    def interact(self, action: str, selector: str | None, text: str | None) -> dict:
-        if action == "click" and selector:
-            self._page.click(selector)
-        elif action == "type" and selector is not None:
-            self._page.fill(selector, text or "")
-        elif action == "scroll":
-            self._page.mouse.wheel(0, int(text or "600"))
-        elif action == "key":
-            self._page.keyboard.press(text or "Enter")
-        elif action == "back":
-            self._page.go_back()
-        else:
-            raise ValueError(f"unknown or incomplete interaction: {action!r}")
-        return self.state()
+    async def navigate(self, url: str) -> dict:
+        async with self._lock:
+            await self._ensure()
+            await self._page.goto(safe_public_url(url), wait_until="domcontentloaded")
+            return await self._state()
 
-    def state(self) -> dict:
-        return {"url": self._page.url, "title": self._page.title()}
+    async def interact(self, action: str, selector: str | None, text: str | None) -> dict:
+        async with self._lock:
+            await self._ensure()
+            if action == "click" and selector:
+                await self._page.click(selector)
+            elif action == "type" and selector is not None:
+                await self._page.fill(selector, text or "")
+            elif action == "scroll":
+                await self._page.mouse.wheel(0, int(text or "600"))
+            elif action == "key":
+                await self._page.keyboard.press(text or "Enter")
+            elif action == "back":
+                await self._page.go_back()
+            else:
+                raise ValueError(f"unknown or incomplete interaction: {action!r}")
+            return await self._state()
 
-    def close(self) -> None:
-        self._browser.close()
-        self._pw.stop()
+    async def _state(self) -> dict:
+        return {"url": self._page.url, "title": await self._page.title()}
+
+    async def state(self) -> dict:
+        async with self._lock:
+            if self._page is None:
+                return {"url": "about:blank", "title": ""}
+            return await self._state()
+
+    async def close(self) -> None:
+        if self._browser is not None:
+            await self._browser.close()
+        if self._pw is not None:
+            await self._pw.stop()
