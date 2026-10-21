@@ -184,7 +184,19 @@ def main() -> None:
         secure_cookies=os.environ.get("DYSON_SECURE_COOKIES") == "1",  # 0 for local http
     )
     bind = os.environ.get("DYSON_BIND", "0.0.0.0")
-    apps = [(layer.gateway, bind, 8080), (app, bind, 8081), (layer.dashboard, bind, 8083)]
+    from .relay_app import create_relay_app
+
+    sandbox_panel = create_relay_app(
+        layer.relay,
+        novnc_url=os.environ.get("DYSON_SANDBOX_NOVNC_URL", ""),
+        controls_url=settings.controls_url or "/",
+    )
+    apps = [
+        (layer.gateway, bind, 8080),
+        (app, bind, 8081),
+        (layer.dashboard, bind, 8083),
+        (sandbox_panel, bind, 8085),  # the Founder's view-only sandbox panel (D-026)
+    ]
     if role == "core":  # DFC and Hermes run in their own containers
         from .hermes_service import write_hermes_secrets
 

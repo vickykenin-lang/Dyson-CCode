@@ -92,6 +92,7 @@ from .adapters import (
 )
 from .hermes_service import RemoteHermes, create_edge, hermes_job
 from .live_status import LiveStatus
+from .relay import RelaySessions
 from .rules_model import MODEL_ID, PROVIDER, RulesModel
 from .sandbox_client import SandboxClient
 
@@ -373,6 +374,9 @@ class LayerA:
         self.dashboard: FastAPI = create_dashboard(
             VerifiedFinance(self.finance, dsns["memory"]), self.monitor, self.qa
         )  # type: ignore[arg-type]
+        # View-only screen relay for the Founder's sandbox panel (D-026). Shared: the engine opens
+        # a session when it drives the sandbox; the panel app shows what is live.
+        self.relay = RelaySessions(clock)
 
         # C, with the stand-in models, and its HTTP API for B and Hermes
         self.models = models or {PROVIDER: RulesModel(), BACKUP_PROVIDER: RulesModel()}
