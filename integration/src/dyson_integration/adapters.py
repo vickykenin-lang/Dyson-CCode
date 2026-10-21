@@ -6,7 +6,7 @@ import json
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 import psycopg
@@ -36,6 +36,9 @@ from dyson_orchestrator.orchestrator import Orchestrator, OrchestratorError
 from dyson_orchestrator.ports import TaskPlan, ToolRun
 from dyson_toolhub.catalog import Catalog, ToolScope
 from dyson_toolhub.hub import ToolHub
+
+if TYPE_CHECKING:
+    from .sandbox_command import SandboxOperator
 
 Clock = Callable[[], datetime]
 
@@ -434,9 +437,11 @@ class ConversationForGateway:
         status: TaskStatus,
         guard: SecretGuard,
         clock: Clock,
+        sandbox: "SandboxOperator | None" = None,
     ):
         self._b, self._store, self._status, self._clock = b, store, status, clock
         self._guard = guard
+        self._sandbox = sandbox  # routes a clear open-a-site command; None keeps B's old behaviour
 
     def handle(self, message: FounderMessage) -> ConversationReply:
         try:  # a credential typed into chat never reaches a model or memory (LA-SEC-01)
@@ -458,7 +463,10 @@ class ConversationForGateway:
                 task_state=retried.state,
             )
         self._ensure_thread(message.thread_id, message.sent_at)
-        reply = self._b.handle(message)  # B reads the thread so far from I
+        # A clear "open <site>" goes to the sandbox through G; everything else is B's, untouched.
+        reply = self._sandbox.try_handle(message) if self._sandbox else None
+        if reply is None:
+            reply = self._b.handle(message)  # B reads the thread so far from I
         try:
             self._store.append_message(
                 ArchivedMessage(

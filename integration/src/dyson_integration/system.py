@@ -95,6 +95,7 @@ from .live_status import LiveStatus
 from .relay import RelaySessions
 from .rules_model import MODEL_ID, PROVIDER, RulesModel
 from .sandbox_client import SandboxClient
+from .sandbox_command import SandboxOperator
 
 Clock = Callable[[], datetime]
 HERMES_TASKS = "hermes.research"
@@ -437,7 +438,14 @@ class LayerA:
             PasswordAuthenticator.create(settings.founder_username, settings.founder_password),
             SessionStore(clock, settings.session_max_age, settings.session_idle),
             settings.gateway_limits,
-            ConversationForGateway(self.b, self.memory, self.status, SecretGuard(store), clock),
+            ConversationForGateway(
+                self.b, self.memory, self.status, SecretGuard(store), clock,
+                sandbox=SandboxOperator(
+                    ToolHubForOrchestrator(self.hub, self.tokens[Component.ORCHESTRATOR]).call,
+                    self.relay,
+                    clock,
+                ),
+            ),
             self.status,
             _AuditEvents(self.memory, clock),
             clock=clock,

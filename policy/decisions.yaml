@@ -288,3 +288,20 @@ decisions:
     config reset (provider auto, benchmark base_url and streaming override removed) and the agent
     archived behind the "archived" compose profile (image pinned and data volume kept), and the
     dyson.benchmark.hermes-wiring capability disabled in governance.
+- id: D-028
+  date: '2026-10-21'
+  closes: The Founder's sandbox panel (built on D-026); amends nothing
+  topic: A sealed, Dyson-native cloud sandbox the Founder drives by voice/text and watches live
+  decision: >-
+    Dyson gains a sandbox the Founder can open on the dashboard: a cloud browser (Chromium via
+    Playwright) that Dyson drives on command ("open YouTube") while the Founder watches it live in
+    a view-only panel with a STOP always in reach. It is Dyson-native — no Hermes dependency; the
+    archived Nous agent is kept for a separate, later purpose. It is cloud-only: nothing touches the
+    Founder's own machine. It enters only through the extension contract (D-026): the capability
+    dyson.receptor.sandbox and the tools sandbox.browse and sandbox.act, admitted by the Founder on
+    Direct Founder Controls. Containment: the sandbox has its own internet egress but no route to
+    the core, Layer A data or secrets (Docker network isolation plus an egress firewall), it holds
+    no credential, and it reaches a model only through C. Safe browsing (navigate, interact) runs
+    on its own; a sensitive action (login, submit, pay) is the HIGH-risk sandbox.act tool, which G
+    always holds for a Founder approval. STOP, the kill-switch and the screen relay's view-only
+    promise bound it. The core (A, C, G, I) did not change to admit it.
