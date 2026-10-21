@@ -197,7 +197,7 @@ box-shadow:0 30px 80px rgba(0,0,0,.6);animation:open .25s var(--out)}
   </div>
   <section class="sandbox" id="sandbox" aria-label="Dyson sandbox — live screen">
    <div class="sbar"><span class="sdot"></span><b>Sandbox</b><span class="eye">watch &amp; take control</span><a class="stop" href="__CONTROLS_URL__" target="_blank" rel="noopener">STOP</a></div>
-   <iframe id="sbframe" src="__SANDBOX_NOVNC_URL__" allow="fullscreen;clipboard-read;clipboard-write" title="Dyson sandbox"></iframe>
+   <iframe id="sbframe" src="/sandbox-screen/vnc.html?autoconnect=1&resize=scale&path=sandbox-ws" allow="fullscreen;clipboard-read;clipboard-write" title="Dyson sandbox"></iframe>
   </section>
  </aside>
  <div class="obs">

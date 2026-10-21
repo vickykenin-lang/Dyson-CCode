@@ -6,6 +6,10 @@ FROM ${BASE_IMAGE}
 ARG PIP_NO_INDEX=""
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN useradd --create-home --uid 10001 dyson && mkdir /data /hermes && chown dyson /data /hermes
+# noVNC's static client, served same-origin by the app so the Founder's sandbox panel needs no
+# second hostname and no second login (D-028). The screen's websocket is bridged by the app itself.
+RUN apt-get update && apt-get install -y --no-install-recommends novnc \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY integration/docker/wheels/ /wheels/
 COPY contracts/ contracts/

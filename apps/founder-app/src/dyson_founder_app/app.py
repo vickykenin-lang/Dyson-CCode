@@ -5,14 +5,17 @@ completed-verified with cited evidence is shown as done. An acknowledgment is sh
 "accepted, not done yet" or "waiting for your approval", never as completion (LA-APP-04).
 """
 
+import asyncio
+import os
 from datetime import date
 from html import escape
 from importlib.resources import files
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import FastAPI, File, Form, Request, UploadFile, WebSocket
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from dyson_contracts.interface import TaskStatusUpdate
 from dyson_contracts.tasks import TaskState
@@ -50,16 +53,19 @@ def create_app(
     *,
     speech: SpeechPort | None = None,
     secure_cookies: bool = True,
-    sandbox_novnc_url: str = "",
     controls_url: str = "/",
+    novnc_dir: str = "/usr/share/novnc",
+    sandbox_vnc: str = "",
 ) -> FastAPI:
     speech = speech or NoSpeech()
     app = FastAPI(title="Dyson")
-    # The observatory's sandbox panel embeds the sandbox's live noVNC and a STOP to Direct Founder
-    # Controls. Both are wired per environment; the page carries placeholders for them.
-    observatory = PAGE.replace("__SANDBOX_NOVNC_URL__", sandbox_novnc_url).replace(
-        "__CONTROLS_URL__", controls_url
-    )
+    # The observatory's sandbox panel embeds the sandbox's live screen (served same-origin, below)
+    # and a STOP that opens Direct Founder Controls.
+    observatory = PAGE.replace("__CONTROLS_URL__", controls_url)
+    # Serve noVNC's client same-origin, so the sandbox panel needs no second hostname and the one
+    # login to this app covers it — no cross-origin iframe, no second Access prompt (D-028).
+    if os.path.isdir(novnc_dir):
+        app.mount("/sandbox-screen", StaticFiles(directory=novnc_dir, html=True), name="sandbox")
 
     def cookie(resp: Response, name: str, value: str) -> None:
         resp.set_cookie(name, value, httponly=True, samesite="strict", secure=secure_cookies)
@@ -242,6 +248,52 @@ def create_app(
         resp = HTMLResponse(observatory)
         cookie(resp, THREAD, str(thread_of(request)))  # the conversation it talks in
         return resp
+
+    @app.websocket("/sandbox-ws")
+    async def sandbox_ws(ws: WebSocket) -> None:
+        # Bridge the browser's noVNC websocket to the sandbox's VNC over sandbox_net. Same origin
+        # as this app, so the one login covers it. Only the logged-in Founder may reach it, and the
+        # sandbox is sealed from the core; input reaches only the sandbox.
+        if not ws.cookies.get(SESSION) or not sandbox_vnc:
+            await ws.close(code=1008)
+            return
+        host, _, port = sandbox_vnc.partition(":")
+        try:
+            reader, writer = await asyncio.open_connection(host, int(port or "5900"))
+        except OSError:
+            await ws.close(code=1011)
+            return
+        await ws.accept()
+
+        async def to_vnc() -> None:
+            try:
+                while True:
+                    writer.write(await ws.receive_bytes())
+                    await writer.drain()
+            except Exception:
+                pass
+
+        async def to_browser() -> None:
+            try:
+                while True:
+                    chunk = await reader.read(65536)
+                    if not chunk:
+                        break
+                    await ws.send_bytes(chunk)
+            except Exception:
+                pass
+
+        tasks = [asyncio.create_task(to_vnc()), asyncio.create_task(to_browser())]
+        try:
+            await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        finally:
+            for t in tasks:
+                t.cancel()
+            writer.close()
+            try:
+                await ws.close()
+            except Exception:
+                pass
 
     @app.get("/dashboard/data")
     def dashboard_data(request: Request) -> Response:
