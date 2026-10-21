@@ -60,9 +60,11 @@ services:
       DYSON_POLLY: ${DYSON_POLLY:-0}  # 1 only on the server: spoken replies (D-024)
       DYSON_VOICE_URL: http://172.32.0.10:8096
       DYSON_SANDBOX_URL: http://172.35.0.10:8097  # G drives the sealed sandbox over sandbox_net
-      # The panel embeds the sandbox's view-only noVNC. The Cloudflare tunnel maps a dedicated
-      # hostname to the sandbox's :6080 (it carries the websocket); override to match your host.
-      DYSON_SANDBOX_NOVNC_URL: ${DYSON_SANDBOX_NOVNC_URL:-https://sandbox-screen.designinfra.in/vnc.html?autoconnect=1&view_only=1&resize=scale}
+      # The panel embeds the sandbox's noVNC (interactive: the Founder can watch AND take control;
+      # Dyson drives through Playwright). The Cloudflare tunnel maps a dedicated hostname to the
+      # sandbox's :6080 and carries the websocket. That hostname MUST be behind Cloudflare Access
+      # (Founder-only), since the stream now accepts input. Override to match your host.
+      DYSON_SANDBOX_NOVNC_URL: ${DYSON_SANDBOX_NOVNC_URL:-https://sandbox-screen.designinfra.in/vnc.html?autoconnect=1&resize=scale}
       DYSON_ENVIRONMENT: ${DYSON_ENVIRONMENT:-local}
       DYSON_RELEASE: ${DYSON_RELEASE:-}
       AWS_SHARED_CREDENTIALS_FILE: /run/aws/credentials

@@ -148,7 +148,7 @@ box-shadow:0 30px 80px rgba(0,0,0,.6);animation:open .25s var(--out)}
 .mbox .send{margin-top:14px}.mbox .res{margin:12px 0 0;font-size:13px}.mbox .small{font-size:12px;color:var(--soft)}
 .trow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px}
 .notice{padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
-@media (max-width:1100px){.obs{grid-template-columns:1fr}.star{position:relative;top:0;height:auto;padding-top:400px;border-right:0;border-bottom:1px solid var(--line)}
+@media (max-width:1100px){.workspace{grid-template-columns:1fr}.console{border-right:0;border-bottom:1px solid var(--line)}.obs{grid-template-columns:1fr}.star{position:relative;top:0;height:auto;padding-top:400px;border-right:0;border-bottom:1px solid var(--line)}
 #gl{height:400px;bottom:auto}.css-star{top:200px}.copy{top:18px}.dock{position:relative;left:auto;right:auto;bottom:auto;margin:0 12px 14px}
 .lower{grid-template-columns:1fr}}
 @media (max-width:900px){.hint{display:block}}
@@ -156,6 +156,23 @@ box-shadow:0 30px 80px rgba(0,0,0,.6);animation:open .25s var(--out)}
 .copy{left:18px;right:18px}.copy p,.vitals{display:none}.copy h1{font-size:24px}.hbtn{padding:6px 10px}.hbtn .long{display:none}.hbtn .short{display:inline}
 .starnote{left:18px;right:18px}.vitals{gap:20px}.right{padding:16px 12px 24px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* Left console (D-028): Dyson on top, the sandbox below, in the first third of the page. */
+.workspace{display:grid;grid-template-columns:minmax(320px,1fr) 2fr;min-height:calc(100vh - 60px)}
+.console{display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--line);
+ background:rgba(6,10,20,.45)}
+.conhead{display:flex;align-items:center;gap:8px;padding:12px 16px 4px;font-size:12.5px;
+ color:var(--soft);font-family:var(--mono)}.conhead b{color:var(--ink);font-weight:600}
+.console .dock{position:static;left:auto;right:auto;bottom:auto;margin:0;border:0;border-radius:0;
+ border-bottom:1px solid var(--line);background:transparent;backdrop-filter:none}
+.console .dock.open .chat{max-height:34vh}
+.sandbox{flex:1;display:flex;flex-direction:column;min-height:300px}
+.sbar{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);
+ font-size:12.5px}.sbar b{color:var(--ink)}
+.sdot{width:8px;height:8px;border-radius:50%;background:#3fb950;flex:none}
+.sbar .eye{margin-left:auto;color:var(--soft);font-size:11.5px}
+.sbar .stop{color:#fff;background:#b4232a;text-decoration:none;padding:5px 12px;border-radius:999px;
+ font-weight:600;font-size:12px}
+.sandbox iframe{flex:1;width:100%;border:0;background:#000;display:block;min-height:260px}
 </style></head><body>
 <header class="bar"><span class="mark">DYSON<span>Layer A observatory</span></span>
  <span class="pill" id="ctl"><i></i><span id="ctltext">control: checking</span></span>
@@ -163,14 +180,9 @@ box-shadow:0 30px 80px rgba(0,0,0,.6);animation:open .25s var(--out)}
  <button class="hbtn" id="b-up" type="button">Upload<span class="long"> statement</span></button>
  <button class="hbtn" id="b-threads" type="button"><span class="long">Conversations</span><span class="short">Chats</span></button>
  <div class="clock" id="clock"><b id="hhmm">--:--:--</b><small id="clocktext">connecting…</small></div></header>
-<main class="obs">
- <section class="star" id="star" aria-label="Dyson as a star: each panel of the sphere is one part of the system">
-  <canvas id="gl"></canvas><div class="css-star" aria-hidden="true"></div>
-  <div class="copy"><h1 id="headline">Reading the system…</h1><p id="subline"></p>
-   <div class="vitals" aria-live="polite"><div><b id="v-live">–</b><span>parts live right now</span></div>
-    <div><b id="v-wires">–</b><span>wires that carried work today</span></div>
-    <div id="v-wait-box"><b id="v-wait">–</b><span>approvals waiting for you</span></div></div></div>
-  <div class="tip" id="tip"></div>
+<main class="workspace">
+ <aside class="console" id="console">
+  <div class="conhead"><span class="sdot"></span><b>Dyson</b><span class="eye">talk, and watch it work</span></div>
   <div class="dock" id="dock">
    <div class="hist"><span id="htitle">Conversation</span><button type="button" id="htoggle" aria-expanded="false">History ▴</button></div>
    <div class="chat" id="chat" aria-live="polite"></div>
@@ -183,6 +195,19 @@ box-shadow:0 30px 80px rgba(0,0,0,.6);animation:open .25s var(--out)}
     <button class="send" id="send" type="button">Send</button></div>
    <p class="dnote" id="dnote">Tap the mic, speak, tap again to send. Your voice is heard on Dyson's server and not kept.</p>
   </div>
+  <section class="sandbox" id="sandbox" aria-label="Dyson sandbox — live screen">
+   <div class="sbar"><span class="sdot"></span><b>Sandbox</b><span class="eye">watch &amp; take control</span><a class="stop" href="__CONTROLS_URL__" target="_blank" rel="noopener">STOP</a></div>
+   <iframe id="sbframe" src="__SANDBOX_NOVNC_URL__" allow="fullscreen;clipboard-read;clipboard-write" title="Dyson sandbox"></iframe>
+  </section>
+ </aside>
+ <div class="obs">
+ <section class="star" id="star" aria-label="Dyson as a star: each panel of the sphere is one part of the system">
+  <canvas id="gl"></canvas><div class="css-star" aria-hidden="true"></div>
+  <div class="copy"><h1 id="headline">Reading the system…</h1><p id="subline"></p>
+   <div class="vitals" aria-live="polite"><div><b id="v-live">–</b><span>parts live right now</span></div>
+    <div><b id="v-wires">–</b><span>wires that carried work today</span></div>
+    <div id="v-wait-box"><b id="v-wait">–</b><span>approvals waiting for you</span></div></div></div>
+  <div class="tip" id="tip"></div>
  </section>
  <section class="right">
   <div class="panel"><div class="bhead"><div><h2>Wiring</h2><p>Every light is one real record crossing that wire. Select a wire or a part.</p></div>
@@ -205,6 +230,7 @@ box-shadow:0 30px 80px rgba(0,0,0,.6);animation:open .25s var(--out)}
   </div>
   <p class="foot">Read only. Approvals, STOP and PAUSE stay on Direct Founder Controls.</p>
  </section>
+ </div>
 </main>
 <div class="modal" id="modal" hidden><div class="mbox" role="dialog" aria-modal="true" aria-labelledby="mtitle">
  <button class="mx" id="mx" type="button" aria-label="Close">×</button><h2 id="mtitle"></h2><div id="mbody"></div></div></div>

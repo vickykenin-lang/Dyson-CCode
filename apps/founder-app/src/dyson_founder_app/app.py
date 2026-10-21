@@ -50,9 +50,16 @@ def create_app(
     *,
     speech: SpeechPort | None = None,
     secure_cookies: bool = True,
+    sandbox_novnc_url: str = "",
+    controls_url: str = "/",
 ) -> FastAPI:
     speech = speech or NoSpeech()
     app = FastAPI(title="Dyson")
+    # The observatory's sandbox panel embeds the sandbox's live noVNC and a STOP to Direct Founder
+    # Controls. Both are wired per environment; the page carries placeholders for them.
+    observatory = PAGE.replace("__SANDBOX_NOVNC_URL__", sandbox_novnc_url).replace(
+        "__CONTROLS_URL__", controls_url
+    )
 
     def cookie(resp: Response, name: str, value: str) -> None:
         resp.set_cookie(name, value, httponly=True, samesite="strict", secure=secure_cookies)
@@ -232,7 +239,7 @@ def create_app(
         """Gate 8: the architecture, block by block, with live status. Read only."""
         if not request.cookies.get(SESSION):
             return RedirectResponse("/", status_code=303)
-        resp = HTMLResponse(PAGE)
+        resp = HTMLResponse(observatory)
         cookie(resp, THREAD, str(thread_of(request)))  # the conversation it talks in
         return resp
 

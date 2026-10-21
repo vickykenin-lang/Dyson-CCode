@@ -190,8 +190,11 @@ def test_founder_talks_only_to_dyson(founder):  # LA-HER-04, LA-G-08
 
     from dyson_founder_app import app
 
-    assert list(inspect.signature(app.create_app).parameters) == ["gateway", "voice", "speech",
-                                                                  "secure_cookies"]  # fmt: skip
+    # Only Dyson's own surfaces: the gateway, voice, speech, cookies, and the governed sandbox
+    # panel's display URLs (the sandbox is Dyson's, reached through G). No other channel.
+    assert list(inspect.signature(app.create_app).parameters) == [
+        "gateway", "voice", "speech", "secure_cookies", "sandbox_novnc_url", "controls_url",
+    ]  # fmt: skip
     assert "hermes" not in (SRC / "app.py").read_text().lower()
     page = founder.get("/").text
     assert "Conversation" in page and "Tasks" in page  # one place for routine operations

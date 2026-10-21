@@ -21,9 +21,11 @@ Xvfb :0 -screen 0 "${DYSON_SANDBOX_GEOMETRY:-1280x800x24}" -nolisten tcp &
 sleep 1
 fluxbox >/dev/null 2>&1 &
 
-# 3. View-only screen relay: x11vnc (-viewonly: no input from the viewer) + noVNC over websocket.
-#    The Founder watches; Dyson drives through Playwright. The viewer can never type or click.
-x11vnc -display :0 -forever -shared -viewonly -nopw -rfbport 5900 -quiet -bg
+# 3. Screen relay: x11vnc + noVNC over websocket. Interactive, so the Founder can take control
+#    of the sandbox as well as watch; Dyson drives through Playwright. Input reaches the sealed
+#    sandbox only — it is sealed from the core either way. The public hostname MUST sit behind
+#    Cloudflare Access (Founder-only); without it, anyone reaching the stream could drive it.
+x11vnc -display :0 -forever -shared -nopw -rfbport 5900 -quiet -bg
 websockify --web=/usr/share/novnc "${DYSON_SANDBOX_VNC_PORT:-6080}" localhost:5900 &
 
 # 4. The control server (Chromium is launched by it, headful, on this display).

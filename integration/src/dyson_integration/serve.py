@@ -182,6 +182,10 @@ def main() -> None:
         RemoteVoice(voice_url) if voice_url else NoVoice(),
         speech=speech,
         secure_cookies=os.environ.get("DYSON_SECURE_COOKIES") == "1",  # 0 for local http
+        sandbox_novnc_url=os.environ.get("DYSON_SANDBOX_NOVNC_URL", ""),
+        # The STOP link opens Direct Founder Controls in the browser: its PUBLIC origin, not the
+        # internal health-check URL.
+        controls_url=settings.passkey_origin or "/",
     )
     bind = os.environ.get("DYSON_BIND", "0.0.0.0")
     from .relay_app import create_relay_app
