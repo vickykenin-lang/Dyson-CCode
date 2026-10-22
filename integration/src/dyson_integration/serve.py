@@ -127,30 +127,41 @@ def _settings_and_dsns(migrate: bool = True):
     return settings, dsns
 
 
-APINEX_PROVIDER = "apinex"  # an OpenAI-compatible provider; its model_ids are registered by rollout
 KEY_SCOPE = "providers"  # the secret-store scope the Founder's provider keys live in (set via DFC)
+# OpenAI-compatible providers behind C: provider slug -> (base-URL env var, secret name). The base
+# URLs are env-overridable; each key is saved by the Founder on Direct Founder Controls into the
+# shared secret store and read fresh per call. A provider is wired only when its URL is set, and
+# its calls fail (and C falls back) until a key is saved. No model routes to one until a governed
+# rollout registers a model_id on it.
+OAI_PROVIDERS = {
+    "apinex": ("DYSON_APINEX_URL", "apinex_api_key"),  # a relay; use for non-sensitive only
+    "groq": ("DYSON_GROQ_URL", "groq_api_key"),  # direct, fast, open models
+    "gemini": ("DYSON_GEMINI_URL", "gemini_api_key"),  # direct, Gemini Flash
+}
 
 
 def _models(secret_file: Path | None = None) -> dict:
-    """The stand-ins always; Bedrock behind C when the server has role credentials; an
-    OpenAI-compatible provider (apinex) when its base URL is set. The apinex key is read fresh
-    from the secret store on each call, so a key the Founder saves on Direct Founder Controls is
-    used without a restart; until one is saved, calls to it fail and the router falls back."""
+    """The stand-ins always; Bedrock behind C when the server has role credentials; every
+    configured OpenAI-compatible provider whose base URL is set. Keys are read fresh from the secret
+    store on each call, so a key the Founder saves on Direct Founder Controls is used without a
+    restart."""
     models = {PROVIDER: RulesModel(), BACKUP_PROVIDER: RulesModel()}
     if os.environ.get("DYSON_BEDROCK") == "1":
         from .bedrock_model import PROVIDER as BEDROCK
         from .bedrock_model import BedrockModel
 
         models[BEDROCK] = BedrockModel()
-    url = os.environ.get("DYSON_APINEX_URL")
-    if url and secret_file is not None:
+    if secret_file is not None:
         from dyson_memory.secrets import read_fresh
 
         from .openai_compat_model import OpenAICompatModel
 
-        models[APINEX_PROVIDER] = OpenAICompatModel(
-            url, lambda: read_fresh(secret_file, KEY_SCOPE, "apinex_api_key")
-        )
+        for provider, (url_env, secret_name) in OAI_PROVIDERS.items():
+            url = os.environ.get(url_env)
+            if url:
+                models[provider] = OpenAICompatModel(
+                    url, lambda sf=secret_file, n=secret_name: read_fresh(sf, KEY_SCOPE, n)
+                )
     return models
 
 
