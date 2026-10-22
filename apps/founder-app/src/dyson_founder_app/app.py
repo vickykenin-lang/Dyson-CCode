@@ -59,6 +59,16 @@ def create_app(
 ) -> FastAPI:
     speech = speech or NoSpeech()
     app = FastAPI(title="Dyson")
+
+    @app.middleware("http")
+    async def no_store_html(request, call_next):
+        # The app's HTML must always be fresh (every deploy takes effect at once; no stale page
+        # cached by the browser or the edge). Static assets (JS, noVNC) keep their own caching.
+        resp = await call_next(request)
+        if resp.headers.get("content-type", "").startswith("text/html"):
+            resp.headers["Cache-Control"] = "no-store"
+        return resp
+
     # The observatory's sandbox panel embeds the sandbox's live screen (served same-origin, below)
     # and a STOP that opens Direct Founder Controls.
     observatory = PAGE.replace("__CONTROLS_URL__", controls_url)

@@ -155,8 +155,8 @@ box-shadow:0 30px 80px rgba(0,0,0,.6);animation:open .25s var(--out)}
 .sandbox{min-height:58vh}.console .chat{max-height:26vh}}
 @media (max-width:900px){.hint{display:block}}
 @media (max-width:560px){.bar{gap:8px;padding:0 10px;overflow-x:auto}.mark span,.pill,.clock{display:none}
-/* phone: drop the decorative 3D star (GPU-heavy, not needed); keep Dyson, the sandbox and the board */
-.star{display:none}.sandbox{min-height:66vh}.conhead .eye{display:none}
+/* phone: single column — chat, then a big sandbox, then the star and the board below */
+.sandbox{min-height:56vh}.conhead .eye{display:none}
 .copy{left:18px;right:18px}.copy p,.vitals{display:none}.copy h1{font-size:24px}.hbtn{padding:6px 10px}.hbtn .long{display:none}.hbtn .short{display:inline}
 .starnote{left:18px;right:18px}.vitals{gap:20px}.right{padding:16px 12px 24px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
