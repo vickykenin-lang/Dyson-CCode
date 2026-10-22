@@ -83,7 +83,11 @@ async function post(path,body,headers){
  const r=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json",...headers},
   body:JSON.stringify(body)});
  const j=await r.json().catch(()=>({}));
- if(!r.ok)throw new Error(j.detail||("refused ("+r.status+")"));return j}
+ if(!r.ok){let d=j.detail;
+  if(Array.isArray(d))d=d.map(e=>e.msg||JSON.stringify(e)).join("; ");
+  else if(d&&typeof d==="object")d=JSON.stringify(d);
+  throw new Error(d||("refused ("+r.status+")"))}
+ return j}
 async function confirmWithPasskey(purpose){
  const c=await post("/passkeys/challenges",{purpose});
  const o=JSON.parse(c.options);
@@ -150,7 +154,9 @@ function decide(a,k){run(k==="approve"?"Approving":"Rejecting",async()=>{
   {approval_id:a.approval_id,action_digest:a.action_digest,decision:k,...c});
  return "Decision recorded: "+r.status})}
 function setKey(){run("Saving key",async()=>{
- const p=$("kprov").value.trim();if(!p)throw new Error("enter a provider");
+ const p=$("kprov").value.trim().toLowerCase();
+ if(!/^[a-z0-9-]{2,32}$/.test(p))
+  throw new Error("provider is a short name like 'gemini', 'groq' or 'apinex' (lowercase)");
  if(!$("kval").value)throw new Error("enter the API key");
  const c=await confirmWithPasskey("set-key|"+p);
  await post("/apikeys",{provider:p,value:$("kval").value,...c});
