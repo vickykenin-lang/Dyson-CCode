@@ -10,7 +10,7 @@ Decisions and commands are then signed for A and sent to A, the only component r
 
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Protocol
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -43,6 +43,26 @@ def purpose_for_resume_request(scope: str, receptor_id: str | None) -> str:
     return f"resume-request|{scope}|{receptor_id or '-'}"
 
 
+def purpose_for_set_key(provider: str) -> str:
+    return f"set-key|{provider}"
+
+
+def purpose_for_delete_key(provider: str) -> str:
+    return f"delete-key|{provider}"
+
+
+KEY_SCOPE = "providers"  # the secret-store scope the Founder's provider API keys live in
+_PROVIDER = r"^[a-z0-9-]{2,32}$"  # a safe provider slug, so it cannot reach other scopes/names
+
+
+class KeyStore(Protocol):
+    """Just the write side of the secret store the Founder's keys live in (LocalSecretStore)."""
+
+    def names(self, scope: str) -> list[str]: ...
+    def set(self, scope: str, name: str, value: str) -> None: ...
+    def delete(self, scope: str, name: str) -> None: ...
+
+
 class ChallengeIn(Contract):
     purpose: NonEmptyStr
 
@@ -68,6 +88,15 @@ class ControlIn(Confirmation):
 class ResumeRequestIn(Confirmation):
     scope: ControlScope
     receptor_id: ReceptorId | None = None
+
+
+class SetKeyIn(Confirmation):
+    provider: str = Field(pattern=_PROVIDER)
+    value: NonEmptyStr  # the API key; stored write-only, never returned or logged
+
+
+class RemoveKeyIn(Confirmation):
+    provider: str = Field(pattern=_PROVIDER)
 
 
 class PasskeyLabel(Contract):
@@ -102,6 +131,7 @@ def create_app(
     audit: AuditPort,
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     passkeys: PasskeyStepUp | None = None,
+    keys: KeyStore | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Dyson Direct Founder Controls")
 
@@ -179,6 +209,31 @@ def create_app(
         request = governance.propose_resume(body.scope, body.receptor_id)
         audit.record("resume_requested", request.model_dump(mode="json"))
         return request
+
+    if keys is not None:
+
+        @app.get("/apikeys")
+        def list_keys() -> dict:
+            """Which providers have a key saved — names only, never the value."""
+            suffix = "_api_key"
+            provs = [n[: -len(suffix)] for n in keys.names(KEY_SCOPE) if n.endswith(suffix)]
+            return {"providers": sorted(provs)}
+
+        @app.post("/apikeys")
+        def set_key(body: SetKeyIn) -> dict:
+            """Add or replace a provider's API key. Write-only: the value is stored, never
+            returned or logged."""
+            confirmed(body, purpose_for_set_key(body.provider))
+            keys.set(KEY_SCOPE, body.provider + "_api_key", body.value)
+            audit.record("api_key_set", {"provider": body.provider, "at": clock().isoformat()})
+            return {"provider": body.provider, "set": True}
+
+        @app.post("/apikeys/remove")
+        def remove_key(body: RemoveKeyIn) -> dict:
+            confirmed(body, purpose_for_delete_key(body.provider))
+            keys.delete(KEY_SCOPE, body.provider + "_api_key")
+            audit.record("api_key_removed", {"provider": body.provider, "at": clock().isoformat()})
+            return {"provider": body.provider, "set": False}
 
     if passkeys is not None:
         _passkey_routes(app, passkeys, audit, clock)

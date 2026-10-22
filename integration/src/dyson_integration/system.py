@@ -852,6 +852,7 @@ def _controls(core, memory, store, settings: Settings, clock: Clock) -> FastAPI:
         _AuditEvents(memory, clock),
         clock,
         passkeys,
+        store,  # the Founder's provider API keys page writes here (write-only)
     )
 
 

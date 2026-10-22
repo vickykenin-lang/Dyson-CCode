@@ -47,6 +47,17 @@ Your phone then creates a passkey; after that the device key is no longer accept
 <button class="ghost" onclick="resumeRequest()">Ask to resume</button>
 </section>
 
+<section id="apikeys" class="hidden">
+<h2>Provider API keys</h2>
+<p>Add a key for a model provider (for example <b>apinex</b>). It is saved write-only &mdash; it is
+never shown again. To change it, save a new one; to remove it, use Remove.</p>
+<input id="kprov" placeholder="Provider (e.g. apinex)" autocomplete="off" aria-label="Provider">
+<input id="kval" type="password" autocomplete="off" placeholder="API key" aria-label="API key">
+<button onclick="setKey()">Save key</button>
+<button class="ghost" onclick="loadKeys()">Show saved providers</button>
+<div id="keylist"></div>
+</section>
+
 <section id="approvals" class="hidden">
 <h2>Waiting for you</h2>
 <button onclick="loadApprovals()">Show pending approvals</button>
@@ -138,9 +149,28 @@ function decide(a,k){run(k==="approve"?"Approving":"Rejecting",async()=>{
  const r=await post("/decisions",
   {approval_id:a.approval_id,action_digest:a.action_digest,decision:k,...c});
  return "Decision recorded: "+r.status})}
+function setKey(){run("Saving key",async()=>{
+ const p=$("kprov").value.trim();if(!p)throw new Error("enter a provider");
+ if(!$("kval").value)throw new Error("enter the API key");
+ const c=await confirmWithPasskey("set-key|"+p);
+ await post("/apikeys",{provider:p,value:$("kval").value,...c});
+ $("kval").value="";await loadKeys();
+ return "Saved key for "+p+". It will not be shown again."})}
+function delKey(p){run("Removing key",async()=>{
+ const c=await confirmWithPasskey("delete-key|"+p);
+ await post("/apikeys/remove",{provider:p,...c});await loadKeys();
+ return "Removed key for "+p})}
+function loadKeys(){run("Loading",async()=>{
+ const r=await (await fetch("/apikeys")).json();$("keylist").innerHTML="";
+ (r.providers||[]).forEach(p=>{const d=document.createElement("div");d.className="item";
+  const s=document.createElement("b");s.textContent=p+" — key saved";d.appendChild(s);
+  const b=document.createElement("button");b.textContent="Remove";b.className="red";
+  b.onclick=()=>delKey(p);d.appendChild(b);$("keylist").appendChild(d)});
+ const n=(r.providers||[]).length;
+ return n?n+" provider(s) saved":"No keys saved yet."})}
 async function refresh(){const n=(await (await fetch("/passkeys")).json()).enrolled;
  $("enroll").classList.toggle("hidden",n>0);
- for(const id of ["controls","approvals","backup"])$(id).classList.toggle("hidden",n===0);
+ for(const id of ["controls","apikeys","approvals","backup"])$(id).classList.toggle("hidden",n===0);
  if(!window.PublicKeyCredential)say("This browser cannot use passkeys.")}
 refresh();
 </script></body></html>

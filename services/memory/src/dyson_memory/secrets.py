@@ -34,7 +34,8 @@ class LocalSecretStore:
         mode = os.stat(path).st_mode
         if mode & (stat.S_IRWXG | stat.S_IRWXO):
             raise PermissionError(f"{path} must be private (chmod 600)")
-        self._data: dict[str, dict[str, str]] = json.loads(Path(path).read_text("utf-8"))
+        self._path = Path(path)
+        self._data: dict[str, dict[str, str]] = json.loads(self._path.read_text("utf-8"))
 
     def get(self, scope: str, name: str) -> str:
         try:
@@ -44,6 +45,44 @@ class LocalSecretStore:
 
     def values(self) -> list[str]:
         return [v for ns in self._data.values() for v in ns.values()]
+
+    def names(self, scope: str) -> list[str]:
+        """The secret names in a scope (never the values). Read fresh, so another process's
+        writes are seen."""
+        data = json.loads(self._path.read_text("utf-8"))
+        return sorted(data.get(scope, {}).keys())
+
+    def set(self, scope: str, name: str, value: str) -> None:
+        """Add or replace a secret. The file is re-read first so a concurrent write is not lost,
+        then written atomically and kept private (chmod 600)."""
+        data = json.loads(self._path.read_text("utf-8"))
+        data.setdefault(scope, {})[name] = value
+        self._persist(data)
+
+    def delete(self, scope: str, name: str) -> None:
+        data = json.loads(self._path.read_text("utf-8"))
+        if data.get(scope, {}).pop(name, None) is not None:
+            if not data[scope]:
+                del data[scope]
+            self._persist(data)
+
+    def _persist(self, data: dict[str, dict[str, str]]) -> None:
+        tmp = self._path.with_suffix(self._path.suffix + ".tmp")
+        tmp.write_text(json.dumps(data, indent=2), "utf-8")
+        tmp.chmod(0o600)
+        tmp.replace(self._path)  # atomic
+        self._data = data
+
+
+def read_fresh(path: Path, scope: str, name: str) -> str | None:
+    """Read one secret straight from the file, bypassing any cached store. Used by a process that
+    did not write the secret (e.g. the model adapter picking up a key the Founder just saved on
+    Direct Founder Controls). Returns None if the file, scope or name is missing."""
+    try:
+        data = json.loads(Path(path).read_text("utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data.get(scope, {}).get(name)
 
 
 # Common credential shapes, caught even when they are not in the store.

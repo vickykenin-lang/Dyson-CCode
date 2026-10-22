@@ -128,11 +128,14 @@ def _settings_and_dsns(migrate: bool = True):
 
 
 APINEX_PROVIDER = "apinex"  # an OpenAI-compatible provider; its model_ids are registered by rollout
+KEY_SCOPE = "providers"  # the secret-store scope the Founder's provider keys live in (set via DFC)
 
 
-def _models() -> dict:
+def _models(secret_file: Path | None = None) -> dict:
     """The stand-ins always; Bedrock behind C when the server has role credentials; an
-    OpenAI-compatible provider (apinex) when its base URL and key file are configured."""
+    OpenAI-compatible provider (apinex) when its base URL is set. The apinex key is read fresh
+    from the secret store on each call, so a key the Founder saves on Direct Founder Controls is
+    used without a restart; until one is saved, calls to it fail and the router falls back."""
     models = {PROVIDER: RulesModel(), BACKUP_PROVIDER: RulesModel()}
     if os.environ.get("DYSON_BEDROCK") == "1":
         from .bedrock_model import PROVIDER as BEDROCK
@@ -140,20 +143,21 @@ def _models() -> dict:
 
         models[BEDROCK] = BedrockModel()
     url = os.environ.get("DYSON_APINEX_URL")
-    key_file = os.environ.get("DYSON_APINEX_KEY_FILE")
-    if url and key_file and Path(key_file).exists():
+    if url and secret_file is not None:
+        from dyson_memory.secrets import read_fresh
+
         from .openai_compat_model import OpenAICompatModel
 
-        key = Path(key_file).read_text().strip()
-        if key:
-            models[APINEX_PROVIDER] = OpenAICompatModel(url, key)
+        models[APINEX_PROVIDER] = OpenAICompatModel(
+            url, lambda: read_fresh(secret_file, KEY_SCOPE, "apinex_api_key")
+        )
     return models
 
 
 def build_from_env(t0=None) -> LayerA:
     """A Layer A on the server's database, for the server and for one-off admin commands."""
     settings, dsns = _settings_and_dsns()
-    return LayerA.build(dsns, settings, t0 or TestReceptorT0(), _now, _models())
+    return LayerA.build(dsns, settings, t0 or TestReceptorT0(), _now, _models(settings.secret_file))
 
 
 def main() -> None:
@@ -166,12 +170,12 @@ def main() -> None:
         return asyncio.run(_serve([(controls_app(dsns, settings, _now), "0.0.0.0", 8082)]))
     settings, dsns = _settings_and_dsns()
     t0 = TestReceptorT0()
-    layer = LayerA.build(dsns, settings, t0, _now, _models())
+    layer = LayerA.build(dsns, settings, t0, _now, _models(settings.secret_file))
     if layer.core.sync().receptors.get("T0") is None:
         layer.bootstrap()
     seed_register(layer.memory, settings.policy_dir)  # new rule versions and decisions reach I
     layer.record_deployment()
-    worker = LayerA.build(dsns, settings, t0, _now, _models())  # its own connections
+    worker = LayerA.build(dsns, settings, t0, _now, _models(settings.secret_file))  # own conns
 
     def work() -> None:
         while True:

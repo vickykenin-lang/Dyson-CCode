@@ -1,5 +1,7 @@
 """The OpenAI-compatible adapter: maps a ModelRequest to /v1/chat/completions and back."""
 
+import pytest
+
 from dyson_integration.openai_compat_model import OpenAICompatModel
 from dyson_intelligence.models import ChatMessage, ModelRequest
 
@@ -86,3 +88,16 @@ def test_null_content_is_empty_string():
     fake = _FakeClient({"choices": [{"message": {"content": None}}], "usage": {}})
     m = OpenAICompatModel("https://api.example.com/v1", "k", client=fake)
     assert m.complete(_req("hi"), "m").text == ""
+
+
+def test_callable_key_is_read_at_call_time():
+    # the key is resolved on each call, so a key saved later (e.g. on DFC) is picked up with no
+    # restart; until one exists the call fails and the router can fall back.
+    box = {"k": ""}
+    fake = _FakeClient(_reply("ok"))
+    m = OpenAICompatModel("https://api.example.com/v1", lambda: box["k"], client=fake)
+    with pytest.raises(RuntimeError):
+        m.complete(_req("hi"), "m")  # no key yet
+    box["k"] = "sk-live"
+    m.complete(_req("hi"), "m")
+    assert fake.sent["headers"]["Authorization"] == "Bearer sk-live"

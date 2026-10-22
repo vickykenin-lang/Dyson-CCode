@@ -57,6 +57,9 @@ services:
       DYSON_PASSKEY_RP_ID: ${DYSON_PASSKEY_RP_ID:-localhost}
       DYSON_PASSKEY_ORIGIN: ${DYSON_PASSKEY_ORIGIN:-http://localhost:8082}
       DYSON_BEDROCK: ${DYSON_BEDROCK:-0}  # 1 only on the server (D-013)
+      # An OpenAI-compatible free-first provider behind C. Its key is NOT here: the Founder saves
+      # it on Direct Founder Controls, into the shared secret store, read fresh per call.
+      DYSON_APINEX_URL: ${DYSON_APINEX_URL:-https://api.apinex.bond/v1}
       DYSON_POLLY: ${DYSON_POLLY:-0}  # 1 only on the server: spoken replies (D-024)
       DYSON_VOICE_URL: http://172.32.0.10:8096
       DYSON_SANDBOX_URL: http://172.35.0.10:8097  # G drives the sealed sandbox over sandbox_net

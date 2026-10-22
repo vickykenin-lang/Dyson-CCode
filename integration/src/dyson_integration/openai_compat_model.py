@@ -9,6 +9,7 @@ fences or reasoning text.
 """
 
 import json
+from collections.abc import Callable
 from typing import Any
 
 from dyson_intelligence.models import ModelRequest, ModelResponse
@@ -20,18 +21,34 @@ TIMEOUT_S = 60.0
 
 class OpenAICompatModel:
     def __init__(
-        self, base_url: str, api_key: str, *, client: Any = None, timeout: float = TIMEOUT_S
+        self,
+        base_url: str,
+        api_key: str | Callable[[], str | None],
+        *,
+        client: Any = None,
+        timeout: float = TIMEOUT_S,
     ):
-        # base_url like "https://api.apinex.bond/v1"; the endpoint is <base_url>/chat/completions
+        # base_url like "https://api.apinex.bond/v1"; the endpoint is <base_url>/chat/completions.
+        # api_key may be a string, or a callable read at call time (so a key the Founder saves on
+        # Direct Founder Controls is picked up without a restart).
         self._url = base_url.rstrip("/") + "/chat/completions"
         self._key = api_key
         self._client = client  # an httpx.Client for tests; a one-shot request otherwise
         self._timeout = timeout
 
+    def _resolve_key(self) -> str:
+        key = self._key() if callable(self._key) else self._key
+        if not key:
+            raise RuntimeError("no API key is configured for this provider")
+        return key
+
     def _post(self, payload: dict) -> dict:
         import httpx  # lazy: only needed when a real call is made
 
-        headers = {"Authorization": f"Bearer {self._key}", "Content-Type": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {self._resolve_key()}",
+            "Content-Type": "application/json",
+        }
         caller = self._client or httpx
         resp = caller.post(self._url, json=payload, headers=headers, timeout=self._timeout)
         resp.raise_for_status()
