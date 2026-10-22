@@ -20,6 +20,7 @@ dependencies = [
     "dyson-founder-app",
     "pyyaml>=6",
     "uvicorn>=0.29",
+    "websockets>=12",  # uvicorn's WebSocket support (the sandbox screen relay, D-028)
     "httpx>=0.27",  # in-process ASGI calls between the composed apps
     "boto3>=1.34",  # Amazon Bedrock behind C (D-013), server role credentials only
 ]
