@@ -9,7 +9,12 @@ RUN useradd --create-home --uid 10001 dyson && mkdir /data /hermes && chown dyso
 # noVNC's static client, served same-origin by the app so the Founder's sandbox panel needs no
 # second hostname and no second login (D-028). The screen's websocket is bridged by the app itself.
 RUN apt-get update && apt-get install -y --no-install-recommends novnc \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    # Force the Founder's panel interactive: without this noVNC can fall back to a stored/stale
+    # view_only setting (the panel began as view-only), so the screen shows but clicks and keys go
+    # nowhere. mandatory.json overrides any URL, cookie or saved value and locks it (D-028). The
+    # sandbox is sealed from the core and Founder-only behind Cloudflare Access, so full control is safe.
+    && printf '%s' '{"view_only": false}' > /usr/share/novnc/mandatory.json
 WORKDIR /app
 COPY integration/docker/wheels/ /wheels/
 COPY contracts/ contracts/
