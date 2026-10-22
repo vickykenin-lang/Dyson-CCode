@@ -20,6 +20,9 @@ from dyson_integration.sandbox_command import SandboxOperator, parse_open_comman
         ("dikhao gmail", "https://mail.google.com/"),
         ("open example.com", "https://example.com"),
         ("go to https://news.ycombinator.com/", "https://news.ycombinator.com/"),
+        ("youtube", "https://www.youtube.com/"),  # a bare place name is the command too
+        ("YouTube?", "https://www.youtube.com/"),
+        ("amazon.in", "https://amazon.in"),  # a bare domain on its own
     ],
 )
 def test_parse_recognises_open_commands(text, expected):

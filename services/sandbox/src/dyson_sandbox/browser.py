@@ -43,8 +43,15 @@ class PlaywrightDriver:
             from playwright.async_api import async_playwright  # lazy: only in the sandbox image
 
             self._pw = await async_playwright().start()
-            self._browser = await self._pw.chromium.launch(headless=self._headless)
-            self._page = await self._browser.new_page()
+            # Fill the virtual screen: a maximized window the size of the display, and a page with
+            # no forced viewport so its content fills that window (the panel shows a full browser,
+            # not a small window on a black desktop).
+            self._browser = await self._pw.chromium.launch(
+                headless=self._headless,
+                args=["--start-maximized", "--window-position=0,0", "--window-size=1280,800"],
+            )
+            context = await self._browser.new_context(no_viewport=True)
+            self._page = await context.new_page()
 
     async def navigate(self, url: str) -> dict:
         async with self._lock:

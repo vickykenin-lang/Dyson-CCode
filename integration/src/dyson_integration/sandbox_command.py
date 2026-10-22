@@ -43,14 +43,24 @@ _DOMAIN = re.compile(r"\b([a-z0-9-]+(?:\.[a-z0-9-]+)+)\b", re.I)
 
 
 def parse_open_command(text: str) -> str | None:
-    """Return the URL to open for a clear 'open <site>' command, else None (let B handle it)."""
+    """Return the URL to open for a clear open-a-site command, else None (let B handle it).
+
+    A bare site name or domain on its own line ("youtube", "amazon.in") is the command too: the
+    Founder naming a place to go wants to go there. A verb is required only when the name is buried
+    in a longer sentence, so ordinary chat that merely mentions a site ("youtube kya hai?") is not
+    hijacked.
+    """
     if m := _URL.search(text):
         return m.group(0)
+    bare = text.strip().strip("?!.,").lower()  # the whole message is just a place to go
+    if bare in SITES:
+        return SITES[bare]
+    if _DOMAIN.fullmatch(bare):
+        return "https://" + bare
     if not _OPEN.search(text):
         return None
-    low = text.lower()
     for name, url in SITES.items():
-        if re.search(rf"\b{re.escape(name)}\b", low):
+        if re.search(rf"\b{re.escape(name)}\b", bare):
             return url
     if m := _DOMAIN.search(text):  # "open example.com"
         return "https://" + m.group(1)
