@@ -127,14 +127,26 @@ def _settings_and_dsns(migrate: bool = True):
     return settings, dsns
 
 
+APINEX_PROVIDER = "apinex"  # an OpenAI-compatible provider; its model_ids are registered by rollout
+
+
 def _models() -> dict:
-    """The stand-ins always; Bedrock behind C when the server has role credentials."""
+    """The stand-ins always; Bedrock behind C when the server has role credentials; an
+    OpenAI-compatible provider (apinex) when its base URL and key file are configured."""
     models = {PROVIDER: RulesModel(), BACKUP_PROVIDER: RulesModel()}
     if os.environ.get("DYSON_BEDROCK") == "1":
         from .bedrock_model import PROVIDER as BEDROCK
         from .bedrock_model import BedrockModel
 
         models[BEDROCK] = BedrockModel()
+    url = os.environ.get("DYSON_APINEX_URL")
+    key_file = os.environ.get("DYSON_APINEX_KEY_FILE")
+    if url and key_file and Path(key_file).exists():
+        from .openai_compat_model import OpenAICompatModel
+
+        key = Path(key_file).read_text().strip()
+        if key:
+            models[APINEX_PROVIDER] = OpenAICompatModel(url, key)
     return models
 
 
