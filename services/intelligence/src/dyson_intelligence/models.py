@@ -21,6 +21,7 @@ class ModelRequest(Contract):
     messages: tuple[ChatMessage, ...] = Field(min_length=1)
     max_output_tokens: int = Field(ge=1)
     response_schema: dict[str, JsonValue] | None = None  # ask for JSON matching this schema
+    sensitive: bool = False  # the Founder's own knowledge: route only to trusted providers
 
 
 class ModelResponse(Contract):

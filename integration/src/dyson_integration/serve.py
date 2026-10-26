@@ -168,6 +168,30 @@ def _models(secret_file: Path | None = None) -> dict:
     return models
 
 
+def _knowledge_retriever(dsns: dict[str, str]):
+    """B's read window into the Founder's second brain, when a local embedder is configured.
+
+    Best-effort by design: with no DYSON_EMBEDDER_URL, or if the knowledge schema is not migrated
+    or the embedder is unreachable, this returns None and B simply answers without grounding. It
+    never raises, so a knowledge problem can never stop the server from booting. When present, it
+    also ensures the schema exists and that B's role (integration) may read it."""
+    url = os.environ.get("DYSON_EMBEDDER_URL")
+    if not url:
+        return None
+    try:
+        from dyson_knowledge.db import connect as k_connect
+        from dyson_knowledge.db import migrate as k_migrate
+        from dyson_knowledge.http_embedder import HttpEmbedder
+        from dyson_knowledge.retrieve import Retriever
+
+        if "owner" in dsns:  # the owner runs migrations and grants B's role read access
+            k_migrate(k_connect(dsns["owner"]), db.app_role("integration"))
+        return Retriever(k_connect(dsns["integration"]), HttpEmbedder(url))
+    except Exception as exc:  # knowledge is optional; never block startup on it
+        print(f"knowledge retriever unavailable: {type(exc).__name__}: {exc}", flush=True)
+        return None
+
+
 def build_from_env(t0=None) -> LayerA:
     """A Layer A on the server's database, for the server and for one-off admin commands."""
     settings, dsns = _settings_and_dsns()
@@ -184,7 +208,8 @@ def main() -> None:
         return asyncio.run(_serve([(controls_app(dsns, settings, _now), "0.0.0.0", 8082)]))
     settings, dsns = _settings_and_dsns()
     t0 = TestReceptorT0()
-    layer = LayerA.build(dsns, settings, t0, _now, _models(settings.secret_file))
+    layer = LayerA.build(dsns, settings, t0, _now, _models(settings.secret_file),
+                         knowledge=_knowledge_retriever(dsns))  # fmt: skip
     if layer.core.sync().receptors.get("T0") is None:
         layer.bootstrap()
     seed_register(layer.memory, settings.policy_dir)  # new rule versions and decisions reach I

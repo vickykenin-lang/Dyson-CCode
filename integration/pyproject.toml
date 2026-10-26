@@ -15,6 +15,7 @@ dependencies = [
     "dyson-orchestrator",
     "dyson-assurance",
     "dyson-intelligence",
+    "dyson-knowledge",  # B's read window into the second brain (retrieval grounding)
     "dyson-gateway",
     "dyson-founder-controls",
     "dyson-founder-app",

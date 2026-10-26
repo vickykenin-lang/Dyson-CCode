@@ -4,6 +4,7 @@ Note what is absent: no port lets B or C approve anything, run a tool, read a se
 evidence or touch the STOP controls. Hermes has its own, narrower ports (hermes/runtime.py).
 """
 
+from collections.abc import Sequence
 from typing import Any, Protocol
 from uuid import UUID
 
@@ -74,3 +75,18 @@ class ToolCatalogPort(Protocol):
         Only tools G's registry currently admits are listed.
         """
         ...
+
+
+class GroundingHit(Protocol):
+    """One chunk retrieved from the Founder's second brain, enough for B to answer and cite it."""
+
+    path: str
+    text: str
+    similarity: float  # best vector cosine (0..1); B grounds only above a relevance threshold
+
+
+class KnowledgePort(Protocol):
+    """B's read-only window into the Founder's knowledge index (the second brain). Optional: when
+    it is absent or unreachable, B simply answers without grounding."""
+
+    def search(self, query: str) -> Sequence[GroundingHit]: ...

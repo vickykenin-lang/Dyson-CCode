@@ -41,6 +41,10 @@ from .redaction import Redaction
 
 # Who may ask C for a model. D, G, F, H and the Receptors have no reason to; A must not use one.
 CALLERS = frozenset({Component.CONVERSATION_ENGINE, Component.HERMES})
+# Providers that run on our own infrastructure or on AWS (which does not train on API traffic). A
+# request marked sensitive — the Founder's own notes and files — routes only to these, never to a
+# free public relay that may keep or train on what it sees.
+TRUSTED_PROVIDERS = frozenset({"local-rules", "local-rules-b", "bedrock"})
 MTOK = Decimal(1_000_000)
 
 
@@ -183,6 +187,12 @@ class ModelRouter:
         if not route:
             raise RouterError(f"no qualified model meets the acceptance bar for {task_class}")
         models = self._models()
+        if request.sensitive:
+            route = [m for m in route if models[m].provider in TRUSTED_PROVIDERS]
+            if not route:
+                raise RouterError(
+                    f"no trusted model is qualified for the Founder's private {task_class}"
+                )
         redaction = Redaction(self._personal())
         outbound = redaction.request(request)
         call_id, attempts = uuid4(), []

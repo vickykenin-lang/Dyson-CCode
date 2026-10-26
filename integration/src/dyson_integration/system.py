@@ -320,6 +320,7 @@ class LayerA:
         t0: "t0_module.TestReceptorT0",
         clock: Clock,
         models: dict[str, RulesModel] | None = None,
+        knowledge: Any = None,  # B's read window into the second brain (a Retriever)
     ) -> "LayerA":
         self = object.__new__(cls)
         self.dsns, self.settings, self.t0, self.clock = dsns, settings, t0, clock
@@ -433,6 +434,7 @@ class LayerA:
             OrchestratorForConversation(self.orch, self.status),
             CatalogForConversation(self.catalog, self.core, STANDARDS, DESCRIPTIONS),
             clock,
+            knowledge=knowledge,
         )
         self.gateway: FastAPI = create_gateway(
             PasswordAuthenticator.create(settings.founder_username, settings.founder_password),

@@ -11,6 +11,7 @@ from intelligence_testkit import (
     NOW,
     FakeCatalog,
     FakeMemory,
+    FakeModel,
     FakeOrchestrator,
     configure,
 )
@@ -18,6 +19,7 @@ from intelligence_testkit import (
 from dyson_contracts.interface import FounderMessage, Language, Modality, TaskStatusUpdate
 from dyson_contracts.tasks import TaskState
 from dyson_intelligence.conversation import TASK_CLASS, ConversationEngine, ReplyKind
+from dyson_intelligence.router import ModelRouter
 
 SRC = Path(__file__).resolve().parents[1] / "src" / "dyson_intelligence"
 
@@ -207,3 +209,65 @@ def test_no_route_at_all_starts_nothing(parts):  # LA-RTR-04
     reply = parts.b.handle(msg("Send the report"))
     assert reply.kind is ReplyKind.UNAVAILABLE and "Nothing was started" in reply.text
     assert parts.orch.tasks == {}
+
+
+# --- second brain: grounding the Founder's own notes into the reply (knowledge retrieval) --------
+
+
+class _Hit:
+    def __init__(self, path, text, similarity):
+        self.path, self.text, self.similarity = path, text, similarity
+
+
+class _Knowledge:
+    def __init__(self, *hits, error=False):
+        self.hits, self.error, self.queries = list(hits), error, []
+
+    def search(self, query):
+        self.queries.append(query)
+        if self.error:
+            raise RuntimeError("the embedder is unreachable")
+        return list(self.hits)
+
+
+def _grounded(conn, gov, clock, knowledge, *, provider="bedrock"):
+    """A conversation engine wired to a knowledge index and one trusted provider (so a sensitive,
+    grounded call has somewhere to route). Returns (engine, that provider's fake adapter)."""
+    model = FakeModel('{"language": "en", "kind": "answer", "text": "ok"}')
+    router = ModelRouter(conn, gov, {provider: model}, clock)
+    configure(router, gov, TASK_CLASS, [("trusted-1", provider, {})])
+    b = ConversationEngine(router, FakeMemory(), gov, FakeOrchestrator(), FakeCatalog(), clock,
+                           knowledge=knowledge)  # fmt: skip
+    return b, model
+
+
+def test_relevant_notes_ground_the_reply_and_mark_it_sensitive(conn, gov, clock):  # second brain
+    k = _Knowledge(_Hit("social-media/plan.md", "Reels teen baar a week.", 0.55))
+    b, model = _grounded(conn, gov, clock, k)
+    model.answers = [answer(language="hinglish", kind="answer",
+                            text="Plan yahan hai (social-media/plan.md)")]  # fmt: skip
+    reply = b.handle(msg("mera social media wala plan kahan hai"))
+    assert reply.kind is ReplyKind.ANSWER
+    assert k.queries == ["mera social media wala plan kahan hai"]
+    _, request = model.requests[-1]
+    assert request.sensitive is True  # the Founder's notes never go to an untrusted relay
+    assert "social-media/plan.md" in request.system and "Reels teen baar a week." in request.system
+
+
+def test_off_topic_questions_ground_nothing_and_stay_non_sensitive(conn, gov, clock):
+    k = _Knowledge(_Hit("finance/invoices.md", "GST stuff", 0.12))  # far below the threshold
+    b, model = _grounded(conn, gov, clock, k)
+    model.answers = [answer(language="en", kind="answer", text="Berlin is the capital of Germany.")]
+    reply = b.handle(msg("what is the capital of Germany?"))
+    assert reply.kind is ReplyKind.ANSWER
+    _, request = model.requests[-1]
+    assert request.sensitive is False and "finance/invoices.md" not in request.system
+
+
+def test_a_broken_knowledge_index_never_breaks_the_conversation(conn, gov, clock):
+    b, model = _grounded(conn, gov, clock, _Knowledge(error=True))
+    model.answers = [answer(language="en", kind="answer", text="hello")]
+    reply = b.handle(msg("hello"))
+    assert reply.kind is ReplyKind.ANSWER  # the index failed, B answered anyway
+    _, request = model.requests[-1]
+    assert request.sensitive is False

@@ -8,7 +8,7 @@ from uuid import uuid4
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
-from intelligence_testkit import configure, qual, spec
+from intelligence_testkit import FakeModel, configure, qual, spec
 
 from dyson_contracts.approvals import ApprovalCategory
 from dyson_contracts.common import Component
@@ -28,6 +28,30 @@ def ask(text="hello", max_tokens=100):
 
 def calls(conn):
     return conn.execute("SELECT * FROM intelligence.calls ORDER BY seq").fetchall()
+
+
+def test_sensitive_requests_route_only_to_trusted_providers(conn, gov, clock):  # privacy, D-017
+    providers = {"gemini": FakeModel('{"ok": true}'), "bedrock": FakeModel('{"ok": true}')}
+    router = ModelRouter(conn, gov, providers, clock)
+    # the relay is free, so it normally wins; the AWS model is the trusted, slightly dearer fallback
+    configure(router, gov, "chat", [
+        ("gemini-flash", "gemini", {"cost": "0.0"}),
+        ("nova", "bedrock", {"cost": "0.01"}),
+    ])  # fmt: skip
+    router.complete(B, "chat", ask())  # a normal request takes the cheapest model, the relay
+    assert providers["gemini"].requests and not providers["bedrock"].requests
+    router.complete(B, "chat", ask().model_copy(update={"sensitive": True}))  # private → trusted
+    assert len(providers["bedrock"].requests) == 1
+    assert len(providers["gemini"].requests) == 1  # the relay never saw the sensitive request
+
+
+def test_sensitive_request_is_refused_when_no_trusted_model_qualifies(conn, gov, clock):
+    providers = {"gemini": FakeModel('{"ok": true}')}
+    router = ModelRouter(conn, gov, providers, clock)
+    configure(router, gov, "chat", [("gemini-flash", "gemini", {"cost": "0.0"})])
+    with pytest.raises(RouterError, match="no trusted model"):
+        router.complete(B, "chat", ask().model_copy(update={"sensitive": True}))
+    assert not providers["gemini"].requests  # nothing was sent to the relay
 
 
 def test_no_model_is_preapproved(router, providers):  # LA-RTR-03

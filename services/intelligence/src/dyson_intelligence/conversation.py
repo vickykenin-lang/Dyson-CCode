@@ -26,11 +26,23 @@ from dyson_contracts.interface import FounderMessage, Language, TaskStatusUpdate
 from dyson_contracts.tasks import TaskState
 
 from .models import ChatMessage, ModelRequest
-from .ports import GovernancePort, MemoryPort, OrchestratorPort, RouterPort, ToolCatalogPort
+from .ports import (
+    GovernancePort,
+    KnowledgePort,
+    MemoryPort,
+    OrchestratorPort,
+    RouterPort,
+    ToolCatalogPort,
+)
 
 TASK_CLASS = "conversation.interpret"
 THREAD_CONTEXT_LIMIT = 50
 MAX_OUTPUT_TOKENS = 2000
+# Grounding from the Founder's second brain: inject the top chunks only when the best one clears
+# this cosine similarity. The bar sits well below a real hit (~0.54 observed) and well above an
+# unrelated one (~0.12), so an off-topic question grounds nothing and B answers normally.
+GROUNDING_THRESHOLD = 0.4
+GROUNDING_CHUNKS = 4
 
 
 class ReplyKind(StrEnum):
@@ -192,6 +204,7 @@ class ConversationEngine:
         orchestrator: OrchestratorPort,
         catalog: ToolCatalogPort,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        knowledge: KnowledgePort | None = None,
     ):
         self._router = router
         self._memory = memory
@@ -199,6 +212,7 @@ class ConversationEngine:
         self._orch = orchestrator
         self._catalog = catalog
         self._clock = clock
+        self._knowledge = knowledge
 
     # --- persona (LA-CONV-04) ---------------------------------------------------------------
 
@@ -330,9 +344,13 @@ class ConversationEngine:
         msgs.append(ChatMessage(role="user", content=message.text))
         tools = {k: v.get("description", "") for k, v in self._catalog.tools().items()}
         system = self.persona() + "\n\nApproved tools:\n" + json.dumps(tools, ensure_ascii=False)
+        grounding, sensitive = self._ground(message.text)
+        if grounding:
+            system += "\n\n" + grounding
         request = ModelRequest(system=system, messages=tuple(msgs),
                                max_output_tokens=MAX_OUTPUT_TOKENS,
-                               response_schema=INTERPRETATION_SCHEMA)  # fmt: skip
+                               response_schema=INTERPRETATION_SCHEMA,
+                               sensitive=sensitive)  # fmt: skip
         try:
             routed = self._router.complete(Component.CONVERSATION_ENGINE, TASK_CLASS, request)
         except Exception as exc:
@@ -341,6 +359,28 @@ class ConversationEngine:
             return _Interpretation.model_validate(json.loads(routed.response.text))
         except (ValueError, ValidationError):
             return None  # an answer we cannot read is treated as unclear, never guessed at
+
+    def _ground(self, text: str) -> tuple[str, bool]:
+        """Pull up the Founder's own notes for this message. Returns (grounding block, sensitive).
+        When relevant chunks are found we mark the call sensitive so C keeps it on a trusted model
+        (never a public relay). The index is optional: any failure means no grounding, never an
+        error — B answers as if it had no second brain."""
+        if self._knowledge is None:
+            return "", False
+        try:
+            hits = list(self._knowledge.search(text))
+        except Exception:
+            return "", False
+        hits = [h for h in hits if h.similarity >= GROUNDING_THRESHOLD][:GROUNDING_CHUNKS]
+        if not hits:
+            return "", False
+        blocks = "\n\n".join(f"[{h.path}]\n{h.text}" for h in hits)
+        note = (
+            "From the Founder's own notes and files (his second brain). When they answer the"
+            " question, use them and name the source file in parentheses; reply in the Founder's"
+            " language. If they do not fit, answer normally and do not mention them.\n\n" + blocks
+        )
+        return note, True
 
     def _reply(self, kind: ReplyKind, lang: Language, key: str, *, proposal_id: UUID | None = None,
                **fmt: Any) -> Reply:  # fmt: skip

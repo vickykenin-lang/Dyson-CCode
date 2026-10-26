@@ -25,7 +25,8 @@ COPY policy/ policy/
 RUN pip install ${PIP_NO_INDEX:+--no-index} --find-links /wheels \
       ./contracts ./services/memory ./services/governance ./services/toolhub \
       ./services/orchestrator ./services/assurance ./services/intelligence \
-      ./services/gateway ./services/founder-controls ./apps/founder-app ./integration \
+      ./services/knowledge ./services/gateway ./services/founder-controls \
+      ./apps/founder-app ./integration \
     && rm -rf /wheels /root/.cache
 USER dyson
 EXPOSE 8080 8081 8082 8083 8090 8095
