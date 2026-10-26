@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dyson-knowledge"
+version = "0.1.0"
+description = "Dyson Sphere knowledge layer (second brain): ingest, chunk, embed, index"
+requires-python = ">=3.12"
+dependencies = [
+    "dyson-memory",  # reuses SecretGuard's credential patterns for the ingest secret scan
+    "psycopg[binary]>=3.2,<4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+dyson_knowledge = ["migrations/*.sql"]
