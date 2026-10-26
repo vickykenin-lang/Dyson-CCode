@@ -10,6 +10,7 @@ requires-python = ">=3.12"
 dependencies = [
     "dyson-memory",  # reuses SecretGuard's credential patterns for the ingest secret scan
     "psycopg[binary]>=3.2,<4",
+    "httpx>=0.27",  # calls the local embedder's OpenAI-compatible endpoint
 ]
 
 [project.optional-dependencies]

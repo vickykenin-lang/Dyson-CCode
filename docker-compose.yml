@@ -68,6 +68,7 @@ services:
       DYSON_POLLY: ${DYSON_POLLY:-0}  # 1 only on the server: spoken replies (D-024)
       DYSON_VOICE_URL: http://172.32.0.10:8096
       DYSON_SANDBOX_URL: http://172.35.0.10:8097  # G drives the sealed sandbox over sandbox_net
+      DYSON_EMBEDDER_URL: http://172.30.0.30:8098  # local embeddings for the knowledge layer
       # The app serves the sandbox panel same-origin and bridges its screen's websocket to this
       # VNC address over sandbox_net — so there is no second hostname and the one app login covers
       # it. Interactive: the Founder can watch AND take control; Dyson drives through Playwright.
@@ -188,6 +189,25 @@ services:
     networks:
       sandbox_net: {ipv4_address: 172.35.0.10}
 
+  embedder:
+    # Local embedding model for the knowledge layer: EmbeddingGemma 300M (768-dim, multilingual)
+    # served by llama.cpp as an OpenAI-compatible /v1/embeddings endpoint. The Founder's files are
+    # embedded here so text and vectors never leave the box (~140MB RAM, ungated GGUF). Starts only
+    # under the "knowledge" profile; the model is cached in a volume so restarts don't re-download.
+    profiles: ["knowledge"]
+    image: ghcr.io/ggml-org/llama.cpp:server
+    command: ["-hf", "ggml-org/embeddinggemma-300M-GGUF", "--embeddings",
+              "--host", "0.0.0.0", "--port", "8098", "--ctx-size", "2048"]
+    environment:
+      LLAMA_CACHE: /models
+    cpus: 1.0
+    mem_limit: 512m
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    volumes: [embedder-models:/models]
+    networks:
+      core_net: {ipv4_address: 172.30.0.30}
+
 networks:
   core_net:
     ipam: {config: [{subnet: 172.30.0.0/24}]}
@@ -211,6 +231,7 @@ volumes:
   dyson-data: {}
   hermes-secrets: {}
   hermes-agent-data: {}
+  embedder-models: {}
 
 secrets:
   postgres_password:
