@@ -198,6 +198,13 @@ services:
     image: ghcr.io/ggml-org/llama.cpp:server
     command: ["-hf", "ggml-org/embeddinggemma-300M-GGUF", "--embeddings",
               "--host", "0.0.0.0", "--port", "8098", "--ctx-size", "2048"]
+    # The image's own healthcheck probes port 8080; we serve on 8098, so point it there instead.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8098/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 300s  # first run downloads the model; cached in the volume afterwards
     environment:
       LLAMA_CACHE: /models
     cpus: 1.0

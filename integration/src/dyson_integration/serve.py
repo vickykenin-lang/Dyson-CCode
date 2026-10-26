@@ -180,16 +180,21 @@ def _knowledge_retriever(dsns: dict[str, str]):
         return None
     try:
         from dyson_knowledge.db import connect as k_connect
-        from dyson_knowledge.db import migrate as k_migrate
         from dyson_knowledge.http_embedder import HttpEmbedder
         from dyson_knowledge.retrieve import Retriever
 
-        if "owner" in dsns:  # the owner runs migrations and grants B's role read access
-            k_migrate(k_connect(dsns["owner"]), db.app_role("integration"))
-        return Retriever(k_connect(dsns["integration"]), HttpEmbedder(url))
+        conn = k_connect(dsns["integration"])  # B's read connection
     except Exception as exc:  # knowledge is optional; never block startup on it
         print(f"knowledge retriever unavailable: {type(exc).__name__}: {exc}", flush=True)
         return None
+    if "owner" in dsns:  # best-effort: ensure the schema exists and B's role may read it
+        try:
+            from dyson_knowledge.db import migrate as k_migrate
+
+            k_migrate(k_connect(dsns["owner"]), db.app_role("integration"))
+        except Exception as exc:  # a grant that is already in place, or owned elsewhere, is fine
+            print(f"knowledge migrate/grant skipped: {type(exc).__name__}: {exc}", flush=True)
+    return Retriever(conn, HttpEmbedder(url))
 
 
 def build_from_env(t0=None) -> LayerA:
