@@ -19,7 +19,9 @@
 # volume (core.device_key); copy it to the device yourself. It is never printed.
 services:
   postgres:
-    image: ${DYSON_POSTGRES_IMAGE:-postgres:16}
+    # pgvector's image is the official postgres:16 plus the `vector` extension (same data layout,
+    # drop-in). The knowledge layer stores embeddings here; CREATE EXTENSION is run by migrations.
+    image: ${DYSON_POSTGRES_IMAGE:-pgvector/pgvector:pg16}
     environment:
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     secrets: [postgres_password]
