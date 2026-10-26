@@ -90,6 +90,14 @@ def test_null_content_is_empty_string():
     assert m.complete(_req("hi"), "m").text == ""
 
 
+def test_extra_body_is_merged_into_the_request():
+    fake = _FakeClient(_reply("ok"))
+    m = OpenAICompatModel("https://x/v1", "k", extra_body={"reasoning_effort": "none"}, client=fake)
+    m.complete(_req("hi"), "gemini-3.5-flash")
+    assert fake.sent["json"]["reasoning_effort"] == "none"
+    assert fake.sent["json"]["model"] == "gemini-3.5-flash"  # extras don't clobber core fields
+
+
 def test_callable_key_is_read_at_call_time():
     # the key is resolved on each call, so a key saved later (e.g. on DFC) is picked up with no
     # restart; until one exists the call fails and the router can fall back.

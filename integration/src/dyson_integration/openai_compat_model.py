@@ -25,14 +25,18 @@ class OpenAICompatModel:
         base_url: str,
         api_key: str | Callable[[], str | None],
         *,
+        extra_body: dict | None = None,
         client: Any = None,
         timeout: float = TIMEOUT_S,
     ):
         # base_url like "https://api.apinex.bond/v1"; the endpoint is <base_url>/chat/completions.
         # api_key may be a string, or a callable read at call time (so a key the Founder saves on
-        # Direct Founder Controls is picked up without a restart).
+        # Direct Founder Controls is picked up without a restart). extra_body holds provider
+        # knobs merged into every request (e.g. Gemini's reasoning_effort="none" to skip slow
+        # thinking); it must not set model/messages.
         self._url = base_url.rstrip("/") + "/chat/completions"
         self._key = api_key
+        self._extra = extra_body or {}
         self._client = client  # an httpx.Client for tests; a one-shot request otherwise
         self._timeout = timeout
 
@@ -71,6 +75,7 @@ class OpenAICompatModel:
             "max_tokens": request.max_output_tokens,
             "temperature": 0,
         }
+        payload.update(self._extra)  # provider knobs (e.g. reasoning_effort); never model/messages
         out = self._post(payload)
         text = out["choices"][0]["message"].get("content") or ""
         if request.response_schema is not None:

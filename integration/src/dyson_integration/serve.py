@@ -134,9 +134,10 @@ KEY_SCOPE = "providers"  # the secret-store scope the Founder's provider keys li
 # its calls fail (and C falls back) until a key is saved. No model routes to one until a governed
 # rollout registers a model_id on it.
 OAI_PROVIDERS = {
-    "apinex": ("DYSON_APINEX_URL", "apinex_api_key"),  # a relay; use for non-sensitive only
-    "groq": ("DYSON_GROQ_URL", "groq_api_key"),  # direct, fast, open models
-    "gemini": ("DYSON_GEMINI_URL", "gemini_api_key"),  # direct, Gemini Flash
+    "apinex": ("DYSON_APINEX_URL", "apinex_api_key", None),  # a relay; non-sensitive only
+    "groq": ("DYSON_GROQ_URL", "groq_api_key", None),  # direct, fast, open models
+    # Gemini 3.x Flash "thinks" by default (~25s, truncated replies); turn it off for fast chat.
+    "gemini": ("DYSON_GEMINI_URL", "gemini_api_key", {"reasoning_effort": "none"}),
 }
 
 
@@ -156,11 +157,13 @@ def _models(secret_file: Path | None = None) -> dict:
 
         from .openai_compat_model import OpenAICompatModel
 
-        for provider, (url_env, secret_name) in OAI_PROVIDERS.items():
+        for provider, (url_env, secret_name, extra) in OAI_PROVIDERS.items():
             url = os.environ.get(url_env)
             if url:
                 models[provider] = OpenAICompatModel(
-                    url, lambda sf=secret_file, n=secret_name: read_fresh(sf, KEY_SCOPE, n)
+                    url,
+                    lambda sf=secret_file, n=secret_name: read_fresh(sf, KEY_SCOPE, n),
+                    extra_body=extra,
                 )
     return models
 
