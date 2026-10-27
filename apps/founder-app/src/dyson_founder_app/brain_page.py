@@ -97,13 +97,24 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
 .pane iframe{width:100%;height:100%;border:0;display:block}
 .loading{position:fixed;inset:0;display:grid;place-items:center;color:var(--soft);font:500 13px var(--mono);z-index:5}
 .mobtab{display:none}
+.mnav{display:none}
 @media (max-width:860px){
-  .rail,.live,.dock{display:none}
-  .rail.show,.live.show,.dock.show{display:flex}
-  .rail.left,.rail.right{width:min(86vw,300px);bottom:auto;max-height:66vh}
-  .live.show{width:min(86vw,300px)}
-  .dock.show{left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));top:auto;height:54vh}
-  .mobtab{display:inline-flex}
+  .top{left:8px;transform:none;top:calc(8px + env(safe-area-inset-top,0px));gap:2px;padding:4px 5px;max-width:calc(100vw - 16px);overflow-x:auto}
+  .top a,.top button{padding:6px 9px;font-size:11px;white-space:nowrap}.top .sep{display:none}.mobtab{display:none}
+  .live{display:none!important}
+  /* the rails and the dock become bottom sheets, one open at a time */
+  .rail.left,.rail.right,.dock{left:8px;right:8px;width:auto;top:auto;max-height:none;
+    bottom:calc(66px + env(safe-area-inset-bottom,0px));height:min(64vh,520px);
+    transform:translateY(140%);transition:transform .3s cubic-bezier(.2,.8,.2,1);display:flex;z-index:40}
+  .rail.left.open,.rail.right.open,.dock.open{transform:translateY(0)}
+  #sec-inspect{order:-1}  /* the tapped note shows first */
+  .hud{border-top:0}
+  .mnav{display:flex;position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:45;
+    background:var(--glass2);border:1px solid var(--line);border-radius:16px;padding:6px;
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 14px 40px rgba(0,0,0,.5)}
+  .mnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:transparent;border:0;border-radius:11px;padding:8px 0;color:var(--soft)}
+  .mnav button>span{font:600 10px var(--mono);letter-spacing:.06em}
+  .mnav button.on{color:var(--cyan);background:var(--cyan-d)}
 }
 </style>
 </head><body>
@@ -122,11 +133,11 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
   <div class="brand"><div class="name">DYSON <b>OS</b></div><div class="meta" id="count">loading…</div><div class="sub">second brain · live map</div></div>
   <div class="scroll">
     <div class="sec"><input class="search" id="search" placeholder="Search the brain…" autocomplete="off"></div>
-    <div class="sec"><h2>Inspector</h2><div class="inspect" id="inspect">Click a star to focus it — that note and its links light up, and you can read why they connect. Click empty space to release.</div></div>
+    <div class="sec" id="sec-inspect"><h2>Inspector</h2><div class="inspect" id="inspect">Click a star to focus it — that note and its links light up, and you can read why they connect. Click empty space to release.</div></div>
     <div class="sec"><h2>Top hubs</h2><ul class="hubs" id="hubs"></ul></div>
     <div class="sec"><h2>Display</h2>
       <div class="slider"><label>Spread <span id="spread-v"></span></label><input type="range" id="spread" min="60" max="180" value="100"></div>
-      <div class="slider"><label>Link glow <span id="glow-v"></span></label><input type="range" id="glow" min="0" max="100" value="80"></div>
+      <div class="slider"><label>Link glow <span id="glow-v"></span></label><input type="range" id="glow" min="0" max="100" value="90"></div>
       <div class="toggle" id="t-rotate" aria-pressed="true">Auto-rotate <span class="sw"></span></div>
     </div>
   </div>
@@ -161,6 +172,12 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
   </div>
 </section>
 
+<nav class="mnav" id="mnav">
+  <button data-rail="left">◎<span>Controls</span></button>
+  <button data-rail="right">◉<span>Dyson</span></button>
+  <button data-rail="dock">▣<span>System</span></button>
+</nav>
+
 <script type="module">
 import * as THREE from '/static/three.module.min.js';
 const $=id=>document.getElementById(id);
@@ -174,8 +191,14 @@ function dock(which){const w=which==='wire';$('tab-wire').setAttribute('aria-pre
   $('pane-wire').classList.toggle('on',w);$('pane-box').classList.toggle('on',!w);
   if(!w&&!boxLoaded){boxLoaded=true;ifBox.src='/sandbox-screen/vnc.html?autoconnect=1&resize=scale&path=/sandbox-ws';}}
 $('tab-wire').onclick=()=>dock('wire');$('tab-box').onclick=()=>dock('box');
-$('t-left').onclick=()=>{$('rail-left').classList.toggle('show');$('live').classList.toggle('show');$('dock').classList.toggle('show');};
-$('t-right').onclick=()=>$('rail-right').classList.toggle('show');
+
+// mobile: the rails and dock are bottom sheets opened from the bottom nav, one at a time
+const isMobile=matchMedia('(max-width:860px)').matches;
+function openRail(which){const map={left:$('rail-left'),right:$('rail-right'),dock:$('dock')};const el=map[which];const was=el.classList.contains('open');
+  Object.values(map).forEach(x=>x.classList.remove('open'));
+  [...document.querySelectorAll('.mnav button')].forEach(b=>b.classList.toggle('on',b.dataset.rail===which&&!was));
+  if(!was)el.classList.add('open');}
+$('mnav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)openRail(b.dataset.rail);});
 
 // DYSON LIVE feed (presentational for now)
 (function(){const feed=[['cmd','$ dyson → pull up: GST invoice'],['','  grounding repo:rio/finance ✓'],['cmd','$ ruff check services/knowledge'],['','  All checks passed!'],['cmd','$ pytest -q'],['','  30 passed'],['cmd','$ sandbox → open browser'],['','  streaming ▸ 1280×800']];
@@ -215,7 +238,7 @@ function boot(){
   const mesh=new THREE.InstancedMesh(geo,new THREE.MeshBasicMaterial(),nodes.length);
   const d3=new THREE.Object3D();
   const baseCol=nodes.map(n=>col[n.source]);
-  let spread=1;
+  let spread=1,selId=null,glowK=0.9;
   function sizeOf(i){return 2.2+Math.sqrt(nodes[i].size||1)*1.4;}
   function placeNode(i){const p=base[i];const hid=hidden[nodes[i].source];d3.position.set(p.x*spread,p.y*spread,p.z*spread);d3.scale.setScalar(hid?0.0001:sizeOf(i));d3.updateMatrix();mesh.setMatrixAt(i,d3.matrix);}
   for(let i=0;i<nodes.length;i++){placeNode(i);mesh.setColorAt(i,baseCol[i]);}
@@ -224,28 +247,37 @@ function boot(){
   // links
   const idx={};nodes.forEach((n,i)=>idx[n.id]=i);
   const lpos=new Float32Array(links.length*6),lcol=new Float32Array(links.length*6);
-  function buildLinks(){for(let i=0;i<links.length;i++){const a=byId[links[i].source],b=byId[links[i].target];
-    const ia=idx[links[i].source],ib=idx[links[i].target];
-    const hid=ia==null||ib==null||hidden[a.source]||hidden[b.source];
-    if(hid){lpos.set([0,0,0,0,0,0],i*6);}else{lpos.set([base[ia].x*spread,base[ia].y*spread,base[ia].z*spread,base[ib].x*spread,base[ib].y*spread,base[ib].z*spread],i*6);}
-    const al=(0.12+0.5*(links[i].similarity||0))*glowK;lcol.set([0.35*al,0.6*al,0.86*al,0.35*al,0.6*al,0.86*al],i*6);}
-    lgeo.attributes.position.needsUpdate=true;lgeo.attributes.color.needsUpdate=true;}
-  let glowK=0.8;
   const lgeo=new THREE.BufferGeometry();
   lgeo.setAttribute('position',new THREE.BufferAttribute(lpos,3));
   lgeo.setAttribute('color',new THREE.BufferAttribute(lcol,3));
-  const lines=new THREE.LineSegments(lgeo,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:.9}));
+  function linkHidden(i){const a=byId[links[i].source],b=byId[links[i].target];return idx[links[i].source]==null||idx[links[i].target]==null||hidden[a.source]||hidden[b.source];}
+  function buildLinks(){for(let i=0;i<links.length;i++){const ia=idx[links[i].source],ib=idx[links[i].target];
+      if(linkHidden(i)){lpos.set([0,0,0,0,0,0],i*6);}else{lpos.set([base[ia].x*spread,base[ia].y*spread,base[ia].z*spread,base[ib].x*spread,base[ib].y*spread,base[ib].z*spread],i*6);}}
+    lgeo.attributes.position.needsUpdate=true;paintLinks();}
+  function paintLinks(){for(let i=0;i<links.length;i++){let r=0,g=0,b=0;
+      if(!linkHidden(i)){
+        if(selId&&(links[i].source===selId||links[i].target===selId)){r=0.25;g=0.95;b=0.95;}     // connected to the focused note → bright cyan
+        else if(selId){r=0.05;g=0.07;b=0.09;}                                                      // unrelated while focusing → faint
+        else{const al=Math.min(1,(0.35+0.55*(links[i].similarity||0))*glowK);r=0.55*al;g=0.8*al;b=1.0*al;}  // normal: light blue-white
+      }
+      lcol.set([r,g,b,r,g,b],i*6);}
+    lgeo.attributes.color.needsUpdate=true;}
+  const lines=new THREE.LineSegments(lgeo,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:1}));
   scene.add(lines);buildLinks();
 
   // camera orbit
   let theta=0.6,phi=1.15,radius=1350,auto=true;
   function place(){cam.position.set(radius*Math.sin(phi)*Math.sin(theta),radius*Math.cos(phi),radius*Math.sin(phi)*Math.cos(theta));cam.lookAt(0,0,0);}
   place();
-  let drag=false,moved=false,px=0,py=0;
+  let drag=false,moved=false,px=0,py=0,pinching=false,pinchD=0;
   host.addEventListener('pointerdown',e=>{drag=true;moved=false;px=e.clientX;py=e.clientY;});
-  addEventListener('pointerup',e=>{if(drag&&!moved)pick(e);drag=false;});
-  addEventListener('pointermove',e=>{if(drag){if(Math.abs(e.clientX-px)+Math.abs(e.clientY-py)>3){moved=true;auto=false;}theta-=(e.clientX-px)*0.005;phi=Math.max(0.2,Math.min(2.94,phi-(e.clientY-py)*0.005));px=e.clientX;py=e.clientY;place();}else hover(e);});
-  host.addEventListener('wheel',e=>{radius=Math.max(300,Math.min(4200,radius+e.deltaY*1.3));place();e.preventDefault();},{passive:false});
+  addEventListener('pointerup',e=>{if(drag&&!moved&&!pinching)pick(e);drag=false;});
+  addEventListener('pointermove',e=>{if(pinching)return;if(drag){if(Math.abs(e.clientX-px)+Math.abs(e.clientY-py)>3){moved=true;auto=false;}theta-=(e.clientX-px)*0.005;phi=Math.max(0.2,Math.min(2.94,phi-(e.clientY-py)*0.005));px=e.clientX;py=e.clientY;place();}else hover(e);});
+  host.addEventListener('wheel',e=>{radius=Math.max(300,Math.min(4600,radius+e.deltaY*1.3));place();e.preventDefault();},{passive:false});
+  // touch: two-finger pinch to zoom (one finger rotates via the pointer handlers)
+  host.addEventListener('touchstart',e=>{if(e.touches.length===2){pinching=true;drag=false;auto=false;pinchD=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);}},{passive:true});
+  host.addEventListener('touchmove',e=>{if(pinching&&e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(pinchD)radius=Math.max(300,Math.min(4600,radius*(pinchD/d)));pinchD=d;place();e.preventDefault();}},{passive:false});
+  host.addEventListener('touchend',e=>{if(e.touches.length<2)pinching=false;},{passive:true});
   addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 
   // picking
@@ -255,24 +287,24 @@ function boot(){
   function hover(e){const i=hit(e);if(i<0){tip.style.opacity=0;host.style.cursor='grab';return;}const n=nodes[i];tip.innerHTML=n.label+' · <span style="color:#8793b5">'+shortP(n.source)+'</span>';tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY-10)+'px';tip.style.opacity=1;host.style.cursor='pointer';}
   function pick(e){const i=hit(e);if(i<0){clearSel();return;}select(i);}
 
-  let selId=null;
   function select(i){const n=nodes[i];selId=n.id;
     const near={};near[n.id]=true;links.forEach(l=>{if(l.source===n.id)near[l.target]=true;if(l.target===n.id)near[l.source]=true;});
-    for(let k=0;k<nodes.length;k++){const c=near[nodes[k].id]?baseCol[k]:new THREE.Color(0x222a40);mesh.setColorAt(k,c);}mesh.instanceColor.needsUpdate=true;
+    for(let k=0;k<nodes.length;k++){const c=near[nodes[k].id]?baseCol[k]:new THREE.Color(0x222a40);mesh.setColorAt(k,c);}mesh.instanceColor.needsUpdate=true;paintLinks();
     const mine=links.filter(l=>l.source===n.id||l.target===n.id).sort((a,b)=>(b.similarity||0)-(a.similarity||0));
     const rows=mine.slice(0,12).map(l=>{const o=byId[l.source===n.id?l.target:l.source];return '<li><div class="to">'+(o?o.label:'?')+'</div><div class="why">'+(l.reason||'')+'</div></li>';}).join('');
     $('inspect').innerHTML='<p class="file">'+n.label+'</p><span class="chip"><span class="dot" style="color:#fff;background:hsl('+Math.round(srcs.indexOf(n.source)/srcs.length*360)+',68%,62%)"></span>'+shortP(n.source)+' · '+(n.folder||'root')+'</span><div style="font:500 11px var(--mono);color:var(--dim);margin-bottom:6px">'+n.size+' chunks · '+mine.length+' links</div><ul>'+rows+'</ul>';
     // focus camera
-    const p=base[i];radius=320;theta=Math.atan2(p.x,p.z);phi=1.1;auto=false;place();}
-  function clearSel(){selId=null;for(let k=0;k<nodes.length;k++)mesh.setColorAt(k,baseCol[k]);mesh.instanceColor.needsUpdate=true;$('inspect').textContent='Click a star to focus it — that note and its links light up, and you can read why they connect.';}
+    const p=base[i];radius=320;theta=Math.atan2(p.x,p.z);phi=1.1;auto=false;place();
+    if(isMobile)openRail('left');}
+  function clearSel(){selId=null;for(let k=0;k<nodes.length;k++)mesh.setColorAt(k,baseCol[k]);mesh.instanceColor.needsUpdate=true;paintLinks();$('inspect').textContent='Click a star to focus it — that note and its links light up, and you can read why they connect.';}
 
   $('hubs').addEventListener('click',e=>{const li=e.target.closest('li');if(!li)return;const i=idx[li.dataset.id];if(i!=null)select(i);});
   $('filter').addEventListener('click',e=>{const li=e.target.closest('li');if(!li)return;const s=li.dataset.src;hidden[s]=!hidden[s];li.classList.toggle('off',!!hidden[s]);for(let i=0;i<nodes.length;i++)placeNode(i);mesh.instanceMatrix.needsUpdate=true;buildLinks();});
   $('search').addEventListener('input',e=>{const q=e.target.value.trim().toLowerCase();if(!q){clearSel();return;}let first=-1;for(let k=0;k<nodes.length;k++){const m=(nodes[k].label+' '+nodes[k].source).toLowerCase().includes(q);mesh.setColorAt(k,m?baseCol[k]:new THREE.Color(0x222a40));if(m&&first<0)first=k;}mesh.instanceColor.needsUpdate=true;if(first>=0&&q.length>2){const p=base[first];radius=420;theta=Math.atan2(p.x,p.z);auto=false;place();}});
 
   $('spread').addEventListener('input',e=>{spread=(+e.target.value)/100;$('spread-v').textContent=e.target.value+'%';for(let i=0;i<nodes.length;i++)placeNode(i);mesh.instanceMatrix.needsUpdate=true;buildLinks();});
-  $('glow').addEventListener('input',e=>{glowK=(+e.target.value)/100;$('glow-v').textContent=e.target.value;buildLinks();});
-  $('spread-v').textContent='100%';$('glow-v').textContent='80';
+  $('glow').addEventListener('input',e=>{glowK=(+e.target.value)/100;$('glow-v').textContent=e.target.value;paintLinks();});
+  $('spread-v').textContent='100%';$('glow-v').textContent='90';
   $('t-rotate').addEventListener('click',function(){auto=this.getAttribute('aria-pressed')!=='true';this.setAttribute('aria-pressed',String(auto));});
   $('fit').onclick=()=>{radius=1350;theta=0.6;phi=1.15;auto=true;place();clearSel();$('search').value='';};
 
