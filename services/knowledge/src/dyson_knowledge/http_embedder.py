@@ -17,9 +17,13 @@ class HttpEmbedder:
     model_id = "embeddinggemma-300m"
     dim = 768
 
-    def __init__(self, base_url: str, *, timeout: float = TIMEOUT_S, client: Any = None):
+    def __init__(self, base_url: str, *, timeout: float = TIMEOUT_S, batch_size: int = 1,
+                 client: Any = None):  # fmt: skip
         self._url = base_url.rstrip("/") + "/v1/embeddings"
         self._timeout = timeout
+        # One chunk per request by default: a single request whose inputs exceed the server's batch
+        # window (llama.cpp's ubatch) fails whole, so we never pack several long chunks together.
+        self._batch = max(1, batch_size)
         self._client = client  # an httpx client for tests; a one-shot request otherwise
 
     def _post(self, inputs: Sequence[str]) -> list[list[float]]:
@@ -32,8 +36,12 @@ class HttpEmbedder:
         return [d["embedding"] for d in sorted(data, key=lambda d: d.get("index", 0))]
 
     def embed(self, texts: Sequence[str]) -> list[list[float]]:
-        """Embed documents (at ingest)."""
-        return self._post([_DOC.format(t) for t in texts])
+        """Embed documents (at ingest), in batches so no single request overflows the server."""
+        docs = [_DOC.format(t) for t in texts]
+        out: list[list[float]] = []
+        for i in range(0, len(docs), self._batch):
+            out.extend(self._post(docs[i:i + self._batch]))
+        return out
 
     def embed_query(self, text: str) -> list[float]:
         """Embed one search query (at retrieval)."""

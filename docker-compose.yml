@@ -197,7 +197,9 @@ services:
     profiles: ["knowledge"]
     image: ghcr.io/ggml-org/llama.cpp:server
     command: ["-hf", "ggml-org/embeddinggemma-300M-GGUF", "--embeddings",
-              "--host", "0.0.0.0", "--port", "8098", "--ctx-size", "2048"]
+              "--host", "0.0.0.0", "--port", "8098", "--ctx-size", "2048",
+              # batch/ubatch must cover a whole chunk, else a long sequence 500s on embedding
+              "--batch-size", "2048", "--ubatch-size", "2048"]
     # The image's own healthcheck probes port 8080; we serve on 8098, so point it there instead.
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8098/health"]
