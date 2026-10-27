@@ -137,7 +137,7 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
     <div class="sec"><h2>Top hubs</h2><ul class="hubs" id="hubs"></ul></div>
     <div class="sec"><h2>Display</h2>
       <div class="slider"><label>Spread <span id="spread-v"></span></label><input type="range" id="spread" min="60" max="180" value="100"></div>
-      <div class="slider"><label>Link glow <span id="glow-v"></span></label><input type="range" id="glow" min="0" max="100" value="90"></div>
+      <div class="slider"><label>Link glow <span id="glow-v"></span></label><input type="range" id="glow" min="0" max="100" value="55"></div>
       <div class="toggle" id="t-rotate" aria-pressed="true">Auto-rotate <span class="sw"></span></div>
     </div>
   </div>
@@ -238,7 +238,7 @@ function boot(){
   const mesh=new THREE.InstancedMesh(geo,new THREE.MeshBasicMaterial(),nodes.length);
   const d3=new THREE.Object3D();
   const baseCol=nodes.map(n=>col[n.source]);
-  let spread=1,selId=null,glowK=0.9;
+  let spread=1,selId=null,glowK=0.55;
   function sizeOf(i){return 2.2+Math.sqrt(nodes[i].size||1)*1.4;}
   function placeNode(i){const p=base[i];const hid=hidden[nodes[i].source];d3.position.set(p.x*spread,p.y*spread,p.z*spread);d3.scale.setScalar(hid?0.0001:sizeOf(i));d3.updateMatrix();mesh.setMatrixAt(i,d3.matrix);}
   for(let i=0;i<nodes.length;i++){placeNode(i);mesh.setColorAt(i,baseCol[i]);}
@@ -258,7 +258,7 @@ function boot(){
       if(!linkHidden(i)){
         if(selId&&(links[i].source===selId||links[i].target===selId)){r=0.25;g=0.95;b=0.95;}     // connected to the focused note → bright cyan
         else if(selId){r=0.05;g=0.07;b=0.09;}                                                      // unrelated while focusing → faint
-        else{const al=Math.min(1,(0.35+0.55*(links[i].similarity||0))*glowK);r=0.55*al;g=0.8*al;b=1.0*al;}  // normal: light blue-white
+        else{const al=Math.min(1,(0.16+0.4*(links[i].similarity||0))*glowK);r=0.4*al;g=0.58*al;b=0.82*al;}  // normal: faint, muted blue
       }
       lcol.set([r,g,b,r,g,b],i*6);}
     lgeo.attributes.color.needsUpdate=true;}
@@ -304,7 +304,7 @@ function boot(){
 
   $('spread').addEventListener('input',e=>{spread=(+e.target.value)/100;$('spread-v').textContent=e.target.value+'%';for(let i=0;i<nodes.length;i++)placeNode(i);mesh.instanceMatrix.needsUpdate=true;buildLinks();});
   $('glow').addEventListener('input',e=>{glowK=(+e.target.value)/100;$('glow-v').textContent=e.target.value;paintLinks();});
-  $('spread-v').textContent='100%';$('glow-v').textContent='90';
+  $('spread-v').textContent='100%';$('glow-v').textContent='55';
   $('t-rotate').addEventListener('click',function(){auto=this.getAttribute('aria-pressed')!=='true';this.setAttribute('aria-pressed',String(auto));});
   $('fit').onclick=()=>{radius=1350;theta=0.6;phi=1.15;auto=true;place();clearSel();$('search').value='';};
 

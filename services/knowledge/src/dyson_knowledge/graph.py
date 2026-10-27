@@ -13,8 +13,8 @@ from dataclasses import dataclass, field
 
 import psycopg
 
-NEIGHBOURS = 3  # nearest neighbours to link per document
-MIN_SIM = 0.30  # keep extra neighbours only above this cosine; the closest one is always kept
+NEIGHBOURS = 2  # nearest neighbours to link per document (kept low so the galaxy isn't a dense net)
+MIN_SIM = 0.35  # keep the extra neighbour only above this cosine; the closest one is always kept
 GALAXY = 540.0  # radius the project clusters are spread over, in the view's own units
 
 
