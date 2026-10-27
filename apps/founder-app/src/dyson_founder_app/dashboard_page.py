@@ -177,7 +177,22 @@ box-shadow:0 30px 80px rgba(0,0,0,.6);animation:open .25s var(--out)}
 .sbar .stop{color:#fff;background:#b4232a;text-decoration:none;padding:5px 12px;border-radius:999px;
  font-weight:600;font-size:12px}
 .sandbox iframe{flex:1;width:100%;border:0;background:#000;display:block;min-height:260px}
+/* ?embed=wiring — only the wiring board, for the Dyson OS dock (the brain page) */
+.embed-wiring body{background:var(--space)}
+.embed-wiring .bar,.embed-wiring .console,.embed-wiring .star,.embed-wiring .lower,.embed-wiring .foot,
+.embed-wiring .hint,.embed-wiring #detail{display:none!important}
+.embed-wiring,.embed-wiring body{height:100%;overflow:hidden}
+.embed-wiring .workspace,.embed-wiring .obs{display:block;min-height:0;height:100%}
+.embed-wiring .right{height:100%;padding:4px 6px;gap:0}
+.embed-wiring .right>.panel:first-child{height:100%;display:flex;flex-direction:column;border:0;background:transparent}
+/* the board is the point: a one-line header (replay + legend), then the board fills the rest */
+.embed-wiring .bhead{padding:2px 6px 0;flex:none}.embed-wiring .bhead>div{display:none}
+.embed-wiring .replay{padding:4px 10px;font-size:10.5px}
+.embed-wiring .legend{padding:2px 6px 4px;gap:4px 10px;font-size:10px;flex:none}.embed-wiring .legend i{width:12px}
+.embed-wiring .bscroll{flex:1;min-height:0;overflow:hidden;padding:0}
+.embed-wiring #board{min-width:0;width:100%;height:100%}
 </style></head><body>
+<script>if(new URLSearchParams(location.search).get('embed')==='wiring')document.documentElement.classList.add('embed-wiring');</script>
 <header class="bar"><span class="mark">DYSON<span>Layer A observatory</span></span>
  <span class="pill" id="ctl"><i></i><span id="ctltext">control: checking</span></span>
  <button class="hbtn" id="b-wait" type="button">Waiting<span class="long"> for you</span><b id="n-wait">0</b></button>
@@ -202,6 +217,7 @@ box-shadow:0 30px 80px rgba(0,0,0,.6);animation:open .25s var(--out)}
   <section class="sandbox" id="sandbox" aria-label="Dyson sandbox — live screen">
    <div class="sbar"><span class="sdot"></span><b>Sandbox</b><span class="eye">watch &amp; take control</span><a class="stop" href="__CONTROLS_URL__" target="_blank" rel="noopener">STOP</a></div>
    <iframe id="sbframe" src="/sandbox-screen/vnc.html?autoconnect=1&resize=scale&path=/sandbox-ws" allow="fullscreen;clipboard-read;clipboard-write" title="Dyson sandbox"></iframe>
+   <script>if(document.documentElement.classList.contains('embed-wiring'))document.getElementById('sbframe').src='about:blank';</script>
   </section>
  </aside>
  <div class="obs">

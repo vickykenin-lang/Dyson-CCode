@@ -88,13 +88,14 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
 .live .term{flex:1;overflow:hidden;padding:9px 11px;font:500 11px/1.55 var(--mono);color:var(--teal);white-space:pre-wrap}
 .live .term .cmd{color:var(--cyan)}.live .term .cur{color:var(--ink);animation:blink 1s step-end infinite}@keyframes blink{50%{opacity:0}}
 .dock{position:fixed;left:calc(268px + env(safe-area-inset-left,0px));right:calc(250px + env(safe-area-inset-right,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));top:56%;z-index:17;background:var(--glass);border:1px solid var(--line);border-radius:16px;overflow:hidden;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.5)}
-.dock .tabs{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--line)}
-.dock .tabs button{font:700 11px var(--mono);letter-spacing:.12em;color:var(--soft);background:transparent;border:1px solid transparent;border-radius:999px;padding:6px 13px}
-.dock .tabs button[aria-pressed="true"]{color:var(--cyan);border-color:var(--line);background:var(--cyan-d)}
-.dock .tabs .stop{margin-left:auto;font:700 10px var(--mono);letter-spacing:.1em;color:var(--red);border:1px solid rgba(255,84,104,.4);border-radius:999px;padding:5px 12px;text-decoration:none}
-.dock .body{flex:1;min-height:0;position:relative;background:#060a12}
-.pane{display:none;position:absolute;inset:0}.pane.on{display:block}
-.pane iframe{width:100%;height:100%;border:0;display:block}
+/* the dock: Dyson's wiring on the left, the live sandbox on the right, side by side */
+.dock .body{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;background:#060a12}
+.pane{display:flex;flex-direction:column;min-width:0;min-height:0}
+.pane+.pane{border-left:1px solid var(--line)}
+.phd{display:flex;align-items:center;gap:9px;padding:8px 12px;border-bottom:1px solid var(--line);font:500 11px var(--mono);color:var(--dim)}
+.phd b{font-weight:700;letter-spacing:.12em;color:var(--cyan)}
+.phd .stop{margin-left:auto;font:700 10px var(--mono);letter-spacing:.1em;color:var(--red);border:1px solid rgba(255,84,104,.4);border-radius:999px;padding:4px 11px;text-decoration:none}
+.pane iframe{flex:1;width:100%;min-height:0;border:0;display:block;background:#04060c}
 .loading{position:fixed;inset:0;display:grid;place-items:center;color:var(--soft);font:500 13px var(--mono);z-index:5}
 .mobtab{display:none}
 .mnav{display:none}
@@ -108,6 +109,7 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
     transform:translateY(140%);transition:transform .3s cubic-bezier(.2,.8,.2,1);display:flex;z-index:40}
   .rail.left.open,.rail.right.open,.dock.open{transform:translateY(0)}
   #sec-inspect{order:-1}  /* the tapped note shows first */
+  .dock .body{grid-template-columns:1fr;grid-template-rows:1fr 1fr}.pane+.pane{border-left:0;border-top:1px solid var(--line)}
   .hud{border-top:0}
   .mnav{display:flex;position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:45;
     background:var(--glass2);border:1px solid var(--line);border-radius:16px;padding:6px;
@@ -161,14 +163,9 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
 <section class="live" id="live"><div class="hd"><span class="rec"></span> DYSON · LIVE <span class="tag">demo</span></div><div class="term" id="term"></div></section>
 
 <section class="dock" id="dock">
-  <div class="tabs">
-    <button id="tab-wire" aria-pressed="true">◇ LIVE MAP</button>
-    <button id="tab-box" aria-pressed="false">▣ SANDBOX</button>
-    <a class="stop" href="__CONTROLS_URL__" target="_blank" rel="noopener">STOP</a>
-  </div>
   <div class="body">
-    <div class="pane on" id="pane-wire"><iframe id="if-wire" title="Live map"></iframe></div>
-    <div class="pane" id="pane-box"><iframe id="if-box" title="Dyson sandbox" allow="fullscreen;clipboard-read;clipboard-write"></iframe></div>
+    <div class="pane" id="pane-wire"><div class="phd"><b>◇ WIRING</b><span>Dyson's structure · live</span></div><iframe id="if-wire" title="Dyson wiring"></iframe></div>
+    <div class="pane" id="pane-box"><div class="phd"><b>▣ SANDBOX</b><span>watch &amp; take control</span><a class="stop" href="__CONTROLS_URL__" target="_blank" rel="noopener">STOP</a></div><iframe id="if-box" title="Dyson sandbox" allow="fullscreen;clipboard-read;clipboard-write"></iframe></div>
   </div>
 </section>
 
@@ -183,14 +180,9 @@ import * as THREE from '/static/three.module.min.js';
 const $=id=>document.getElementById(id);
 const shortP=s=>String(s).replace(/^repo:/,'');
 
-// lower dock: the real live map + the real sandbox, loaded on first open
-const ifWire=$('if-wire'), ifBox=$('if-box');
-ifWire.src='/dashboard';
-let boxLoaded=false;
-function dock(which){const w=which==='wire';$('tab-wire').setAttribute('aria-pressed',String(w));$('tab-box').setAttribute('aria-pressed',String(!w));
-  $('pane-wire').classList.toggle('on',w);$('pane-box').classList.toggle('on',!w);
-  if(!w&&!boxLoaded){boxLoaded=true;ifBox.src='/sandbox-screen/vnc.html?autoconnect=1&resize=scale&path=/sandbox-ws';}}
-$('tab-wire').onclick=()=>dock('wire');$('tab-box').onclick=()=>dock('box');
+// lower dock: only Dyson's wiring board (the observatory in wiring-only mode) beside the live sandbox
+$('if-wire').src='/dashboard?embed=wiring';
+$('if-box').src='/sandbox-screen/vnc.html?autoconnect=1&resize=scale&path=/sandbox-ws';
 
 // mobile: the rails and dock are bottom sheets opened from the bottom nav, one at a time
 const isMobile=matchMedia('(max-width:860px)').matches;
