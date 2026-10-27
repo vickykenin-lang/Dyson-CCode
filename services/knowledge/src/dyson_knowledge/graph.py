@@ -80,22 +80,20 @@ def build_graph(
         return Graph(nodes=nodes, edges=[])
 
     # One centroid vector per document (mean of its chunk embeddings), then nearest neighbours.
-    conn.execute("DROP TABLE IF EXISTS _brain_cent")
-    conn.execute(
-        "CREATE TEMP TABLE _brain_cent AS"
-        " SELECT source || '|' || path AS id, avg(embedding) AS cv"
-        "   FROM knowledge.chunks GROUP BY source, path"
-    )
+    # A CTE (not a temp table) keeps this to a plain SELECT, so B's read-only role can run it.
     pairs = conn.execute(
-        "SELECT a.id AS src, b.id AS tgt, 1 - (a.cv <=> b.cv) AS sim"
-        "  FROM _brain_cent a"
-        "  JOIN LATERAL ("
-        "       SELECT id, cv FROM _brain_cent x WHERE x.id <> a.id"
-        "       ORDER BY a.cv <=> x.cv LIMIT %(k)s"
-        "  ) b ON true",
+        "WITH cent AS ("
+        "   SELECT source || '|' || path AS id, avg(embedding) AS cv"
+        "     FROM knowledge.chunks GROUP BY source, path"
+        ")"
+        " SELECT a.id AS src, b.id AS tgt, 1 - (a.cv <=> b.cv) AS sim"
+        "   FROM cent a"
+        "   JOIN LATERAL ("
+        "        SELECT id, cv FROM cent x WHERE x.id <> a.id"
+        "        ORDER BY a.cv <=> x.cv LIMIT %(k)s"
+        "   ) b ON true",
         {"k": neighbours},
     ).fetchall()
-    conn.execute("DROP TABLE IF EXISTS _brain_cent")
 
     # Undirected: keep each pair once (best similarity), always keep a node's closest neighbour.
     best_of: dict[str, tuple[float, str]] = {}  # node id -> (sim, other id) of its closest
