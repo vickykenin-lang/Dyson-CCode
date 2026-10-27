@@ -52,6 +52,34 @@
       }
     },
     {
+      "Sid": "CallClaudeViaAustraliaProfile",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+      ],
+      "Resource": [
+        "arn:aws:bedrock:ap-southeast-2:501430758577:inference-profile/au.anthropic.claude-*"
+      ]
+    },
+    {
+      "Sid": "ClaudeInAustraliaRegionsOnlyViaThatProfile",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+      ],
+      "Resource": [
+        "arn:aws:bedrock:ap-southeast-2::foundation-model/anthropic.claude-*",
+        "arn:aws:bedrock:ap-southeast-4::foundation-model/anthropic.claude-*"
+      ],
+      "Condition": {
+        "StringLike": {
+          "bedrock:InferenceProfileArn": "arn:aws:bedrock:ap-southeast-2:501430758577:inference-profile/au.anthropic.claude-*"
+        }
+      }
+    },
+    {
       "Sid": "ReadOwnBudget",
       "Effect": "Allow",
       "Action": [
