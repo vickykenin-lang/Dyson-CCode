@@ -77,5 +77,23 @@ def test_graph_json_shape_for_the_force_graph(conn):
     _ingest(conn, [("p", "a.md", "social one"), ("p", "b.md", "social two")])
     data = build_graph(conn).to_json()
     assert set(data) == {"nodes", "links"}
-    assert {"id", "label", "source", "folder", "size"} <= set(data["nodes"][0])
+    assert {"id", "label", "source", "folder", "size", "x", "y", "z"} <= set(data["nodes"][0])
     assert {"source", "target", "similarity", "reason"} <= set(data["links"][0])
+    # every node has a real 3D position for the galaxy renderer
+    assert all(isinstance(n["x"], (int, float)) for n in data["nodes"])
+
+
+def test_layout_clusters_each_project_together(conn):
+    from dyson_knowledge.graph import build_graph
+
+    _ingest(conn, [
+        ("proj-a", "a1.md", "social one"), ("proj-a", "a2.md", "social two"),
+        ("proj-b", "b1.md", "finance one"), ("proj-b", "b2.md", "finance two"),
+    ])  # fmt: skip
+    pos = build_graph(conn).pos
+    import math
+    def d(p, q): return math.dist(p, q)
+    a1, a2 = pos["proj-a|a1.md"], pos["proj-a|a2.md"]
+    b1 = pos["proj-b|b1.md"]
+    # two notes of the same project sit closer than notes of different projects
+    assert d(a1, a2) < d(a1, b1)

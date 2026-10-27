@@ -6,6 +6,8 @@ reason is spelled out from what they share: the same folder, the same project, o
 topic. Every node gets at least its single closest neighbour, so nothing floats alone in the galaxy.
 """
 
+import hashlib
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
@@ -13,6 +15,7 @@ import psycopg
 
 NEIGHBOURS = 3  # nearest neighbours to link per document
 MIN_SIM = 0.30  # keep extra neighbours only above this cosine; the closest one is always kept
+GALAXY = 540.0  # radius the project clusters are spread over, in the view's own units
 
 
 @dataclass(frozen=True)
@@ -36,12 +39,16 @@ class Edge:
 class Graph:
     nodes: list[Node] = field(default_factory=list)
     edges: list[Edge] = field(default_factory=list)
+    pos: dict[str, tuple[float, float, float]] = field(default_factory=dict)
 
     def to_json(self) -> dict:
         return {
             "nodes": [
                 {"id": n.id, "label": n.label, "source": n.source, "folder": n.folder,
-                 "size": n.size}
+                 "size": n.size,
+                 "x": round(self.pos.get(n.id, (0, 0, 0))[0], 2),
+                 "y": round(self.pos.get(n.id, (0, 0, 0))[1], 2),
+                 "z": round(self.pos.get(n.id, (0, 0, 0))[2], 2)}
                 for n in self.nodes
             ],
             "links": [
@@ -50,6 +57,41 @@ class Graph:
                 for e in self.edges
             ],
         }  # fmt: skip
+
+
+def _fib_sphere(n: int, radius: float) -> list[tuple[float, float, float]]:
+    """n points spread evenly over a sphere (the project-cluster centres)."""
+    if n <= 1:
+        return [(0.0, 0.0, 0.0)]
+    ga = math.pi * (3 - math.sqrt(5))  # golden angle
+    out = []
+    for i in range(n):
+        y = 1 - (i / (n - 1)) * 2
+        r = math.sqrt(max(0.0, 1 - y * y))
+        t = ga * i
+        out.append((math.cos(t) * r * radius, y * radius, math.sin(t) * r * radius))
+    return out
+
+
+def _jitter(seed: str, spread: float) -> tuple[float, float, float]:
+    """A deterministic offset inside a cluster, so a document sits in the same place every load."""
+    h = hashlib.md5(seed.encode()).digest()
+    v = [(h[i] / 127.5 - 1.0) * spread for i in range(3)]
+    return (v[0], v[1], v[2])
+
+
+def _layout(nodes: Sequence[Node]) -> dict[str, tuple[float, float, float]]:
+    """A galaxy: each project is a cluster on a big sphere, its notes scattered around it."""
+    srcs = sorted({n.source for n in nodes})
+    counts = {s: sum(1 for n in nodes if n.source == s) for s in srcs}
+    centres = dict(zip(srcs, _fib_sphere(len(srcs), GALAXY), strict=True))
+    pos = {}
+    for n in nodes:
+        cx, cy, cz = centres[n.source]
+        spread = 35 + 10 * math.sqrt(counts[n.source])
+        jx, jy, jz = _jitter(n.id, spread)
+        pos[n.id] = (cx + jx, cy + jy, cz + jz)
+    return pos
 
 
 def _reason(a: Node, b: Node, sim: float) -> str:
@@ -76,8 +118,9 @@ def build_graph(
         for r in rows
     ]  # fmt: skip
     by_id = {n.id: n for n in nodes}
+    pos = _layout(nodes)
     if len(nodes) < 2:
-        return Graph(nodes=nodes, edges=[])
+        return Graph(nodes=nodes, edges=[], pos=pos)
 
     # One centroid vector per document (mean of its chunk embeddings), then nearest neighbours.
     # A CTE (not a temp table) keeps this to a plain SELECT, so B's read-only role can run it.
@@ -116,7 +159,7 @@ def build_graph(
         a, b = by_id[a_id], by_id[b_id]
         edges.append(Edge(source=a_id, target=b_id, similarity=sim, reason=_reason(a, b, sim)))
     edges.sort(key=lambda e: e.similarity, reverse=True)
-    return Graph(nodes=nodes, edges=edges)
+    return Graph(nodes=nodes, edges=edges, pos=pos)
 
 
 def sources(nodes: Sequence[Node]) -> list[str]:

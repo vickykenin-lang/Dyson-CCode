@@ -7,8 +7,9 @@ target-version = "py312"
 select = ["E", "F", "W", "I", "B", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
-# The live map is an HTML/JS page held as one string; its lines follow the page, not Python.
+# The live map and the Dyson OS page are HTML/JS held as one string; their lines follow the page.
 "apps/founder-app/src/dyson_founder_app/dashboard_page.py" = ["E501"]
+"apps/founder-app/src/dyson_founder_app/brain_page.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["contracts/tests", "tests", "services/memory/tests", "services/governance/tests", "services/toolhub/tests", "services/orchestrator/tests", "services/assurance/tests", "services/intelligence/tests", "services/gateway/tests", "services/founder-controls/tests", "services/voice/tests", "apps/founder-app/tests", "integration/tests"]

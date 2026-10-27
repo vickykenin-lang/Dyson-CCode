@@ -187,6 +187,29 @@ def add_missing_secrets(path: Path) -> None:
         tmp.replace(path)
 
 
+class BrainStatus:
+    """The gateway's BrainPort: the Founder's second-brain graph, read only. It opens a short-lived
+    read connection per request and never writes. Any failure (schema not migrated, nothing indexed)
+    returns an empty galaxy rather than an error, so the page always loads."""
+
+    def __init__(self, dsn: str):
+        self._dsn = dsn
+
+    def graph(self) -> dict:
+        try:
+            from dyson_knowledge.db import connect as k_connect
+            from dyson_knowledge.graph import build_graph
+
+            conn = k_connect(self._dsn)
+            try:
+                return build_graph(conn).to_json()
+            finally:
+                conn.close()
+        except Exception as exc:  # the brain is optional; show an empty galaxy, never a 500
+            print(f"brain graph unavailable: {type(exc).__name__}: {exc}", flush=True)
+            return {"nodes": [], "links": []}
+
+
 class VerifiedFinance:
     """What J shows about money: H's figures, counted as verified only where I holds H's
     stage-8 evidence for them (LA-FIN-05, LA-DASH-04). J reads; it never writes."""
@@ -463,6 +486,7 @@ class LayerA:
                 clock,
                 {"controls": self._probe_controls, "hermes": self._probe_hermes},
             ),
+            brain=BrainStatus(dsns["integration"]),
         )
 
         # Direct Founder Controls: its own path, to A only. On AWS it is served by its own

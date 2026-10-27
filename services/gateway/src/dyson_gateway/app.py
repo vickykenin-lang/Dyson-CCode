@@ -41,6 +41,7 @@ from dyson_contracts.tasks import TaskState
 from .auth import FounderAuthenticator, SessionStore
 from .ports import (
     AuditPort,
+    BrainPort,
     ConversationPort,
     ConversationReply,
     DashboardPort,
@@ -116,6 +117,7 @@ def create_app(
     statements: StatementsPort | None = None,
     threads: ThreadsPort | None = None,
     dashboard: DashboardPort | None = None,
+    brain: BrainPort | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Dyson Entry Gateway")
     bucket = TokenBucket(limits.requests_per_minute, limits.burst, clock)
@@ -215,6 +217,12 @@ def create_app(
         if dashboard is None:
             raise HTTPException(503, "the dashboard is not connected")
         return dashboard.snapshot()
+
+    @app.get("/brain")
+    def founder_brain(_: Founder) -> dict:
+        if brain is None:
+            raise HTTPException(503, "the brain is not connected")
+        return brain.graph()
 
     @app.get("/notices")
     def founder_notices(_: Founder) -> list[Notice]:

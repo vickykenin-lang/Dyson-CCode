@@ -91,3 +91,6 @@ class GatewayClient:
 
     def dashboard(self, token: str) -> dict[str, Any]:
         return self._call("GET", "/dashboard", token).json()
+
+    def brain(self, token: str) -> dict[str, Any]:
+        return self._call("GET", "/brain", token).json()

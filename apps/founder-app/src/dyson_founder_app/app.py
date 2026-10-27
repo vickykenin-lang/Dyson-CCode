@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from dyson_contracts.interface import TaskStatusUpdate
 from dyson_contracts.tasks import TaskState
 
+from .brain_page import PAGE as BRAIN_PAGE
 from .dashboard_page import PAGE
 from .gateway_client import GatewayClient, NotLoggedIn, Refused
 from .voice import NoSpeech, SpeechPort, SpeechUnavailable, VoicePort, VoiceUnavailable
@@ -72,6 +73,7 @@ def create_app(
     # The observatory's sandbox panel embeds the sandbox's live screen (served same-origin, below)
     # and a STOP that opens Direct Founder Controls.
     observatory = PAGE.replace("__CONTROLS_URL__", controls_url)
+    brain_page = BRAIN_PAGE.replace("__CONTROLS_URL__", controls_url)
     # Serve noVNC's client same-origin, so the sandbox panel needs no second hostname and the one
     # login to this app covers it — no cross-origin iframe, no second Access prompt (D-028).
     if os.path.isdir(novnc_dir):
@@ -312,6 +314,27 @@ def create_app(
             return JSONResponse({"detail": "log in"}, status_code=401)
         try:
             return JSONResponse(gateway.dashboard(token))
+        except NotLoggedIn:
+            return JSONResponse({"detail": "log in"}, status_code=401)
+        except Refused as exc:
+            return JSONResponse({"detail": str(exc)}, status_code=503)
+
+    @app.get("/brain", response_class=HTMLResponse)
+    def brain(request: Request) -> Response:
+        """The second brain as a galaxy: every note a star, links reasoned. Read only."""
+        if not request.cookies.get(SESSION):
+            return RedirectResponse("/", status_code=303)
+        resp = HTMLResponse(brain_page)
+        cookie(resp, THREAD, str(thread_of(request)))
+        return resp
+
+    @app.get("/brain/data")
+    def brain_data(request: Request) -> Response:
+        token = request.cookies.get(SESSION)
+        if not token:
+            return JSONResponse({"detail": "log in"}, status_code=401)
+        try:
+            return JSONResponse(gateway.brain(token))
         except NotLoggedIn:
             return JSONResponse({"detail": "log in"}, status_code=401)
         except Refused as exc:
@@ -573,7 +596,8 @@ for (const el of document.querySelectorAll('[data-task]')) {
 
 def _shell(content: str, logged_in: bool = False, script: str = "") -> str:
     out = (
-        "<nav><a href='/'>Conversation</a> · <a href='/dashboard'>Live map</a></nav>"
+        "<nav><a href='/'>Conversation</a> · <a href='/dashboard'>Live map</a>"
+        " · <a href='/brain'>Brain</a></nav>"
         '<form method="post" action="/logout"><button>Log out</button></form>'
         if logged_in
         else ""

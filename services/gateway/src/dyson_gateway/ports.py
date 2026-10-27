@@ -94,3 +94,9 @@ class DashboardPort(Protocol):
     """J's verified view plus A's and C's state, read only (LA-DASH-01, LA-DASH-02)."""
 
     def snapshot(self) -> dict: ...
+
+
+class BrainPort(Protocol):
+    """The Founder's second-brain graph (nodes, reasoned links, positions), read only."""
+
+    def graph(self) -> dict: ...
