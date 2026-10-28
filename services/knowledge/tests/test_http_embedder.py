@@ -32,8 +32,10 @@ def test_embed_documents_uses_the_document_prompt_and_keeps_order():
     client = _Client()
     e = HttpEmbedder("http://emb:8098", client=client)  # default batch_size=1
     out = e.embed(["note one", "note two longer"])
-    want = [[float(len("title: none | text: note one"))],
-            [float(len("title: none | text: note two longer"))]]
+    want = [
+        [float(len("title: none | text: note one"))],
+        [float(len("title: none | text: note two longer"))],
+    ]
     assert out == want
     assert [r["url"] for r in client.sent] == ["http://emb:8098/v1/embeddings"] * 2  # one per doc
     assert client.sent[0]["json"]["input"] == ["title: none | text: note one"]

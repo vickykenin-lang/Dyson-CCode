@@ -12,9 +12,7 @@ from psycopg import sql
 from psycopg.rows import dict_row
 
 _MIG = files("dyson_knowledge").joinpath("migrations")
-MIGRATIONS = sorted(
-    (p for p in _MIG.iterdir() if p.name.endswith(".sql")), key=lambda p: p.name
-)
+MIGRATIONS = sorted((p for p in _MIG.iterdir() if p.name.endswith(".sql")), key=lambda p: p.name)
 
 
 def connect(dsn: str) -> psycopg.Connection:
@@ -45,8 +43,9 @@ def migrate(conn: psycopg.Connection, app_role: str | None = None) -> list[int]:
         with conn.transaction():
             conn.execute(sql.SQL("GRANT USAGE ON SCHEMA knowledge TO {}").format(role))
             conn.execute(
-                sql.SQL("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA knowledge "
-                        "TO {}").format(role)  # fmt: skip
+                sql.SQL(
+                    "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA knowledge TO {}"
+                ).format(role)  # fmt: skip
             )
             conn.execute(sql.SQL("REVOKE INSERT, UPDATE, DELETE ON knowledge.schema_migrations "
                                  "FROM {}").format(role))  # fmt: skip

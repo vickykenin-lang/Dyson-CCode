@@ -92,7 +92,10 @@ def test_layout_clusters_each_project_together(conn):
     ])  # fmt: skip
     pos = build_graph(conn).pos
     import math
-    def d(p, q): return math.dist(p, q)
+
+    def d(p, q):
+        return math.dist(p, q)
+
     a1, a2 = pos["proj-a|a1.md"], pos["proj-a|a2.md"]
     b1 = pos["proj-b|b1.md"]
     # two notes of the same project sit closer than notes of different projects

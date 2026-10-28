@@ -63,7 +63,13 @@ def test_controls_reach_only_the_governance_core():  # LA-DFC-02, LA-DFC-01
 
     params = inspect.signature(app.create_app).parameters
     assert list(params) == [
-        "governance", "stepup", "signer", "audit", "clock", "passkeys", "keys",
+        "governance",
+        "stepup",
+        "signer",
+        "audit",
+        "clock",
+        "passkeys",
+        "keys",
     ]
 
 

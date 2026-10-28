@@ -35,6 +35,7 @@ def _client(**kw):
 
 # --- URL guard (sealed open-web, never inward) -------------------------------------------
 
+
 def test_public_https_is_allowed():
     assert safe_public_url("https://www.youtube.com/") == "https://www.youtube.com/"
 
@@ -55,6 +56,7 @@ def test_inward_or_non_web_urls_are_refused(url):
 
 
 # --- control server ----------------------------------------------------------------------
+
 
 def test_navigate_opens_a_public_site():
     c = _client()

@@ -49,8 +49,17 @@ class PgStore:
                 "  folder=EXCLUDED.folder, filename=EXCLUDED.filename, deleted=false, "
                 "  updated_at=now() "
                 "RETURNING doc_id",
-                [source, path, content_hash, generation, mime, tag_list, embedding_model, folder,
-                 filename],  # fmt: skip
+                [
+                    source,
+                    path,
+                    content_hash,
+                    generation,
+                    mime,
+                    tag_list,
+                    embedding_model,
+                    folder,
+                    filename,
+                ],  # fmt: skip
             ).fetchone()["doc_id"]
             self._c.execute("DELETE FROM knowledge.chunks WHERE doc_id = %s", [doc_id])
             for ch in chunks:

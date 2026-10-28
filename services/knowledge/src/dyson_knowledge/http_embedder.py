@@ -40,7 +40,7 @@ class HttpEmbedder:
         docs = [_DOC.format(t) for t in texts]
         out: list[list[float]] = []
         for i in range(0, len(docs), self._batch):
-            out.extend(self._post(docs[i:i + self._batch]))
+            out.extend(self._post(docs[i : i + self._batch]))
         return out
 
     def embed_query(self, text: str) -> list[float]:

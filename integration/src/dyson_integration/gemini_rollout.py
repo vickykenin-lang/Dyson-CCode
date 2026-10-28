@@ -56,8 +56,9 @@ def propose(layer, state: Path) -> list[dict]:
     if core.sync().integrations.get(SPEC.model_id) is None:
         core.propose_integration(SPEC.model_id, IntegrationKind.MODEL, SPEC.model_id,
                                  "gemini-ai-studio", RiskLevel.MEDIUM, "D-028")  # fmt: skip
-        core.record_security_check(SPEC.model_id, True,
-                                   "Google AI Studio direct; key in secret store, read-only chat")
+        core.record_security_check(
+            SPEC.model_id, True, "Google AI Studio direct; key in secret store, read-only chat"
+        )
         core.admit_integration(SPEC.model_id)
     pending = []
     for op, value, category in STEPS:

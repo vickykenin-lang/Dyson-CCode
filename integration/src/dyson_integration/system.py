@@ -466,7 +466,11 @@ class LayerA:
             SessionStore(clock, settings.session_max_age, settings.session_idle),
             settings.gateway_limits,
             ConversationForGateway(
-                self.b, self.memory, self.status, SecretGuard(store), clock,
+                self.b,
+                self.memory,
+                self.status,
+                SecretGuard(store),
+                clock,
                 sandbox=SandboxOperator(
                     ToolHubForOrchestrator(self.hub, self.tokens[Component.ORCHESTRATOR]).call,
                     self.relay,
