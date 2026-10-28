@@ -65,6 +65,7 @@ services:
       DYSON_APINEX_URL: ${DYSON_APINEX_URL:-https://api.apinex.bond/v1}
       DYSON_GROQ_URL: ${DYSON_GROQ_URL:-https://api.groq.com/openai/v1}
       DYSON_GEMINI_URL: ${DYSON_GEMINI_URL:-https://generativelanguage.googleapis.com/v1beta/openai}
+      DYSON_ANTHROPIC_URL: ${DYSON_ANTHROPIC_URL:-https://api.anthropic.com/v1}  # Claude, OpenAI-compat
       DYSON_POLLY: ${DYSON_POLLY:-0}  # 1 only on the server: spoken replies (D-024)
       DYSON_VOICE_URL: http://172.32.0.10:8096
       DYSON_SANDBOX_URL: http://172.35.0.10:8097  # G drives the sealed sandbox over sandbox_net

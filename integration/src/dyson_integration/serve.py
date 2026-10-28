@@ -138,6 +138,9 @@ OAI_PROVIDERS = {
     "groq": ("DYSON_GROQ_URL", "groq_api_key", None),  # direct, fast, open models
     # Gemini 3.x Flash "thinks" by default (~25s, truncated replies); turn it off for fast chat.
     "gemini": ("DYSON_GEMINI_URL", "gemini_api_key", {"reasoning_effort": "none"}),
+    # Anthropic's own API via its OpenAI-compatible endpoint: direct, paid, top quality (Claude
+    # Opus/Sonnet). For Dyson's own development work; it does not train on API traffic.
+    "claudeapi": ("DYSON_ANTHROPIC_URL", "claudeapi_api_key", None),
 }
 
 
