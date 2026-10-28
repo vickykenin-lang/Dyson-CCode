@@ -96,6 +96,7 @@ from .relay import RelaySessions
 from .rules_model import MODEL_ID, PROVIDER, RulesModel
 from .sandbox_client import SandboxClient
 from .sandbox_command import SandboxOperator
+from .selftest_client import SelftestClient
 
 Clock = Callable[[], datetime]
 HERMES_TASKS = "hermes.research"
@@ -640,6 +641,22 @@ class LayerA:
                 min_risk=RiskLevel.HIGH,  # a sensitive action never runs without a Founder approval
             ),
             LaneAdapter(sandbox.act),
+        )
+        # Dyson's sealed self-test sandbox: run the repo's own ruff + pytest and report pass/fail.
+        # The foundation for self-development — a change is validated here before it is proposed.
+        # Safe (sealed from the core, no outward reach, no secrets), so it needs no per-call
+        # approval; what is gated is the one-time Founder admission of the self-test receptor and,
+        # later, the deploy a passing change asks for. Callable once admitted and the container up.
+        selftest = SelftestClient()
+        reg(
+            ToolSpec(
+                tool_id="selftest.run",
+                connector_id="dyson.receptor.selftest",
+                allowed_callers=both,
+                scope=ToolScope.CORE,
+                min_risk=RiskLevel.MEDIUM,
+            ),
+            lambda args: selftest.run(args),
         )
 
     # Dashboard probes (gate 8): is each separate process answering? Read only.
