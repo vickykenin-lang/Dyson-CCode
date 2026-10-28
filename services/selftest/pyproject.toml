@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dyson-selftest"
+version = "0.1.0"
+description = "Dyson Sphere Layer A self-test: a sealed sandbox that runs the repo's ruff + pytest"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

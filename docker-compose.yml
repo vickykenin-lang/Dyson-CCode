@@ -68,6 +68,7 @@ services:
       DYSON_POLLY: ${DYSON_POLLY:-0}  # 1 only on the server: spoken replies (D-024)
       DYSON_VOICE_URL: http://172.32.0.10:8096
       DYSON_SANDBOX_URL: http://172.35.0.10:8097  # G drives the sealed sandbox over sandbox_net
+      DYSON_SELFTEST_URL: http://172.36.0.10:8099  # Layer A drives the sealed self-test runner
       DYSON_EMBEDDER_URL: http://172.30.0.30:8098  # local embeddings for the knowledge layer
       # The app serves the sandbox panel same-origin and bridges its screen's websocket to this
       # VNC address over sandbox_net — so there is no second hostname and the one app login covers
@@ -87,6 +88,7 @@ services:
       hermes_net: {ipv4_address: 172.31.0.10}
       voice_net: {ipv4_address: 172.32.0.2}
       sandbox_net: {ipv4_address: 172.35.0.2}  # to drive the sandbox and relay its screen
+      selftest_net: {ipv4_address: 172.36.0.3}  # to drive the sealed self-test runner
     ports:
       - "127.0.0.1:8080:8080"
       - "127.0.0.1:8081:8081"
@@ -189,6 +191,49 @@ services:
     networks:
       sandbox_net: {ipv4_address: 172.35.0.10}
 
+  selftest:
+    # Dyson's sealed self-test runner (Phase A): runs the repo's own ruff + pytest and reports
+    # pass/fail. The foundation for self-development — a change is validated here before it is ever
+    # proposed. Starts only under the "selftest" profile, and only after the Founder admits the
+    # self-test receptor on Direct Founder Controls. On selftest_net (internal: no internet); the
+    # entrypoint seals egress to all but its throwaway Postgres, so it cannot reach the core even
+    # while running model-written code. It holds no secret and no model; Layer A drives it.
+    profiles: ["selftest"]
+    build:
+      context: .
+      dockerfile: services/selftest/Dockerfile
+      args:
+        BASE_IMAGE: ${DYSON_PYTHON_IMAGE:-python:3.12-slim}
+    image: dyson/selftest:local
+    cpus: 2.0
+    mem_limit: 2048m
+    cap_add: ["NET_ADMIN"]  # only to install its own egress firewall at start-up
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      DYSON_SELFTEST_BIND: 172.36.0.10
+      DYSON_SELFTEST_PG: postgresql://postgres@172.36.0.2:5432/postgres
+      DYSON_SELFTEST_PG_HOST: "172.36.0.2"
+      DYSON_SELFTEST_PG_IP: "172.36.0.2"
+    depends_on:
+      selftest-pg: {condition: service_healthy}
+    networks:
+      selftest_net: {ipv4_address: 172.36.0.10}
+
+  selftest-pg:
+    # A throwaway Postgres for the self-test run only, on the sealed selftest network. No volume: it
+    # starts empty every time, holds nothing, and is reachable only by the self-test runner.
+    profiles: ["selftest"]
+    image: ${DYSON_POSTGRES_IMAGE:-pgvector/pgvector:pg16}
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+    networks:
+      selftest_net: {ipv4_address: 172.36.0.2}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   embedder:
     # Local embedding model for the knowledge layer: EmbeddingGemma 300M (768-dim, multilingual)
     # served by llama.cpp as an OpenAI-compatible /v1/embeddings endpoint. The Founder's files are
@@ -234,6 +279,10 @@ networks:
     # from the others, and the sandbox's egress firewall refuses every private range, so it
     # cannot reach the core, Layer A or the database. Only Layer A joins it, to drive the sandbox.
     ipam: {config: [{subnet: 172.35.0.0/24}]}
+  selftest_net:
+    internal: true  # no internet: the tests are hermetic. Only Layer A and the throwaway Postgres
+    # join it, and the runner's own egress firewall refuses everything but that Postgres.
+    ipam: {config: [{subnet: 172.36.0.0/24}]}
 
 volumes:
   pgdata: {}
