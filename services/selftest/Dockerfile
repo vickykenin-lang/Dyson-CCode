@@ -7,14 +7,26 @@ ARG BASE_IMAGE=python:3.12-slim
 FROM ${BASE_IMAGE}
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 
+# postgresql-client-16 matches the test database's server version (pg16, as in CI), so the
+# backup/restore round-trip tests work; the base image's default client is a newer major and
+# pg_restore refuses the cross-version restore. Pulled from the PostgreSQL APT repository.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        iptables postgresql-client ca-certificates \
+        iptables ca-certificates curl gnupg \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+         -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+    && . /etc/os-release \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc]" \
+            "http://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+         > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update && apt-get install -y --no-install-recommends postgresql-client-16 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/repo
-# Source only — the root pyproject (ruff + pytest config), the packages, and policy. Never the
-# release root's local-secrets, so no credential can be baked into this image.
-COPY pyproject.toml ./
+# Source only — the root pyproject (ruff + pytest config), docker-compose.yml (a few tests read
+# it), the packages, and policy. Never the release root's local-secrets, so no credential can be
+# baked into this image.
+COPY pyproject.toml docker-compose.yml ./
 COPY contracts/ contracts/
 COPY services/ services/
 COPY apps/ apps/
