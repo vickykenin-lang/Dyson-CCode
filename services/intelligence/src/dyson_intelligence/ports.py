@@ -90,3 +90,21 @@ class KnowledgePort(Protocol):
     it is absent or unreachable, B simply answers without grounding."""
 
     def search(self, query: str) -> Sequence[GroundingHit]: ...
+
+
+class TriageSignal(Protocol):
+    """A decision model's read of one Founder message: what kind of request it is, how hard it is,
+    and how safe it looks. All advisory — B uses them to calibrate its reply, never to bypass a
+    rule or the approval the Founder must give."""
+
+    category: str  # coding | general | analysis | creative
+    complexity: str  # trivial | easy | moderate | hard | expert
+    is_safe: float  # 0..1; low means the request looks risky and B should confirm first
+    assessment: float  # 0..1; the decision model's own overall score for the request
+
+
+class TriagePort(Protocol):
+    """A decision model (Jev) that classifies a request before B interprets it. Optional: when it
+    is absent or unreachable, B interprets without a triage hint and nothing changes."""
+
+    def triage(self, text: str) -> "TriageSignal | None": ...

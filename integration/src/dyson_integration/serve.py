@@ -197,6 +197,27 @@ def _knowledge_retriever(dsns: dict[str, str]):
     return Retriever(conn, HttpEmbedder(url))
 
 
+def _jev_triage(secret_file: Path | None):
+    """B's decision-model triage (Jev via apinex's /v1/decisions), when apinex is configured.
+
+    Best-effort by design: with no apinex URL, or no key saved on Direct Founder Controls, or any
+    error at call time, the triage is absent (or returns None) and B interprets without a hint. It
+    is advisory only — every action still goes through governance — and it never blocks startup."""
+    url = os.environ.get(OAI_PROVIDERS["apinex"][0]) if "apinex" in OAI_PROVIDERS else None
+    if secret_file is None or not url:
+        return None
+    try:
+        from dyson_memory.secrets import read_fresh
+
+        from .jev_model import JevTriage
+
+        secret_name = OAI_PROVIDERS["apinex"][1]
+        return JevTriage(url, lambda: read_fresh(secret_file, KEY_SCOPE, secret_name))
+    except Exception as exc:  # the triage is optional; never block startup on it
+        print(f"jev triage unavailable: {type(exc).__name__}: {exc}", flush=True)
+        return None
+
+
 def build_from_env(t0=None) -> LayerA:
     """A Layer A on the server's database, for the server and for one-off admin commands."""
     settings, dsns = _settings_and_dsns()
@@ -214,7 +235,8 @@ def main() -> None:
     settings, dsns = _settings_and_dsns()
     t0 = TestReceptorT0()
     layer = LayerA.build(dsns, settings, t0, _now, _models(settings.secret_file),
-                         knowledge=_knowledge_retriever(dsns))  # fmt: skip
+                         knowledge=_knowledge_retriever(dsns),
+                         triage=_jev_triage(settings.secret_file))  # fmt: skip
     if layer.core.sync().receptors.get("T0") is None:
         layer.bootstrap()
     seed_register(layer.memory, settings.policy_dir)  # new rule versions and decisions reach I

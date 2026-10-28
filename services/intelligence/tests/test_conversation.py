@@ -271,3 +271,58 @@ def test_a_broken_knowledge_index_never_breaks_the_conversation(conn, gov, clock
     assert reply.kind is ReplyKind.ANSWER  # the index failed, B answered anyway
     _, request = model.requests[-1]
     assert request.sensitive is False
+
+
+# --- decision-model triage: Jev classifies the request before B interprets it --------------------
+
+
+class _TriageSig:
+    def __init__(self, category="general", complexity="moderate", is_safe=0.9, assessment=0.5):
+        self.category, self.complexity = category, complexity
+        self.is_safe, self.assessment = is_safe, assessment
+
+
+class _Triage:
+    def __init__(self, signal=None, error=False):
+        self.signal, self.error, self.seen = signal, error, []
+
+    def triage(self, text):
+        self.seen.append(text)
+        if self.error:
+            raise RuntimeError("the decision model is unreachable")
+        return self.signal
+
+
+def _with_triage(conn, gov, clock, triage):
+    model = FakeModel('{"language": "en", "kind": "answer", "text": "ok"}')
+    router = ModelRouter(conn, gov, {"bedrock": model}, clock)
+    configure(router, gov, TASK_CLASS, [("trusted-1", "bedrock", {})])
+    b = ConversationEngine(router, FakeMemory(), gov, FakeOrchestrator(), FakeCatalog(), clock,
+                           triage=triage)  # fmt: skip
+    return b, model
+
+
+def test_triage_signal_is_injected_as_a_hint(conn, gov, clock):
+    t = _Triage(_TriageSig(category="coding", complexity="hard", is_safe=0.2))
+    b, model = _with_triage(conn, gov, clock, t)
+    b.handle(msg("ek deploy script likho"))
+    assert t.seen == ["ek deploy script likho"]
+    _, request = model.requests[-1]
+    assert "category=coding" in request.system
+    assert "complexity=hard" in request.system
+    assert "safety=20%" in request.system  # a low-safety request tells B to confirm first
+
+
+def test_a_broken_triage_never_breaks_the_conversation(conn, gov, clock):
+    b, model = _with_triage(conn, gov, clock, _Triage(error=True))
+    reply = b.handle(msg("hello"))
+    assert reply.kind is ReplyKind.ANSWER  # the triage failed, B interpreted anyway
+    _, request = model.requests[-1]
+    assert "Request triage" not in request.system  # no hint, but no error either
+
+
+def test_no_triage_port_means_no_hint(conn, gov, clock):
+    b, model = _with_triage(conn, gov, clock, None)
+    b.handle(msg("hello"))
+    _, request = model.requests[-1]
+    assert "Request triage" not in request.system

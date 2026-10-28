@@ -33,6 +33,7 @@ from .ports import (
     OrchestratorPort,
     RouterPort,
     ToolCatalogPort,
+    TriagePort,
 )
 
 TASK_CLASS = "conversation.interpret"
@@ -205,6 +206,7 @@ class ConversationEngine:
         catalog: ToolCatalogPort,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         knowledge: KnowledgePort | None = None,
+        triage: TriagePort | None = None,
     ):
         self._router = router
         self._memory = memory
@@ -213,6 +215,7 @@ class ConversationEngine:
         self._catalog = catalog
         self._clock = clock
         self._knowledge = knowledge
+        self._triage = triage
 
     # --- persona (LA-CONV-04) ---------------------------------------------------------------
 
@@ -347,6 +350,9 @@ class ConversationEngine:
         grounding, sensitive = self._ground(message.text)
         if grounding:
             system += "\n\n" + grounding
+        hint = self._triage_note(message.text)
+        if hint:
+            system += "\n\n" + hint
         request = ModelRequest(system=system, messages=tuple(msgs),
                                max_output_tokens=MAX_OUTPUT_TOKENS,
                                response_schema=INTERPRETATION_SCHEMA,
@@ -381,6 +387,28 @@ class ConversationEngine:
             " language. If they do not fit, answer normally and do not mention them.\n\n" + blocks
         )
         return note, True
+
+    def _triage_note(self, text: str) -> str:
+        """Ask the decision model (Jev) what kind of request this is, and turn its answer into a
+        one-line hint for the interpreter. Advisory and best-effort: any failure means no hint, and
+        every action still passes through governance and the Founder's approval regardless of what
+        the triage says — the hint only helps B calibrate (confirm when a request looks risky, take
+        more care when it looks hard)."""
+        if self._triage is None:
+            return ""
+        try:
+            sig = self._triage.triage(text)
+        except Exception:
+            return ""
+        if sig is None:
+            return ""
+        return (
+            f"Request triage (internal decision model, advisory): category={sig.category}, "
+            f"complexity={sig.complexity}, safety={sig.is_safe:.0%}. Use it only to calibrate your"
+            " reply: when safety is low, ask the Founder to confirm before you prepare any action;"
+            " when complexity is high, be careful and thorough. It never overrides a rule or the"
+            " approval the Founder must give."
+        )
 
     def _reply(self, kind: ReplyKind, lang: Language, key: str, *, proposal_id: UUID | None = None,
                **fmt: Any) -> Reply:  # fmt: skip
