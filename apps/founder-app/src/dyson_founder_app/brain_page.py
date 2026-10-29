@@ -220,10 +220,12 @@ $('mnav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)o
     if(dys.length){rep.innerHTML='<b>DYSON</b> '+esc(dys[dys.length-1].content);rep.classList.add('show');}}
   async function post(url,body){const r=await fetch(url,{method:'POST',body});if(r.status===401){location.href='/';return null;}return r.ok?r.json():null;}
   async function loadTurns(){try{const r=await fetch('/api/state',{headers:{Accept:'application/json'}});if(r.status===401){location.href='/';return;}const st=await r.json();renderTurns(st.messages||[]);}catch(e){}}
+  function showReply(t){const rep=$('dreply');rep.innerHTML='<b>DYSON</b> '+esc(t);rep.classList.add('show');}
   async function sendText(text){const f=new FormData();f.append('text',text);f.append('message_id',crypto.randomUUID());
-    setState('THINKING','var(--amber)');$('bsend').disabled=true;const out=await post('/api/send',f);$('bsend').disabled=false;
-    await loadTurns();setState(idle,'var(--teal)');
-    if(!out){const rep=$('dreply');rep.innerHTML='<b>DYSON</b> Could not reach Dyson. Try again.';rep.classList.add('show');}}
+    setState('THINKING','var(--amber)');$('bsend').disabled=true;
+    try{const out=await post('/api/send',f);await loadTurns();if(!out)showReply('Abhi reply nahi mila — ek baar dobara bhejiye.');}
+    catch(e){showReply('Network ruk gaya — dobara bhejiye.');}
+    finally{$('bsend').disabled=false;setState(idle,'var(--teal)');$('msg').focus();}}
   $('bsend').onclick=()=>{const t=$('msg').value.trim();if(!t)return;$('msg').value='';sendText(t);};
   $('msg').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('bsend').click();}};
   setState(idle,'var(--teal)');loadTurns();
