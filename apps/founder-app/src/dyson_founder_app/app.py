@@ -23,7 +23,14 @@ from dyson_contracts.tasks import TaskState
 from .brain_page import PAGE as BRAIN_PAGE
 from .dashboard_page import PAGE
 from .gateway_client import GatewayClient, NotLoggedIn, Refused
-from .voice import NoSpeech, SpeechPort, SpeechUnavailable, VoicePort, VoiceUnavailable
+from .voice import (
+    NoSpeech,
+    SpeechPort,
+    SpeechUnavailable,
+    VoicePort,
+    VoiceUnavailable,
+    speech_parts,
+)
 
 SESSION, THREAD = "dyson_session", "dyson_thread"
 SETTLED = {TaskState.COMPLETED_VERIFIED, TaskState.FAILED, TaskState.REJECTED, TaskState.CLOSED}
@@ -190,21 +197,29 @@ def create_app(
         return send(request, text, voice_msg=True, message_id=message_id)
 
     @app.get("/speak/{n}")
-    def speak_reply(request: Request, n: int) -> Response:
-        """Dyson's n-th reply in this conversation, spoken (-1: the latest). Read only."""
+    def speak_reply(request: Request, n: int, part: int | None = None) -> Response:
+        """Dyson's n-th reply in this conversation, spoken (-1: the latest). Read only.
+        With ?part=k only the k-th piece is spoken (X-Parts says how many), so the app can
+        start playing the first sentence while the rest is still being made."""
         token = request.cookies.get(SESSION)
         if not token:
             return Response(status_code=401)
+        headers = {"Cache-Control": "no-store"}
         try:
             replies = [m for m in gateway.thread(token, thread_of(request)) if m["role"] != "user"]
-            audio = speech.speak(replies[n]["content"])
+            text = replies[n]["content"]
+            if part is not None:
+                pieces = speech_parts(text)
+                text = pieces[part] if 0 <= part < len(pieces) else pieces[len(pieces)]
+                headers["X-Parts"] = str(len(pieces))
+            audio = speech.speak(text)
         except NotLoggedIn:
             return Response(status_code=401)
         except IndexError:
             return Response(status_code=404)
         except SpeechUnavailable:
             return Response(status_code=503)
-        return Response(audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
+        return Response(audio, media_type="audio/mpeg", headers=headers)
 
     def switch(thread: UUID, notice: str = "") -> Response:
         resp = RedirectResponse("/" + (f"?notice={notice}" if notice else ""), status_code=303)

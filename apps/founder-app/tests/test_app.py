@@ -155,6 +155,31 @@ def test_a_spoken_command_gets_a_spoken_answer_a_typed_one_does_not(make, voice)
     assert app.get("/speak/-1").status_code == 401
 
 
+def test_a_long_reply_is_spoken_piece_by_piece_first_piece_short(make, voice, backend):
+    from dyson_founder_app.voice import speech_parts
+
+    reply = (
+        "Hello. Abhi main taiyaar hoon. Mere paas koi active task nahi hai. "
+        "Mail a.b@x.com par 2.5 baje bhejo. Kya aap test karna chahenge?"
+    )
+    pieces = speech_parts(reply)
+    assert " ".join(pieces) == reply and len(pieces) > 1 and len(pieces[0]) <= 70
+    assert any("a.b@x.com par 2.5 baje" in p for p in pieces)  # no cut inside an email or 2.5
+    assert speech_parts("Theek hai.") == ["Theek hai."] and speech_parts("") == []
+    from dyson_gateway.ports import ThreadMessage
+
+    speech = Speech()
+    app = make(voice, speech)
+    app.post("/login", data={"username": "founder", "password": PASSWORD})
+    app.post("/send", data={"text": "Kya chal raha hai?"})
+    (thread,) = backend.threads.values()
+    thread[-1] = ThreadMessage(role="assistant", content=reply)  # Dyson's long answer
+    first = app.get("/speak/-1?part=0")
+    assert first.status_code == 200 and first.headers["x-parts"] == str(len(pieces))
+    assert speech.said == [pieces[0]]
+    assert app.get(f"/speak/-1?part={len(pieces)}").status_code == 404
+
+
 def test_reconnect_restores_tasks_and_context(founder, make, backend):  # LA-APP-05
     founder.post("/send", data={"text": "Send the report"})
     founder.post("/send", data={"text": "How are sales?"})

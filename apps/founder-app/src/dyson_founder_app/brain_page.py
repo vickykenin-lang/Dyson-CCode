@@ -263,7 +263,7 @@ $('mnav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)o
     pcm.forEach((x,i)=>v.setInt16(44+i*2,Math.max(-1,Math.min(1,x))*32767,true));return new Blob([v],{type:'audio/wav'});};
   const to16k=(x,rate)=>{if(rate===16000)return x;const out=new Float32Array(Math.floor(x.length*16000/rate));for(let i=0;i<out.length;i++)out[i]=x[Math.floor(i*rate/16000)];return out;};
   // hands-free voice on the Dyson ring: tap the ring (or mic) -> listen -> think -> speak -> listen
-  const V={on:false,phase:'idle',stream:null,src:null,proc:null,parts:[],rate:16000,level:0,say:null};
+  const V={on:false,phase:'idle',stream:null,src:null,proc:null,parts:[],rate:16000,level:0,say:null,gen:0};
   const ringEl=$('ring'),coreSmall=ringEl.querySelector('.core small'),pulseEl=ringEl.querySelector('.pulse');
   function vVisual(phase,label,word){V.phase=phase;ringEl.classList.remove('v-listen','v-think','v-speak');
     const amber=phase==='thinking'||phase==='confirm';
@@ -271,7 +271,7 @@ $('mnav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)o
     setState(label,amber?'var(--amber)':phase==='speaking'?'var(--cyan)':'var(--teal)');coreSmall.textContent=word;}
   function stopMic(){try{V.proc&&V.proc.disconnect();}catch(e){}try{V.src&&V.src.disconnect();}catch(e){}
     if(V.stream)V.stream.getTracks().forEach(t=>t.stop());V.proc=V.src=V.stream=null;}
-  function stopSay(){try{V.say&&V.say.stop();}catch(e){}V.say=null;}
+  function stopSay(){V.gen++;try{V.say&&V.say.stop();}catch(e){}V.say=null;}
   function orbLoop(){if(!V.on){pulseEl.style.opacity=0;pulseEl.style.transform='';return;}
     pulseEl.style.transform='scale('+(1+V.level*0.6).toFixed(3)+')';pulseEl.style.opacity=(0.2+V.level*0.65).toFixed(3);requestAnimationFrame(orbLoop);}
   function vStart(){if(V.on)return;audioCtx();V.on=true;micEl.classList.add('rec');$('vstop').hidden=false;orbLoop();vListen();}
@@ -298,7 +298,7 @@ $('mnav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)o
     // unsure speech is never sent on its own (LA-APP-07): show it under the ring and let the Founder confirm
     if(out.uncertain){if(out.heard)vAsk(out.heard);else{vVisual('listening','KUCH NAHI SUNA — DOBARA','SUNO');vListen();}return;}
     if(out.heard)vLine('Aapne kaha: “'+esc(out.heard)+'”');
-    await loadTurns();if(out.sent)vSay(-1);else vListen();}
+    if(out.sent)vSay(-1,loadTurns());else{await loadTurns();vListen();}}
   function vLine(html){$('vline').innerHTML=html;}
   function vAsk(heard){V.heard=heard;vVisual('confirm','YE SUNA — SAHI HAI?','SAHI?');
     vLine('<span class="q">“'+esc(heard)+'”</span><div class="vb"><button class="ok" id="vok" type="button">✓ Bhejo</button><button id="vre" type="button">↻ Dobara</button></div>');
@@ -306,15 +306,26 @@ $('mnav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)o
   async function vSendHeard(t){vVisual('thinking','SOCH RAHA HU…','SOCH');vLine('Aapne kaha: “'+esc(t)+'”');
     const f=new FormData();f.append('text',t);f.append('message_id',crypto.randomUUID());f.append('voice','1');
     let out;try{out=await post('/api/send',f);}catch(e){out=null;}
-    if(!V.on)return;await loadTurns();if(out)vSay(-1);else{vVisual('listening','NETWORK RUKA — DOBARA','SUNO');vListen();}}
-  async function vSay(n){if(!V.on)return;if(lastReply)vLine('<span class="q">Dyson:</span> '+esc(lastReply.slice(0,180)));
-    if(!speech){vListen();return;}vVisual('speaking','BOL RAHA HU…','BOL');
-    try{const c=audioCtx(),r=await fetch('/speak/'+n,{cache:'no-store'});if(!r.ok){vListen();return;}
-      const buf=await c.decodeAudioData(await r.arrayBuffer());const srcN=c.createBufferSource(),an=c.createAnalyser();an.fftSize=512;
-      srcN.buffer=buf;srcN.connect(an);an.connect(c.destination);V.say=srcN;const d=new Float32Array(an.fftSize);
-      const tick=()=>{if(V.say!==srcN)return;an.getFloatTimeDomainData(d);let s=0;for(const x of d)s+=x*x;V.level=Math.min(1,Math.sqrt(s/d.length)*8);requestAnimationFrame(tick);};
-      srcN.onended=()=>{if(V.say===srcN){V.say=null;V.level=0;if(V.on)vListen();}};srcN.start();tick();
-    }catch(e){V.say=null;if(V.on)vListen();}}
+    if(!V.on)return;if(out)vSay(-1,loadTurns());else{await loadTurns();vVisual('listening','NETWORK RUKA — DOBARA','SUNO');vListen();}}
+  // speak the reply piece by piece (/speak/n?part=k): the short first piece plays while the next
+  // is fetched, so Dyson starts talking at once instead of after the whole reply is made
+  async function vSay(n,turns){if(!V.on)return;
+    Promise.resolve(turns).then(()=>{if(V.on&&lastReply)vLine('<span class="q">Dyson:</span> '+esc(lastReply.slice(0,180)));});
+    if(!speech){await turns;if(V.on)vListen();return;}
+    const gen=++V.gen,c=audioCtx();vVisual('speaking','BOL RAHA HU…','BOL');
+    const get=k=>fetch('/speak/'+n+'?part='+k,{cache:'no-store'})
+      .then(r=>r.ok?r.arrayBuffer().then(b=>({b,total:+(r.headers.get('X-Parts')||1)})):null).catch(()=>null);
+    let k=0,next=get(0);
+    while(next){const got=await next;if(!got||gen!==V.gen||!V.on)break;
+      next=k+1<got.total?get(k+1):null;
+      let buf;try{buf=await c.decodeAudioData(got.b);}catch(e){break;}
+      if(gen!==V.gen||!V.on)break;
+      await playBuf(c,buf);k++;}
+    if(gen===V.gen&&V.on){V.say=null;V.level=0;vListen();}}
+  function playBuf(c,buf){return new Promise(res=>{const srcN=c.createBufferSource(),an=c.createAnalyser();an.fftSize=512;
+    srcN.buffer=buf;srcN.connect(an);an.connect(c.destination);V.say=srcN;const d=new Float32Array(an.fftSize);
+    const tick=()=>{if(V.say!==srcN)return;an.getFloatTimeDomainData(d);let s=0;for(const x of d)s+=x*x;V.level=Math.min(1,Math.sqrt(s/d.length)*8);requestAnimationFrame(tick);};
+    srcN.onended=()=>{if(V.say===srcN){V.say=null;V.level=0;}res();};srcN.start();tick();});}
   ringEl.onclick=()=>{if(!V.on){audioCtx();vStart();}else if(V.phase==='speaking'){stopSay();V.level=0;vListen();}
     else if(V.phase==='confirm')vSendHeard(V.heard);else vStop();};
   micEl.onclick=()=>{audioCtx();V.on?vStop():vStart();};

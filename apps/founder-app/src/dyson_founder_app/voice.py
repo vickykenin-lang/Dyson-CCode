@@ -5,6 +5,7 @@ Founder to confirm and is never sent on its own (LA-APP-07). Voice and text then
 way, into the same thread, so they share one history and one memory (LA-APP-03).
 """
 
+import re
 from typing import Protocol
 
 import httpx
@@ -53,6 +54,27 @@ class RemoteVoice:
             raise VoiceUnavailable("that recording could not be heard; please try again")
         d = r.json()
         return Transcript(text=d["text"], uncertain=bool(d["uncertain"]))
+
+
+_SENTENCE_END = re.compile(r"(?<=[.!?।])\s+")  # needs a space after, so emails and 2.5 stay whole
+
+
+def speech_parts(text: str, first_max: int = 70, max_len: int = 260) -> list[str]:
+    """A reply cut into pieces to speak one after another. The first piece is short, so Dyson
+    starts talking while the rest is still being made; the others are whole sentences grouped up
+    to max_len characters. Joined with spaces they are exactly the reply."""
+    parts: list[str] = []
+    current = ""
+    for sentence in _SENTENCE_END.split(" ".join(text.split())):
+        limit = first_max if not parts else max_len
+        if current and len(current) + 1 + len(sentence) > limit:
+            parts.append(current)
+            current = sentence
+        else:
+            current = f"{current} {sentence}" if current else sentence
+    if current:
+        parts.append(current)
+    return parts
 
 
 class SpeechUnavailable(Exception):
