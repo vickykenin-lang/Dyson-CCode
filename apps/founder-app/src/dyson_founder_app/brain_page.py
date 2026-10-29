@@ -139,6 +139,19 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
 .cmd .confirm textarea{background:var(--void2);border:1px solid var(--line);border-radius:8px;color:var(--ink);font:500 13px var(--ui);padding:8px;min-height:50px;resize:vertical}
 .cmd .confirm .crow{display:flex;gap:7px}
 .cmd .confirm .drop{flex:none;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--soft);font:600 12px var(--mono);padding:8px 13px}
+/* full-screen hands-free voice mode */
+.voice{position:fixed;inset:0;z-index:90;display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;background:radial-gradient(900px 700px at 50% 34%,#0a1838 0%,var(--void) 62%),rgba(3,5,10,.97);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.voice.show{display:flex}
+.voice .vclose{position:absolute;top:calc(16px + env(safe-area-inset-top,0px));right:18px;width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--glass2);color:var(--soft);font-size:16px}
+.voice .vorb{width:188px;height:188px;border-radius:50%;display:grid;place-items:center;cursor:pointer;will-change:transform;background:radial-gradient(circle at 42% 36%,#8fefff 0%,var(--cyan) 30%,#145a86 70%,#0a2740 100%);box-shadow:0 0 70px rgba(47,224,224,.5),inset 0 0 50px rgba(255,255,255,.18)}
+.voice .vorb span{font:700 18px var(--dis);letter-spacing:.22em;color:#eaffff}
+.voice[data-phase="listening"] .vorb{animation:breathe 2.4s ease-in-out infinite}
+.voice[data-phase="thinking"] .vorb{background:radial-gradient(circle at 42% 36%,#ffe2a6 0%,var(--amber) 34%,#7a4d12 100%);box-shadow:0 0 70px rgba(255,184,77,.5)}
+.voice[data-phase="speaking"] .vorb{box-shadow:0 0 95px rgba(47,224,224,.75)}
+@keyframes breathe{50%{box-shadow:0 0 95px rgba(47,224,224,.7),inset 0 0 50px rgba(255,255,255,.22)}}
+.voice .vstatus{font:600 15px var(--mono);letter-spacing:.1em;color:var(--ink)}
+.voice .vheard{font:500 14px/1.5 var(--ui);color:var(--soft);max-width:min(560px,86vw);min-height:21px;padding:0 16px}
+.voice .vhint{position:absolute;bottom:calc(22px + env(safe-area-inset-bottom,0px));font:500 11px var(--mono);color:var(--dim);letter-spacing:.06em}
 @media (max-width:860px){.cmd{bottom:calc(76px + env(safe-area-inset-bottom,0px));width:calc(100vw - 16px)}}
 </style>
 </head><body>
@@ -199,8 +212,15 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
 
 <div class="cmd" id="cmd">
   <div class="reply" id="dreply"></div>
-  <div class="confirm" id="confirm" hidden><div class="ctxt">Shayad galat suna — kuch bheja nahi. Theek karke bhejo:</div><textarea id="ctext" aria-label="Jo maine suna"></textarea><div class="crow"><button class="send" id="csend" type="button">Theek hai, bhejo</button><button class="drop" id="cdrop" type="button">Rehne do</button></div></div>
-  <div class="bar"><button class="mic" id="mic" type="button" aria-label="Bolne ke liye tap karo"><span class="led"></span>🎙</button><input id="msg" placeholder="Bolo ya likho… Dyson se baat karo" autocomplete="off" aria-label="Message to Dyson"><button class="send" id="bsend" type="button">Send</button></div>
+  <div class="bar"><button class="mic" id="mic" type="button" aria-label="Voice mode"><span class="led"></span>🎙</button><input id="msg" placeholder="Bolo ya likho… Dyson se baat karo" autocomplete="off" aria-label="Message to Dyson"><button class="send" id="bsend" type="button">Send</button></div>
+</div>
+
+<div class="voice" id="voice">
+  <button class="vclose" id="vclose" type="button" aria-label="Voice band karo">✕</button>
+  <div class="vorb" id="vorb"><span>DYSON</span></div>
+  <div class="vstatus" id="vstatus">Suniye… boliye</div>
+  <div class="vheard" id="vheard"></div>
+  <div class="vhint">Orb tap: bhejo / roko · ✕ band karo</div>
 </div>
 
 <script type="module">
@@ -247,37 +267,47 @@ $('mnav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)o
     v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,pcm.length*2,true);
     pcm.forEach((x,i)=>v.setInt16(44+i*2,Math.max(-1,Math.min(1,x))*32767,true));return new Blob([v],{type:'audio/wav'});};
   const to16k=(x,rate)=>{if(rate===16000)return x;const out=new Float32Array(Math.floor(x.length*16000/rate));for(let i=0;i<out.length;i++)out[i]=x[Math.floor(i*rate/16000)];return out;};
-  async function speak(n){if(!speech)return;try{const c=audioCtx(),r=await fetch('/speak/'+n,{cache:'no-store'});if(!r.ok)return;
-    const buf=await c.decodeAudioData(await r.arrayBuffer());const src=c.createBufferSource();src.buffer=buf;src.connect(c.destination);
-    setState('SPEAKING','var(--cyan)');micEl.classList.add('busy');src.onended=()=>{micEl.classList.remove('busy');setState(idle,'var(--teal)');};src.start();
-  }catch(e){micEl.classList.remove('busy');setState(idle,'var(--teal)');}}
-  async function startRec(){let stream;
-    try{stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true}});}
-    catch(e){showReply('Mic band hai — browser me allow karo, ya type karo.');return;}
-    const c=audioCtx(),src=c.createMediaStreamSource(stream),proc=c.createScriptProcessor(4096,1,1),parts=[];
-    proc.onaudioprocess=e=>{parts.push(new Float32Array(e.inputBuffer.getChannelData(0)));};
-    src.connect(proc);proc.connect(c.destination);
-    rec={stream,src,proc,parts,rate:c.sampleRate,timer:setTimeout(stopRec,30000)};
-    micEl.classList.add('rec');micEl.setAttribute('aria-label','Bhejne ke liye tap karo');setState('SUN RAHA HU…','var(--red)');}
-  async function stopRec(){const R=rec;if(!R)return;rec=null;clearTimeout(R.timer);
-    R.proc.disconnect();R.src.disconnect();R.stream.getTracks().forEach(t=>t.stop());
-    micEl.classList.remove('rec');micEl.setAttribute('aria-label','Bolne ke liye tap karo');
-    const all=new Float32Array(R.parts.reduce((n,p)=>n+p.length,0));let o=0;for(const p of R.parts){all.set(p,o);o+=p.length;}
-    const f=new FormData();f.append('audio',new File([wav(to16k(all,R.rate),16000)],'voice.wav',{type:'audio/wav'}));
-    setState('THINKING','var(--amber)');micEl.classList.add('busy');
-    try{const out=await post('/api/voice',f);
-      if(!out){showReply('Network ruk gaya — dobara bolo.');return;}
-      if(out.uncertain){$('ctext').value=out.heard||'';$('confirm').hidden=false;showReply('Check karo maine kya suna.');return;}
-      await loadTurns();if(out.sent)speak(-1);}
-    catch(e){showReply('Network ruk gaya — dobara bolo.');}
-    finally{micEl.classList.remove('busy');setState(idle,'var(--teal)');}}
-  micEl.onclick=()=>{audioCtx();rec?stopRec():startRec();};
-  $('csend').onclick=()=>{const t=$('ctext').value.trim();$('confirm').hidden=true;if(!t)return;
-    const f=new FormData();f.append('text',t);f.append('message_id',crypto.randomUUID());f.append('voice','1');
-    setState('THINKING','var(--amber)');$('bsend').disabled=true;micEl.classList.add('busy');
-    post('/api/send',f).then(async out=>{await loadTurns();if(out)speak(-1);}).catch(()=>showReply('Network ruk gaya — dobara bhejiye.'))
-      .finally(()=>{$('bsend').disabled=false;micEl.classList.remove('busy');setState(idle,'var(--teal)');});};
-  $('cdrop').onclick=()=>{$('confirm').hidden=true;showReply('Hata diya — kuch nahi bheja.');};
+  // full-screen hands-free voice mode: listen (silence-detect) -> think -> speak -> listen again
+  const V={on:false,phase:'idle',stream:null,src:null,proc:null,parts:[],rate:16000,level:0,say:null};
+  const vEl=$('voice'),vStatus=$('vstatus'),vHeard=$('vheard'),orb=$('vorb');
+  function vPhase(p,label){V.phase=p;vEl.setAttribute('data-phase',p);vStatus.textContent=label;}
+  function stopMic(){try{V.proc&&V.proc.disconnect();}catch(e){}try{V.src&&V.src.disconnect();}catch(e){}
+    if(V.stream)V.stream.getTracks().forEach(t=>t.stop());V.proc=V.src=V.stream=null;}
+  function stopSay(){try{V.say&&V.say.stop();}catch(e){}V.say=null;}
+  function orbLoop(){if(!V.on)return;orb.style.transform='scale('+(1+V.level*0.5).toFixed(3)+')';requestAnimationFrame(orbLoop);}
+  function vOpen(){if(V.on)return;audioCtx();V.on=true;vHeard.textContent='';vEl.classList.add('show');orbLoop();vListen();}
+  function vClose(){V.on=false;stopMic();stopSay();V.level=0;orb.style.transform='';vEl.classList.remove('show');}
+  async function vListen(){if(!V.on)return;vPhase('listening','Suniye… boliye');
+    let stream;try{stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true}});}
+    catch(e){vPhase('idle','Mic allow karo, fir mic dobara tap karo');return;}
+    if(!V.on){stream.getTracks().forEach(t=>t.stop());return;}
+    const c=audioCtx();V.stream=stream;V.src=c.createMediaStreamSource(stream);V.proc=c.createScriptProcessor(4096,1,1);V.parts=[];V.rate=c.sampleRate;
+    let started=false,silence=0,voiced=0,total=0;const SIL=1100,MINV=350,MAXT=18000;
+    V.proc.onaudioprocess=e=>{if(V.phase!=='listening')return;const x=e.inputBuffer.getChannelData(0);V.parts.push(new Float32Array(x));
+      let sum=0;for(const v of x)sum+=v*v;const rms=Math.sqrt(sum/x.length);V.level=Math.min(1,rms*9);const ms=x.length/V.rate*1000;total+=ms;
+      if(rms>0.025){started=true;voiced+=ms;silence=0;}else if(started){silence+=ms;}
+      if(started&&voiced>MINV&&(silence>SIL||total>MAXT))vEnd();};
+    V.src.connect(V.proc);V.proc.connect(c.destination);}
+  async function vEnd(){if(V.phase!=='listening'||!V.on)return;vPhase('thinking','Soch raha hu…');V.level=0;
+    const parts=V.parts,rate=V.rate;stopMic();
+    const all=new Float32Array(parts.reduce((n,p)=>n+p.length,0));let o=0;for(const p of parts){all.set(p,o);o+=p.length;}
+    const f=new FormData();f.append('audio',new File([wav(to16k(all,rate),16000)],'voice.wav',{type:'audio/wav'}));
+    let out;try{out=await post('/api/voice',f);}catch(e){out=null;}
+    if(!V.on)return;
+    if(!out){vHeard.textContent='Network ruk gaya';vListen();return;}
+    if(out.uncertain){vHeard.textContent='Saaf nahi aaya'+(out.heard?': “'+out.heard+'”':'')+' — dobara boliye';vListen();return;}
+    if(out.heard)vHeard.textContent='“'+out.heard+'”';
+    await loadTurns();if(out.sent)vSay(-1);else vListen();}
+  async function vSay(n){if(!V.on)return;if(!speech){vListen();return;}vPhase('speaking','Bol raha hu…');
+    try{const c=audioCtx(),r=await fetch('/speak/'+n,{cache:'no-store'});if(!r.ok){vListen();return;}
+      const buf=await c.decodeAudioData(await r.arrayBuffer());const srcN=c.createBufferSource(),an=c.createAnalyser();an.fftSize=512;
+      srcN.buffer=buf;srcN.connect(an);an.connect(c.destination);V.say=srcN;const d=new Float32Array(an.fftSize);
+      const tick=()=>{if(V.say!==srcN)return;an.getFloatTimeDomainData(d);let s=0;for(const x of d)s+=x*x;V.level=Math.min(1,Math.sqrt(s/d.length)*8);requestAnimationFrame(tick);};
+      srcN.onended=()=>{if(V.say===srcN){V.say=null;V.level=0;if(V.on)vListen();}};srcN.start();tick();
+    }catch(e){V.say=null;if(V.on)vListen();}}
+  orb.onclick=()=>{if(V.phase==='speaking'){stopSay();V.level=0;vListen();}else if(V.phase==='listening')vEnd();};
+  $('vclose').onclick=vClose;
+  micEl.onclick=()=>{audioCtx();vOpen();};
   setState(idle,'var(--teal)');loadTurns();
 })();
 
