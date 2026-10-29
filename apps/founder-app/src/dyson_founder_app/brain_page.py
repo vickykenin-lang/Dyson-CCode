@@ -145,6 +145,14 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
 .ring.v-think .pulse{background:radial-gradient(circle,rgba(255,184,77,.55),transparent 66%)}
 .ring.v-speak .pulse{background:radial-gradient(circle,rgba(47,224,224,.68),transparent 66%)}
 .ring.v-think .core b{color:var(--amber);text-shadow:0 0 14px rgba(255,184,77,.6)}
+.vline{font:500 12.5px/1.45 var(--ui);color:var(--soft);text-align:center;max-width:205px;word-break:break-word}
+.vline:empty{display:none}
+.vline .q{color:var(--ink)}
+.vline .vb{display:flex;gap:6px;justify-content:center;margin-top:8px}
+.vline button{border:1px solid var(--line);border-radius:9px;background:var(--void2);color:var(--soft);font:600 11px var(--mono);padding:7px 11px}
+.vline button.ok{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-d)}
+.vstop{border:1px solid rgba(255,84,104,.45);border-radius:999px;background:transparent;color:var(--red);font:600 10px var(--mono);letter-spacing:.08em;padding:5px 12px}
+.vstop[hidden]{display:none}
 @media (max-width:860px){.cmd{bottom:calc(76px + env(safe-area-inset-bottom,0px));width:calc(100vw - 16px)}}
 </style>
 </head><body>
@@ -183,6 +191,8 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
       <circle cx="70" cy="70" r="37" fill="none" stroke="rgba(47,224,224,.25)" stroke-width="1"/></svg>
       <div class="core"><div><b>DYSON</b><small>ONLINE</small></div></div></div>
     <div class="status" id="status"><i></i><span>LISTENING</span></div>
+    <div class="vline" id="vline" aria-live="polite"></div>
+    <button class="vstop" id="vstop" type="button" hidden>■ Voice band</button>
     <div class="model">model · <b id="model">gemini-3-flash</b></div>
     <div class="senses"><div class="sns">EYES <em>off</em></div><div class="sns">HOLO <em>off</em></div><div class="sns">FOCUS <em>off</em></div><div class="sns">VOICE <em>ready</em></div></div>
   </div>
@@ -228,12 +238,12 @@ $('mnav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)o
 // real conversation on the OS page — same engine, endpoints and thread as / and /dashboard
 (function(){
   const idle='LISTENING',statusEl=$('status').querySelector('span'),micEl=$('mic');
-  let speech=false,ctx=null,rec=null;
+  let speech=false,ctx=null,rec=null,lastReply='';
   function setState(s,c){statusEl.textContent=s;statusEl.style.color=c||'var(--teal)';}
   function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]);}
   function renderTurns(msgs){const last=msgs.slice(-4),term=$('term');
     term.innerHTML=last.map(m=>{const u=m.role==='user';return '<div><b style="color:'+(u?'var(--amber)':'var(--cyan)')+'">'+(u?'You':'Dyson')+'</b> '+esc(m.content)+'</div>';}).join('')||'<div style="color:var(--dim)">Say what you need…</div>';
-    const dys=msgs.filter(m=>m.role!=='user'),rep=$('dreply');
+    const dys=msgs.filter(m=>m.role!=='user'),rep=$('dreply');lastReply=dys.length?dys[dys.length-1].content:'';
     if(dys.length){rep.innerHTML='<b>DYSON</b> '+esc(dys[dys.length-1].content);rep.classList.add('show');}}
   async function post(url,body){const r=await fetch(url,{method:'POST',body});if(r.status===401){location.href='/';return null;}return r.ok?r.json():null;}
   async function loadTurns(){try{const r=await fetch('/api/state',{headers:{Accept:'application/json'}});if(r.status===401){location.href='/';return;}const st=await r.json();speech=!!st.speech;renderTurns(st.messages||[]);}catch(e){}}
@@ -256,22 +266,23 @@ $('mnav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)o
   const V={on:false,phase:'idle',stream:null,src:null,proc:null,parts:[],rate:16000,level:0,say:null};
   const ringEl=$('ring'),coreSmall=ringEl.querySelector('.core small'),pulseEl=ringEl.querySelector('.pulse');
   function vVisual(phase,label,word){V.phase=phase;ringEl.classList.remove('v-listen','v-think','v-speak');
-    ringEl.classList.add(phase==='thinking'?'v-think':phase==='speaking'?'v-speak':'v-listen');
-    setState(label,phase==='thinking'?'var(--amber)':phase==='speaking'?'var(--cyan)':'var(--teal)');coreSmall.textContent=word;}
+    const amber=phase==='thinking'||phase==='confirm';
+    ringEl.classList.add(amber?'v-think':phase==='speaking'?'v-speak':'v-listen');
+    setState(label,amber?'var(--amber)':phase==='speaking'?'var(--cyan)':'var(--teal)');coreSmall.textContent=word;}
   function stopMic(){try{V.proc&&V.proc.disconnect();}catch(e){}try{V.src&&V.src.disconnect();}catch(e){}
     if(V.stream)V.stream.getTracks().forEach(t=>t.stop());V.proc=V.src=V.stream=null;}
   function stopSay(){try{V.say&&V.say.stop();}catch(e){}V.say=null;}
   function orbLoop(){if(!V.on){pulseEl.style.opacity=0;pulseEl.style.transform='';return;}
     pulseEl.style.transform='scale('+(1+V.level*0.6).toFixed(3)+')';pulseEl.style.opacity=(0.2+V.level*0.65).toFixed(3);requestAnimationFrame(orbLoop);}
-  function vStart(){if(V.on)return;audioCtx();V.on=true;micEl.classList.add('rec');orbLoop();vListen();}
+  function vStart(){if(V.on)return;audioCtx();V.on=true;micEl.classList.add('rec');$('vstop').hidden=false;orbLoop();vListen();}
   function vStop(){V.on=false;stopMic();stopSay();V.level=0;pulseEl.style.opacity=0;pulseEl.style.transform='';
-    ringEl.classList.remove('v-listen','v-think','v-speak');coreSmall.textContent='ONLINE';micEl.classList.remove('rec');setState(idle,'var(--teal)');}
+    ringEl.classList.remove('v-listen','v-think','v-speak');coreSmall.textContent='ONLINE';micEl.classList.remove('rec');setState(idle,'var(--teal)');vLine('');$('vstop').hidden=true;}
   async function vListen(){if(!V.on)return;vVisual('listening','SUNIYE… BOLIYE','SUNO');
     let stream;try{stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true}});}
     catch(e){vStop();setState('MIC ALLOW KARO','var(--red)');return;}
     if(!V.on){stream.getTracks().forEach(t=>t.stop());return;}
     const c=audioCtx();V.stream=stream;V.src=c.createMediaStreamSource(stream);V.proc=c.createScriptProcessor(4096,1,1);V.parts=[];V.rate=c.sampleRate;
-    let started=false,silence=0,voiced=0,total=0;const SIL=1100,MINV=350,MAXT=18000;
+    let started=false,silence=0,voiced=0,total=0;const SIL=1500,MINV=350,MAXT=18000;
     V.proc.onaudioprocess=e=>{if(V.phase!=='listening')return;const x=e.inputBuffer.getChannelData(0);V.parts.push(new Float32Array(x));
       let sum=0;for(const v of x)sum+=v*v;const rms=Math.sqrt(sum/x.length);V.level=Math.min(1,rms*9);const ms=x.length/V.rate*1000;total+=ms;
       if(rms>0.025){started=true;voiced+=ms;silence=0;}else if(started){silence+=ms;}
@@ -284,17 +295,30 @@ $('mnav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)o
     let out;try{out=await post('/api/voice',f);}catch(e){out=null;}
     if(!V.on)return;
     if(!out){vVisual('listening','SUNA NAHI — DOBARA','SUNO');vListen();return;}
-    if(out.uncertain){vVisual('listening','SAAF NAHI — DOBARA','SUNO');vListen();return;}
+    // unsure speech is never sent on its own (LA-APP-07): show it under the ring and let the Founder confirm
+    if(out.uncertain){if(out.heard)vAsk(out.heard);else{vVisual('listening','KUCH NAHI SUNA — DOBARA','SUNO');vListen();}return;}
+    if(out.heard)vLine('Aapne kaha: “'+esc(out.heard)+'”');
     await loadTurns();if(out.sent)vSay(-1);else vListen();}
-  async function vSay(n){if(!V.on)return;if(!speech){vListen();return;}vVisual('speaking','BOL RAHA HU…','BOL');
+  function vLine(html){$('vline').innerHTML=html;}
+  function vAsk(heard){V.heard=heard;vVisual('confirm','YE SUNA — SAHI HAI?','SAHI?');
+    vLine('<span class="q">“'+esc(heard)+'”</span><div class="vb"><button class="ok" id="vok" type="button">✓ Bhejo</button><button id="vre" type="button">↻ Dobara</button></div>');
+    $('vok').onclick=()=>vSendHeard(heard);$('vre').onclick=()=>{vLine('');vListen();};}
+  async function vSendHeard(t){vVisual('thinking','SOCH RAHA HU…','SOCH');vLine('Aapne kaha: “'+esc(t)+'”');
+    const f=new FormData();f.append('text',t);f.append('message_id',crypto.randomUUID());f.append('voice','1');
+    let out;try{out=await post('/api/send',f);}catch(e){out=null;}
+    if(!V.on)return;await loadTurns();if(out)vSay(-1);else{vVisual('listening','NETWORK RUKA — DOBARA','SUNO');vListen();}}
+  async function vSay(n){if(!V.on)return;if(lastReply)vLine('<span class="q">Dyson:</span> '+esc(lastReply.slice(0,180)));
+    if(!speech){vListen();return;}vVisual('speaking','BOL RAHA HU…','BOL');
     try{const c=audioCtx(),r=await fetch('/speak/'+n,{cache:'no-store'});if(!r.ok){vListen();return;}
       const buf=await c.decodeAudioData(await r.arrayBuffer());const srcN=c.createBufferSource(),an=c.createAnalyser();an.fftSize=512;
       srcN.buffer=buf;srcN.connect(an);an.connect(c.destination);V.say=srcN;const d=new Float32Array(an.fftSize);
       const tick=()=>{if(V.say!==srcN)return;an.getFloatTimeDomainData(d);let s=0;for(const x of d)s+=x*x;V.level=Math.min(1,Math.sqrt(s/d.length)*8);requestAnimationFrame(tick);};
       srcN.onended=()=>{if(V.say===srcN){V.say=null;V.level=0;if(V.on)vListen();}};srcN.start();tick();
     }catch(e){V.say=null;if(V.on)vListen();}}
-  ringEl.onclick=()=>{if(!V.on){audioCtx();vStart();}else if(V.phase==='speaking'){stopSay();V.level=0;vListen();}else vStop();};
+  ringEl.onclick=()=>{if(!V.on){audioCtx();vStart();}else if(V.phase==='speaking'){stopSay();V.level=0;vListen();}
+    else if(V.phase==='confirm')vSendHeard(V.heard);else vStop();};
   micEl.onclick=()=>{audioCtx();V.on?vStop():vStart();};
+  $('vstop').onclick=vStop;
   setState(idle,'var(--teal)');loadTurns();
 })();
 
