@@ -87,7 +87,7 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
 .live .hd .tag{margin-left:auto;font-size:9px;color:var(--dim);border:1px solid var(--line);border-radius:5px;padding:2px 5px}
 .live .term{flex:1;overflow:hidden;padding:9px 11px;font:500 11px/1.55 var(--mono);color:var(--teal);white-space:pre-wrap}
 .live .term .cmd{color:var(--cyan)}.live .term .cur{color:var(--ink);animation:blink 1s step-end infinite}@keyframes blink{50%{opacity:0}}
-.dock{position:fixed;left:calc(268px + env(safe-area-inset-left,0px));right:calc(250px + env(safe-area-inset-right,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));top:56%;z-index:17;background:var(--glass);border:1px solid var(--line);border-radius:16px;overflow:hidden;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.dock{position:fixed;left:calc(268px + env(safe-area-inset-left,0px));right:calc(250px + env(safe-area-inset-right,0px));bottom:calc(84px + env(safe-area-inset-bottom,0px));top:56%;z-index:17;background:var(--glass);border:1px solid var(--line);border-radius:16px;overflow:hidden;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.5)}
 /* the dock: Dyson's wiring on the left, the live sandbox on the right, side by side */
 .dock .body{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;background:#060a12}
 .pane{display:flex;flex-direction:column;min-width:0;min-height:0}
@@ -118,6 +118,18 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
   .mnav button>span{font:600 10px var(--mono);letter-spacing:.06em}
   .mnav button.on{color:var(--cyan);background:var(--cyan-d)}
 }
+/* real conversation console on the OS page (talks to the same engine as /dashboard) */
+.cmd{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:46;width:min(560px,calc(100vw - 24px));display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.cmd>*{pointer-events:auto}
+.cmd .reply{font:500 12.5px/1.5 var(--ui);color:var(--ink);background:var(--glass2);border:1px solid var(--line);border-radius:12px;padding:9px 12px;max-height:118px;overflow-y:auto;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:none}
+.cmd .reply.show{display:block}
+.cmd .reply b{color:var(--cyan);font:600 10px var(--mono);letter-spacing:.1em;margin-right:5px}
+.cmd .bar{display:flex;gap:7px;align-items:center;background:var(--glass2);border:1px solid var(--line);border-radius:14px;padding:6px 7px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.cmd input{flex:1;min-width:0;background:transparent;border:0;color:var(--ink);font:500 14px var(--ui);padding:8px}
+.cmd input::placeholder{color:var(--dim)}.cmd input:focus{outline:none}
+.cmd .send{flex:none;border:1px solid var(--cyan);border-radius:10px;background:var(--cyan-d);color:var(--cyan);font:600 12px var(--mono);padding:9px 15px}
+.cmd .send:disabled{opacity:.5}
+@media (max-width:860px){.cmd{bottom:calc(76px + env(safe-area-inset-bottom,0px));width:calc(100vw - 16px)}}
 </style>
 </head><body>
 <canvas id="gl"></canvas>
@@ -160,7 +172,7 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
   </div>
 </aside>
 
-<section class="live" id="live"><div class="hd"><span class="rec"></span> DYSON · LIVE <span class="tag">demo</span></div><div class="term" id="term"></div></section>
+<section class="live" id="live"><div class="hd"><span class="rec"></span> CONVERSATION <span class="tag">live</span></div><div class="term" id="term"></div></section>
 
 <section class="dock" id="dock">
   <div class="body">
@@ -174,6 +186,11 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
   <button data-rail="right">◉<span>Dyson</span></button>
   <button data-rail="dock">▣<span>System</span></button>
 </nav>
+
+<div class="cmd" id="cmd">
+  <div class="reply" id="dreply"></div>
+  <div class="bar"><input id="msg" placeholder="Bolo ya likho… Dyson se baat karo" autocomplete="off" aria-label="Message to Dyson"><button class="send" id="bsend" type="button">Send</button></div>
+</div>
 
 <script type="module">
 import * as THREE from '/static/three.module.min.js';
@@ -192,10 +209,25 @@ function openRail(which){const map={left:$('rail-left'),right:$('rail-right'),do
   if(!was)el.classList.add('open');}
 $('mnav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)openRail(b.dataset.rail);});
 
-// DYSON LIVE feed (presentational for now)
-(function(){const feed=[['cmd','$ dyson → pull up: GST invoice'],['','  grounding repo:rio/finance ✓'],['cmd','$ ruff check services/knowledge'],['','  All checks passed!'],['cmd','$ pytest -q'],['','  30 passed'],['cmd','$ sandbox → open browser'],['','  streaming ▸ 1280×800']];
-  const term=$('term');let i=0;function step(){if(i>=feed.length){i=0;term.textContent='';}const d=document.createElement('div');if(feed[i][0])d.className=feed[i][0];term.appendChild(d);const cur=document.createElement('span');cur.className='cur';cur.textContent='▌';term.appendChild(cur);const txt=feed[i][1];let n=0;(function ch(){if(n<txt.length){d.textContent+=txt[n++];setTimeout(ch,20+Math.random()*26);}else{cur.remove();i++;if(term.childElementCount>6)term.removeChild(term.firstChild);setTimeout(step,560);}})();}step();})();
-(function(){const st=['LISTENING','THINKING','SPEAKING','REACHING FOR TOOLS'];let i=0,el=$('status').querySelector('span');setInterval(()=>{i=(i+1)%st.length;el.textContent=st[i];},2600);})();
+// real conversation on the OS page — same engine, endpoints and thread as / and /dashboard
+(function(){
+  const idle='LISTENING',statusEl=$('status').querySelector('span');
+  function setState(s,c){statusEl.textContent=s;statusEl.style.color=c||'var(--teal)';}
+  function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]);}
+  function renderTurns(msgs){const last=msgs.slice(-4),term=$('term');
+    term.innerHTML=last.map(m=>{const u=m.role==='user';return '<div><b style="color:'+(u?'var(--amber)':'var(--cyan)')+'">'+(u?'You':'Dyson')+'</b> '+esc(m.content)+'</div>';}).join('')||'<div style="color:var(--dim)">Say what you need…</div>';
+    const dys=msgs.filter(m=>m.role!=='user'),rep=$('dreply');
+    if(dys.length){rep.innerHTML='<b>DYSON</b> '+esc(dys[dys.length-1].content);rep.classList.add('show');}}
+  async function post(url,body){const r=await fetch(url,{method:'POST',body});if(r.status===401){location.href='/';return null;}return r.ok?r.json():null;}
+  async function loadTurns(){try{const r=await fetch('/api/state',{headers:{Accept:'application/json'}});if(r.status===401){location.href='/';return;}const st=await r.json();renderTurns(st.messages||[]);}catch(e){}}
+  async function sendText(text){const f=new FormData();f.append('text',text);f.append('message_id',crypto.randomUUID());
+    setState('THINKING','var(--amber)');$('bsend').disabled=true;const out=await post('/api/send',f);$('bsend').disabled=false;
+    await loadTurns();setState(idle,'var(--teal)');
+    if(!out){const rep=$('dreply');rep.innerHTML='<b>DYSON</b> Could not reach Dyson. Try again.';rep.classList.add('show');}}
+  $('bsend').onclick=()=>{const t=$('msg').value.trim();if(!t)return;$('msg').value='';sendText(t);};
+  $('msg').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('bsend').click();}};
+  setState(idle,'var(--teal)');loadTurns();
+})();
 
 let data;
 try{ const r=await fetch('/brain/data',{headers:{Accept:'application/json'}}); data=await r.json(); }
