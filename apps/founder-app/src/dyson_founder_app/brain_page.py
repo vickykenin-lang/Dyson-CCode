@@ -139,19 +139,12 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
 .cmd .confirm textarea{background:var(--void2);border:1px solid var(--line);border-radius:8px;color:var(--ink);font:500 13px var(--ui);padding:8px;min-height:50px;resize:vertical}
 .cmd .confirm .crow{display:flex;gap:7px}
 .cmd .confirm .drop{flex:none;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--soft);font:600 12px var(--mono);padding:8px 13px}
-/* full-screen hands-free voice mode */
-.voice{position:fixed;inset:0;z-index:90;display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;background:radial-gradient(900px 700px at 50% 34%,#0a1838 0%,var(--void) 62%),rgba(3,5,10,.97);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-.voice.show{display:flex}
-.voice .vclose{position:absolute;top:calc(16px + env(safe-area-inset-top,0px));right:18px;width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--glass2);color:var(--soft);font-size:16px}
-.voice .vorb{width:188px;height:188px;border-radius:50%;display:grid;place-items:center;cursor:pointer;will-change:transform;background:radial-gradient(circle at 42% 36%,#8fefff 0%,var(--cyan) 30%,#145a86 70%,#0a2740 100%);box-shadow:0 0 70px rgba(47,224,224,.5),inset 0 0 50px rgba(255,255,255,.18)}
-.voice .vorb span{font:700 18px var(--dis);letter-spacing:.22em;color:#eaffff}
-.voice[data-phase="listening"] .vorb{animation:breathe 2.4s ease-in-out infinite}
-.voice[data-phase="thinking"] .vorb{background:radial-gradient(circle at 42% 36%,#ffe2a6 0%,var(--amber) 34%,#7a4d12 100%);box-shadow:0 0 70px rgba(255,184,77,.5)}
-.voice[data-phase="speaking"] .vorb{box-shadow:0 0 95px rgba(47,224,224,.75)}
-@keyframes breathe{50%{box-shadow:0 0 95px rgba(47,224,224,.7),inset 0 0 50px rgba(255,255,255,.22)}}
-.voice .vstatus{font:600 15px var(--mono);letter-spacing:.1em;color:var(--ink)}
-.voice .vheard{font:500 14px/1.5 var(--ui);color:var(--soft);max-width:min(560px,86vw);min-height:21px;padding:0 16px}
-.voice .vhint{position:absolute;bottom:calc(22px + env(safe-area-inset-bottom,0px));font:500 11px var(--mono);color:var(--dim);letter-spacing:.06em}
+/* hands-free voice on the Dyson ring: the pulse scales with the live audio level */
+.ring{cursor:pointer}
+.ring .pulse{position:absolute;inset:-16px;border-radius:50%;opacity:0;transform:scale(1);pointer-events:none;will-change:transform,opacity;transition:opacity .12s;background:radial-gradient(circle,rgba(47,224,224,.55),transparent 66%)}
+.ring.v-think .pulse{background:radial-gradient(circle,rgba(255,184,77,.55),transparent 66%)}
+.ring.v-speak .pulse{background:radial-gradient(circle,rgba(47,224,224,.68),transparent 66%)}
+.ring.v-think .core b{color:var(--amber);text-shadow:0 0 14px rgba(255,184,77,.6)}
 @media (max-width:860px){.cmd{bottom:calc(76px + env(safe-area-inset-bottom,0px));width:calc(100vw - 16px)}}
 </style>
 </head><body>
@@ -183,7 +176,7 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
 <aside class="rail right" id="rail-right">
   <div class="scroll" style="padding-bottom:4px"><div class="sec"><h2>Filter · projects</h2><ul class="filter" id="filter" style="max-height:40vh;overflow-y:auto"></ul></div></div>
   <div class="hud">
-    <div class="ring"><svg viewBox="0 0 140 140" aria-hidden="true">
+    <div class="ring" id="ring"><div class="pulse"></div><svg viewBox="0 0 140 140" aria-hidden="true">
       <circle cx="70" cy="70" r="66" fill="none" stroke="rgba(47,224,224,.14)" stroke-width="1"/>
       <g class="r1"><circle cx="70" cy="70" r="58" fill="none" stroke="var(--cyan)" stroke-width="1.5" stroke-dasharray="6 10" opacity=".8"/></g>
       <g class="r2"><circle cx="70" cy="70" r="48" fill="none" stroke="var(--teal)" stroke-width="1" stroke-dasharray="2 8" opacity=".7"/></g>
@@ -213,14 +206,6 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radiu
 <div class="cmd" id="cmd">
   <div class="reply" id="dreply"></div>
   <div class="bar"><button class="mic" id="mic" type="button" aria-label="Voice mode"><span class="led"></span>🎙</button><input id="msg" placeholder="Bolo ya likho… Dyson se baat karo" autocomplete="off" aria-label="Message to Dyson"><button class="send" id="bsend" type="button">Send</button></div>
-</div>
-
-<div class="voice" id="voice">
-  <button class="vclose" id="vclose" type="button" aria-label="Voice band karo">✕</button>
-  <div class="vorb" id="vorb"><span>DYSON</span></div>
-  <div class="vstatus" id="vstatus">Suniye… boliye</div>
-  <div class="vheard" id="vheard"></div>
-  <div class="vhint">Orb tap: bhejo / roko · ✕ band karo</div>
 </div>
 
 <script type="module">
@@ -267,19 +252,23 @@ $('mnav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)o
     v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,pcm.length*2,true);
     pcm.forEach((x,i)=>v.setInt16(44+i*2,Math.max(-1,Math.min(1,x))*32767,true));return new Blob([v],{type:'audio/wav'});};
   const to16k=(x,rate)=>{if(rate===16000)return x;const out=new Float32Array(Math.floor(x.length*16000/rate));for(let i=0;i<out.length;i++)out[i]=x[Math.floor(i*rate/16000)];return out;};
-  // full-screen hands-free voice mode: listen (silence-detect) -> think -> speak -> listen again
+  // hands-free voice on the Dyson ring: tap the ring (or mic) -> listen -> think -> speak -> listen
   const V={on:false,phase:'idle',stream:null,src:null,proc:null,parts:[],rate:16000,level:0,say:null};
-  const vEl=$('voice'),vStatus=$('vstatus'),vHeard=$('vheard'),orb=$('vorb');
-  function vPhase(p,label){V.phase=p;vEl.setAttribute('data-phase',p);vStatus.textContent=label;}
+  const ringEl=$('ring'),coreSmall=ringEl.querySelector('.core small'),pulseEl=ringEl.querySelector('.pulse');
+  function vVisual(phase,label,word){V.phase=phase;ringEl.classList.remove('v-listen','v-think','v-speak');
+    ringEl.classList.add(phase==='thinking'?'v-think':phase==='speaking'?'v-speak':'v-listen');
+    setState(label,phase==='thinking'?'var(--amber)':phase==='speaking'?'var(--cyan)':'var(--teal)');coreSmall.textContent=word;}
   function stopMic(){try{V.proc&&V.proc.disconnect();}catch(e){}try{V.src&&V.src.disconnect();}catch(e){}
     if(V.stream)V.stream.getTracks().forEach(t=>t.stop());V.proc=V.src=V.stream=null;}
   function stopSay(){try{V.say&&V.say.stop();}catch(e){}V.say=null;}
-  function orbLoop(){if(!V.on)return;orb.style.transform='scale('+(1+V.level*0.5).toFixed(3)+')';requestAnimationFrame(orbLoop);}
-  function vOpen(){if(V.on)return;audioCtx();V.on=true;vHeard.textContent='';vEl.classList.add('show');orbLoop();vListen();}
-  function vClose(){V.on=false;stopMic();stopSay();V.level=0;orb.style.transform='';vEl.classList.remove('show');}
-  async function vListen(){if(!V.on)return;vPhase('listening','Suniye… boliye');
+  function orbLoop(){if(!V.on){pulseEl.style.opacity=0;pulseEl.style.transform='';return;}
+    pulseEl.style.transform='scale('+(1+V.level*0.6).toFixed(3)+')';pulseEl.style.opacity=(0.2+V.level*0.65).toFixed(3);requestAnimationFrame(orbLoop);}
+  function vStart(){if(V.on)return;audioCtx();V.on=true;micEl.classList.add('rec');orbLoop();vListen();}
+  function vStop(){V.on=false;stopMic();stopSay();V.level=0;pulseEl.style.opacity=0;pulseEl.style.transform='';
+    ringEl.classList.remove('v-listen','v-think','v-speak');coreSmall.textContent='ONLINE';micEl.classList.remove('rec');setState(idle,'var(--teal)');}
+  async function vListen(){if(!V.on)return;vVisual('listening','SUNIYE… BOLIYE','SUNO');
     let stream;try{stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true}});}
-    catch(e){vPhase('idle','Mic allow karo, fir mic dobara tap karo');return;}
+    catch(e){vStop();setState('MIC ALLOW KARO','var(--red)');return;}
     if(!V.on){stream.getTracks().forEach(t=>t.stop());return;}
     const c=audioCtx();V.stream=stream;V.src=c.createMediaStreamSource(stream);V.proc=c.createScriptProcessor(4096,1,1);V.parts=[];V.rate=c.sampleRate;
     let started=false,silence=0,voiced=0,total=0;const SIL=1100,MINV=350,MAXT=18000;
@@ -288,26 +277,24 @@ $('mnav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)o
       if(rms>0.025){started=true;voiced+=ms;silence=0;}else if(started){silence+=ms;}
       if(started&&voiced>MINV&&(silence>SIL||total>MAXT))vEnd();};
     V.src.connect(V.proc);V.proc.connect(c.destination);}
-  async function vEnd(){if(V.phase!=='listening'||!V.on)return;vPhase('thinking','Soch raha hu…');V.level=0;
+  async function vEnd(){if(V.phase!=='listening'||!V.on)return;vVisual('thinking','SOCH RAHA HU…','SOCH');V.level=0;
     const parts=V.parts,rate=V.rate;stopMic();
     const all=new Float32Array(parts.reduce((n,p)=>n+p.length,0));let o=0;for(const p of parts){all.set(p,o);o+=p.length;}
     const f=new FormData();f.append('audio',new File([wav(to16k(all,rate),16000)],'voice.wav',{type:'audio/wav'}));
     let out;try{out=await post('/api/voice',f);}catch(e){out=null;}
     if(!V.on)return;
-    if(!out){vHeard.textContent='Network ruk gaya';vListen();return;}
-    if(out.uncertain){vHeard.textContent='Saaf nahi aaya'+(out.heard?': “'+out.heard+'”':'')+' — dobara boliye';vListen();return;}
-    if(out.heard)vHeard.textContent='“'+out.heard+'”';
+    if(!out){vVisual('listening','SUNA NAHI — DOBARA','SUNO');vListen();return;}
+    if(out.uncertain){vVisual('listening','SAAF NAHI — DOBARA','SUNO');vListen();return;}
     await loadTurns();if(out.sent)vSay(-1);else vListen();}
-  async function vSay(n){if(!V.on)return;if(!speech){vListen();return;}vPhase('speaking','Bol raha hu…');
+  async function vSay(n){if(!V.on)return;if(!speech){vListen();return;}vVisual('speaking','BOL RAHA HU…','BOL');
     try{const c=audioCtx(),r=await fetch('/speak/'+n,{cache:'no-store'});if(!r.ok){vListen();return;}
       const buf=await c.decodeAudioData(await r.arrayBuffer());const srcN=c.createBufferSource(),an=c.createAnalyser();an.fftSize=512;
       srcN.buffer=buf;srcN.connect(an);an.connect(c.destination);V.say=srcN;const d=new Float32Array(an.fftSize);
       const tick=()=>{if(V.say!==srcN)return;an.getFloatTimeDomainData(d);let s=0;for(const x of d)s+=x*x;V.level=Math.min(1,Math.sqrt(s/d.length)*8);requestAnimationFrame(tick);};
       srcN.onended=()=>{if(V.say===srcN){V.say=null;V.level=0;if(V.on)vListen();}};srcN.start();tick();
     }catch(e){V.say=null;if(V.on)vListen();}}
-  orb.onclick=()=>{if(V.phase==='speaking'){stopSay();V.level=0;vListen();}else if(V.phase==='listening')vEnd();};
-  $('vclose').onclick=vClose;
-  micEl.onclick=()=>{audioCtx();vOpen();};
+  ringEl.onclick=()=>{if(!V.on){audioCtx();vStart();}else if(V.phase==='speaking'){stopSay();V.level=0;vListen();}else vStop();};
+  micEl.onclick=()=>{audioCtx();V.on?vStop():vStart();};
   setState(idle,'var(--teal)');loadTurns();
 })();
 
