@@ -5,6 +5,7 @@ approved source deployment. It qualifies Sonnet on synthetic requests, accounts
 for every attempt against the existing conversation budget, and retires Bedrock
 only after qualification succeeds. It never signs a Founder decision.
 """
+
 import json
 import sys
 from datetime import UTC, datetime
@@ -18,14 +19,23 @@ from dyson_contracts.common import Component, RiskLevel
 from dyson_contracts.integrations import IntegrationKind
 from dyson_governance.events import ProposalKind
 from dyson_intelligence.conversation import INTERPRETATION_SCHEMA, _Interpretation
-from dyson_intelligence.models import ChatMessage, ModelRequest, ModelResponse, ModelSpec, Qualification
+from dyson_intelligence.models import (
+    ChatMessage,
+    ModelRequest,
+    ModelResponse,
+    ModelSpec,
+    Qualification,
+)
 from dyson_intelligence.router import TRUSTED_PROVIDERS, _cost, _input_bound
 
 TASK = "conversation.interpret"
 PRIMARY = "gemini-3-flash-preview"
 SPEC = ModelSpec(
-    model_id="claude-sonnet-4-6", provider="claudeapi", currency="USD",
-    input_price_per_mtok=Decimal("3"), output_price_per_mtok=Decimal("15"),
+    model_id="claude-sonnet-4-6",
+    provider="claudeapi",
+    currency="USD",
+    input_price_per_mtok=Decimal("3"),
+    output_price_per_mtok=Decimal("15"),
 )
 RETIRE = ("amazon.nova-micro-v1:0", "deepseek.v3.2")
 SOURCE_REF = "codex/gemini-sonnet-route-20261030"
@@ -35,24 +45,44 @@ CASES = (
     ("Explain in one sentence what a pending approval means.", "answer"),
 )
 DEPLOY = {
-    "component": "C", "op": "deploy_direct_provider_allowlist",
-    "value": {"source": SOURCE_REF, "allow_sensitive_to": ["gemini", "claudeapi"],
-              "exclude_relays": True, "primary": PRIMARY, "fallback": SPEC.model_id},
+    "component": "C",
+    "op": "deploy_direct_provider_allowlist",
+    "value": {
+        "source": SOURCE_REF,
+        "allow_sensitive_to": ["gemini", "claudeapi"],
+        "exclude_relays": True,
+        "primary": PRIMARY,
+        "fallback": SPEC.model_id,
+    },
 }
 BENCH = {
-    "component": "C", "op": "qualify_direct_sonnet",
-    "value": {"model": SPEC.model_dump(mode="json"), "cases": list(CASES),
-              "max_output_tokens": 128, "budget": "existing conversation.interpret budget"},
+    "component": "C",
+    "op": "qualify_direct_sonnet",
+    "value": {
+        "model": SPEC.model_dump(mode="json"),
+        "cases": list(CASES),
+        "max_output_tokens": 128,
+        "budget": "existing conversation.interpret budget",
+    },
 }
 
 
 def steps():
     return [
-        ("register", {"component": "C", "op": "register_model",
-                      "value": SPEC.model_dump(mode="json")}, ApprovalCategory.INTEGRATION),
+        (
+            "register",
+            {"component": "C", "op": "register_model", "value": SPEC.model_dump(mode="json")},
+            ApprovalCategory.INTEGRATION,
+        ),
         ("benchmark", BENCH, ApprovalCategory.FINANCIAL),
-        *[(f"retire:{m}", {"component": "C", "op": "retire_model",
-                          "value": {"model_id": m}}, ApprovalCategory.INTEGRATION) for m in RETIRE],
+        *[
+            (
+                f"retire:{m}",
+                {"component": "C", "op": "retire_model", "value": {"model_id": m}},
+                ApprovalCategory.INTEGRATION,
+            )
+            for m in RETIRE
+        ],
         ("deployment", DEPLOY, ApprovalCategory.DEPLOYMENT),
     ]
 
@@ -62,10 +92,17 @@ def propose(layer, state):
         return json.loads(state.read_text())
     core = layer.core
     if SPEC.model_id not in core.registry():
-        core.propose_integration(SPEC.model_id, IntegrationKind.MODEL, SPEC.model_id,
-                                 "anthropic-direct", RiskLevel.MEDIUM, SOURCE_REF)
+        core.propose_integration(
+            SPEC.model_id,
+            IntegrationKind.MODEL,
+            SPEC.model_id,
+            "anthropic-direct",
+            RiskLevel.MEDIUM,
+            SOURCE_REF,
+        )
         core.record_security_check(
-            SPEC.model_id, True,
+            SPEC.model_id,
+            True,
             "Direct api.anthropic.com; DFC credential and model catalog verified. "
             "Inference qualification remains pending; no operational qualification claimed.",
         )
@@ -73,13 +110,16 @@ def propose(layer, state):
     pending = []
     for name, payload, category in steps():
         req = core.propose(
-            ProposalKind.EXTERNAL_ACTION, payload,
+            ProposalKind.EXTERNAL_ACTION,
+            payload,
             f"Gemini > Sonnet migration: {name}; keep USD 0.50/day; direct providers may receive "
             "redacted knowledge context; no relay access",
-            Component.CORE_RD, category,
+            Component.CORE_RD,
+            category,
         )
-        pending.append({"step": name, "approval_id": str(req.approval_id),
-                        "action_digest": req.action_digest})
+        pending.append(
+            {"step": name, "approval_id": str(req.approval_id), "action_digest": req.action_digest}
+        )
     state.write_text(json.dumps(pending, indent=2))
     return pending
 
@@ -94,9 +134,10 @@ def qualify(layer):
     for question, expected in CASES:
         request = ModelRequest(
             system="You are Dyson's conversation interpreter. Answer only as JSON matching "
-                   "the schema. Do not use tools or claim to execute anything.",
+            "the schema. Do not use tools or claim to execute anything.",
             messages=(ChatMessage(role="user", content=question),),
-            max_output_tokens=128, response_schema=INTERPRETATION_SCHEMA,
+            max_output_tokens=128,
+            response_schema=INTERPRETATION_SCHEMA,
         )
         aid, cid = uuid4(), uuid4()
         worst = _cost(SPEC, _input_bound(request), request.max_output_tokens)
@@ -108,21 +149,35 @@ def qualify(layer):
                 raise RuntimeError("Sonnet exceeded benchmark output limit")
         except Exception as exc:
             # Preserve the reservation as an upper bound when the provider may have billed.
-            router._settle(aid, cid, 1, Component.CONVERSATION_ENGINE, TASK, SPEC, "failed",
-                           ModelResponse(text="", input_tokens=0, output_tokens=0),
-                           worst, type(exc).__name__)
+            router._settle(
+                aid,
+                cid,
+                1,
+                Component.CONVERSATION_ENGINE,
+                TASK,
+                SPEC,
+                "failed",
+                ModelResponse(text="", input_tokens=0, output_tokens=0),
+                worst,
+                type(exc).__name__,
+            )
             raise RuntimeError("Sonnet qualification failed; Bedrock was not retired") from None
         cost = _cost(SPEC, response.input_tokens, response.output_tokens)
-        router._settle(aid, cid, 1, Component.CONVERSATION_ENGINE, TASK, SPEC,
-                       "ok", response, cost, "")
+        router._settle(
+            aid, cid, 1, Component.CONVERSATION_ENGINE, TASK, SPEC, "ok", response, cost, ""
+        )
         times.append(int((monotonic() - started) * 1000))
         costs.append(cost)
         interpretation = _Interpretation.model_validate(json.loads(response.text))
         passed += int(interpretation.kind == expected and bool(interpretation.text.strip()))
     q = Qualification(
-        model_id=SPEC.model_id, task_class=TASK, tasks_run=len(CASES),
-        tasks_passed=passed, p95_latency_ms=max(times),
-        cost_per_task=sum(costs) / len(costs), currency="USD",
+        model_id=SPEC.model_id,
+        task_class=TASK,
+        tasks_run=len(CASES),
+        tasks_passed=passed,
+        p95_latency_ms=max(times),
+        cost_per_task=sum(costs) / len(costs),
+        currency="USD",
         evidence_ref="model_pair_rollout:synthetic-live-qualification",
         run_at=datetime.now(UTC),
     )
@@ -142,8 +197,9 @@ def apply(layer, state):
         raise RuntimeError("Deploy the approved direct-provider allowlist first")
     # Apply registration through C; no fabricated model/qualification database rows.
     router.register_model(SPEC, pending["register"])
-    core.consume_approval(pending["benchmark"], core.external_action_digest(BENCH),
-                          ApprovalCategory.FINANCIAL)
+    core.consume_approval(
+        pending["benchmark"], core.external_action_digest(BENCH), ApprovalCategory.FINANCIAL
+    )
     q = qualify(layer)
     router.record_qualification(q)
     route = router.route(TASK)
@@ -151,15 +207,17 @@ def apply(layer, state):
         raise RuntimeError("Expected Gemini primary and qualified Sonnet before retirement")
     for model in RETIRE:
         router.retire_model(model, pending[f"retire:{model}"])
-    core.consume_approval(pending["deployment"], core.external_action_digest(DEPLOY),
-                          ApprovalCategory.DEPLOYMENT)
+    core.consume_approval(
+        pending["deployment"], core.external_action_digest(DEPLOY), ApprovalCategory.DEPLOYMENT
+    )
     return {"route": router.route(TASK), "qualification": q.model_dump(mode="json")}
 
 
 def main():
-    from .serve import _models, _settings_and_dsns, _now
+    from .serve import _models, _now, _settings_and_dsns
     from .system import LayerA
     from .t0 import TestReceptorT0
+
     settings, dsns = _settings_and_dsns(migrate=False)
     layer = LayerA.build(dsns, settings, TestReceptorT0(), _now, _models(settings.secret_file))
     state = Path("/data/model_pair_rollout.json")
