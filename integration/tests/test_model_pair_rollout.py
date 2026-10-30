@@ -115,3 +115,10 @@ def test_grounded_request_falls_back_to_sonnet_when_gemini_fails():
 def test_relays_remain_excluded_from_private_context():
     assert {"gemini", "claudeapi"}.issubset(TRUSTED_PROVIDERS)
     assert "apinex" not in TRUSTED_PROVIDERS and "groq" not in TRUSTED_PROVIDERS
+
+
+def test_all_approval_payloads_are_native_json_values():
+    from pydantic import JsonValue, TypeAdapter
+
+    for _, payload, _ in rollout.steps():
+        TypeAdapter(JsonValue).validate_python(payload)
