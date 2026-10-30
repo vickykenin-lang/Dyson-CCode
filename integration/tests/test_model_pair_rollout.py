@@ -1,15 +1,23 @@
 """Offline migration gates and sensitive-route fallback; no provider calls."""
+
+import json
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import Mock
 from uuid import uuid4
-import json
 
 import pytest
+
 from dyson_contracts.common import Component
-from dyson_intelligence.models import ModelBudget, ModelRequest, ModelResponse, ModelSpec, ChatMessage
-from dyson_intelligence.router import ModelRouter, TRUSTED_PROVIDERS
 from dyson_integration import model_pair_rollout as rollout
+from dyson_intelligence.models import (
+    ChatMessage,
+    ModelBudget,
+    ModelRequest,
+    ModelResponse,
+    ModelSpec,
+)
+from dyson_intelligence.router import TRUSTED_PROVIDERS, ModelRouter
 
 
 def test_migration_values_preserve_primary_and_retire_only_bedrock():
@@ -24,8 +32,9 @@ def test_migration_values_preserve_primary_and_retire_only_bedrock():
 
 def test_apply_without_dfc_approval_never_registers_or_retires(tmp_path):
     state = tmp_path / "state.json"
-    state.write_text(json.dumps([{"step": name, "approval_id": str(uuid4())}
-                                 for name, _, _ in rollout.steps()]))
+    state.write_text(
+        json.dumps([{"step": name, "approval_id": str(uuid4())} for name, _, _ in rollout.steps()])
+    )
     layer = SimpleNamespace(core=Mock(), router=Mock())
     layer.core.approval_status.return_value = None
     with pytest.raises(RuntimeError, match="requires the matching DFC approval"):
@@ -41,14 +50,23 @@ class Harness(ModelRouter):
         self._personal = tuple
         self.selected = []
         self.specs = {
-            rollout.PRIMARY: ModelSpec(model_id=rollout.PRIMARY, provider="gemini",
-                                      currency="USD", input_price_per_mtok=0, output_price_per_mtok=0),
+            rollout.PRIMARY: ModelSpec(
+                model_id=rollout.PRIMARY,
+                provider="gemini",
+                currency="USD",
+                input_price_per_mtok=0,
+                output_price_per_mtok=0,
+            ),
             rollout.SPEC.model_id: rollout.SPEC,
         }
 
     def _budget(self, task):
-        return ModelBudget(task_class=task, currency="USD",
-                           max_cost_per_day=Decimal("0.50"), max_output_tokens_per_call=4000)
+        return ModelBudget(
+            task_class=task,
+            currency="USD",
+            max_cost_per_day=Decimal("0.50"),
+            max_output_tokens_per_call=4000,
+        )
 
     def route(self, task):
         return [rollout.PRIMARY, rollout.SPEC.model_id]
@@ -64,15 +82,20 @@ class Harness(ModelRouter):
 
 
 def request():
-    return ModelRequest(system="Synthetic context", messages=(ChatMessage(role="user", content="hi"),),
-                        max_output_tokens=128, sensitive=True)
+    return ModelRequest(
+        system="Synthetic context",
+        messages=(ChatMessage(role="user", content="hi"),),
+        max_output_tokens=128,
+        sensitive=True,
+    )
 
 
 def test_grounded_requests_can_use_direct_gemini():
     gemini, claude = Mock(), Mock()
     gemini.complete.return_value = ModelResponse(text="hello", input_tokens=5, output_tokens=1)
     result = Harness({"gemini": gemini, "claudeapi": claude}).complete(
-        Component.CONVERSATION_ENGINE, rollout.TASK, request())
+        Component.CONVERSATION_ENGINE, rollout.TASK, request()
+    )
     assert result.model_id == rollout.PRIMARY
     claude.complete.assert_not_called()
 
@@ -82,7 +105,8 @@ def test_grounded_request_falls_back_to_sonnet_when_gemini_fails():
     gemini.complete.side_effect = RuntimeError("synthetic primary failure")
     claude.complete.return_value = ModelResponse(text="hello", input_tokens=5, output_tokens=1)
     result = Harness({"gemini": gemini, "claudeapi": claude}).complete(
-        Component.CONVERSATION_ENGINE, rollout.TASK, request())
+        Component.CONVERSATION_ENGINE, rollout.TASK, request()
+    )
     assert result.model_id == rollout.SPEC.model_id
     assert not result.attempts[0].ok and result.attempts[1].ok
     assert result.cost > 0
