@@ -60,7 +60,7 @@ BENCH = {
     "op": "qualify_direct_sonnet",
     "value": {
         "model": SPEC.model_dump(mode="json"),
-        "cases": list(CASES),
+        "cases": [list(case) for case in CASES],
         "max_output_tokens": 128,
         "budget": "existing conversation.interpret budget",
     },
@@ -88,8 +88,6 @@ def steps():
 
 
 def propose(layer, state):
-    if state.exists():
-        return json.loads(state.read_text())
     core = layer.core
     if SPEC.model_id not in core.registry():
         core.propose_integration(
@@ -109,7 +107,19 @@ def propose(layer, state):
         core.admit_integration(SPEC.model_id)
     pending = []
     for name, payload, category in steps():
-        req = core.propose(
+        digest = core.external_action_digest(payload)
+        current = datetime.now(UTC)
+        existing = next(
+            (
+                p.request
+                for p in core.sync().proposals.values()
+                if p.request.action_digest == digest
+                and p.status.value in ("open", "approved")
+                and (p.request.expires_at is None or p.request.expires_at > current)
+            ),
+            None,
+        )
+        req = existing or core.propose(
             ProposalKind.EXTERNAL_ACTION,
             payload,
             f"Gemini > Sonnet migration: {name}; keep USD 0.50/day; direct providers may receive "
