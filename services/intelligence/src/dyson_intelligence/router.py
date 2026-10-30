@@ -41,10 +41,10 @@ from .redaction import Redaction
 
 # Who may ask C for a model. D, G, F, H and the Receptors have no reason to; A must not use one.
 CALLERS = frozenset({Component.CONVERSATION_ENGINE, Component.HERMES})
-# Providers that run on our own infrastructure or on AWS (which does not train on API traffic). A
-# request marked sensitive — the Founder's own notes and files — routes only to these, never to a
-# free public relay that may keep or train on what it sees.
-TRUSTED_PROVIDERS = frozenset({"local-rules", "local-rules-b", "bedrock"})
+# Founder-approved direct providers for knowledge-grounded conversation. This is a data-egress
+# allowlist, not a claim about provider retention/training terms. Relay providers stay excluded.
+# Deployment of this change requires the exact Founder approval recorded by model_pair_rollout.
+TRUSTED_PROVIDERS = frozenset({"local-rules", "local-rules-b", "bedrock", "gemini", "claudeapi"})
 MTOK = Decimal(1_000_000)
 
 
