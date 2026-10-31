@@ -199,16 +199,35 @@ def qualify(layer):
 def apply(layer, state):
     pending = {p["step"]: UUID(p["approval_id"]) for p in json.loads(state.read_text())}
     core, router = layer.core, layer.router
+    registration_applied = False
     for name, _, _ in steps():
         status = core.approval_status(pending[name])
+        if name == "register" and status is not None and status.value == "consumed":
+            row = router._conn.execute(
+                "SELECT spec, enabled, approval_id FROM intelligence.models "
+                "WHERE model_id = %s ORDER BY seq DESC LIMIT 1",
+                [SPEC.model_id],
+            ).fetchone()
+            if (
+                row
+                and row["enabled"]
+                and row["spec"] == SPEC.model_dump(mode="json")
+                and row["approval_id"] == pending["register"]
+            ):
+                registration_applied = True
+                continue
         if status is None or status.value != "approved":
             raise RuntimeError(f"{name}: requires the matching DFC approval; no bypass")
     if not {"gemini", "claudeapi"}.issubset(TRUSTED_PROVIDERS):
         raise RuntimeError("Deploy the approved direct-provider allowlist first")
     # Apply registration through C; no fabricated model/qualification database rows.
-    router.register_model(SPEC, pending["register"])
+    if not registration_applied:
+        router.register_model(SPEC, pending["register"])
     core.consume_approval(
-        pending["benchmark"], core.external_action_digest(BENCH), ApprovalCategory.FINANCIAL
+        pending["benchmark"],
+        core.external_action_digest(BENCH),
+        ApprovalCategory.FINANCIAL,
+        by=Component.CORE_RD,
     )
     q = qualify(layer)
     router.record_qualification(q)
@@ -218,7 +237,10 @@ def apply(layer, state):
     for model in RETIRE:
         router.retire_model(model, pending[f"retire:{model}"])
     core.consume_approval(
-        pending["deployment"], core.external_action_digest(DEPLOY), ApprovalCategory.DEPLOYMENT
+        pending["deployment"],
+        core.external_action_digest(DEPLOY),
+        ApprovalCategory.DEPLOYMENT,
+        by=Component.CORE_RD,
     )
     return {"route": router.route(TASK), "qualification": q.model_dump(mode="json")}
 
