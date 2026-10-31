@@ -261,7 +261,54 @@ $('mnav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)o
     w(0,'RIFF');v.setUint32(4,36+pcm.length*2,true);w(8,'WAVEfmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
     v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,pcm.length*2,true);
     pcm.forEach((x,i)=>v.setInt16(44+i*2,Math.max(-1,Math.min(1,x))*32767,true));return new Blob([v],{type:'audio/wav'});};
-  const to16k=(x,rate)=>{if(rate===16000)return x;const out=new Float32Array(Math.floor(x.length*16000/rate));for(let i=0;i<out.length;i++)out[i]=x[Math.floor(i*rate/16000)];return out;};
+  // Band-limited resampling: avoid folding high-frequency microphone noise into speech.
+  function to16k(x,rate){
+    if(!Number.isFinite(rate)||rate<=0)throw new Error('Invalid microphone sample rate');
+    if(rate===16000)return x;
+    const out=new Float32Array(Math.floor(x.length*16000/rate));
+    const radius=32,cutoff=0.45*Math.min(1,16000/rate),kernels=new Map();
+    for(let i=0;i<out.length;i++){
+      const pos=i*rate/16000,center=Math.floor(pos),phase=Math.round((pos-center)*256);
+      let weights=kernels.get(phase);
+      if(!weights){weights=new Float64Array(radius*2+1);
+        const frac=phase/256;
+        for(let j=-radius;j<=radius;j++){const d=j-frac;
+          if(Math.abs(d)>radius)continue;
+          const sinc=Math.abs(d)<1e-12?2*cutoff:Math.sin(2*Math.PI*cutoff*d)/(Math.PI*d);
+          const window=0.42+0.5*Math.cos(Math.PI*d/radius)+0.08*Math.cos(2*Math.PI*d/radius);
+          weights[j+radius]=sinc*window;
+        }
+        kernels.set(phase,weights);
+      }
+      let sum=0,norm=0;
+      for(let j=-radius;j<=radius;j++){const index=center+j;
+        if(index<0||index>=x.length)continue;
+        const w=weights[j+radius];sum+=x[index]*w;norm+=w;
+      }
+      out[i]=Math.abs(norm)>1e-12?sum/norm:0;
+    }
+    return out;
+  }
+  // Idle time is not utterance time. Retain only a short leading buffer while waiting.
+  function voiceCapture(rate){
+    return {rate,started:false,lead:[],leadMs:0,parts:[],speechMs:0,voicedMs:0,silenceMs:0};
+  }
+  function voiceFrame(cap,pcm,rms){
+    const ms=pcm.length/cap.rate*1000,active=rms>0.025;
+    if(!cap.started){
+      cap.lead.push(pcm);cap.leadMs+=ms;
+      while(cap.lead.length>1&&cap.leadMs>500){
+        cap.leadMs-=cap.lead.shift().length/cap.rate*1000;
+      }
+      if(!active)return false;
+      cap.started=true;cap.parts=cap.lead;cap.lead=[];
+    }else cap.parts.push(pcm);
+    cap.speechMs+=ms;
+    if(active){cap.voicedMs+=ms;cap.silenceMs=0;}else cap.silenceMs+=ms;
+    // Leave headroom for leading audio and trailing silence under the server's 30s limit.
+    return (cap.voicedMs>=350&&cap.silenceMs>=1500)||cap.speechMs>=24000;
+  }
+
   // hands-free voice on the Dyson ring: tap the ring (or mic) -> listen -> think -> speak -> listen
   const V={on:false,phase:'idle',stream:null,src:null,proc:null,parts:[],rate:16000,level:0,say:null,gen:0};
   const ringEl=$('ring'),coreSmall=ringEl.querySelector('.core small'),pulseEl=ringEl.querySelector('.pulse');
@@ -282,11 +329,13 @@ $('mnav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)o
     catch(e){vStop();setState('MIC ALLOW KARO','var(--red)');return;}
     if(!V.on){stream.getTracks().forEach(t=>t.stop());return;}
     const c=audioCtx();V.stream=stream;V.src=c.createMediaStreamSource(stream);V.proc=c.createScriptProcessor(4096,1,1);V.parts=[];V.rate=c.sampleRate;
-    let started=false,silence=0,voiced=0,total=0;const SIL=1500,MINV=350,MAXT=18000;
-    V.proc.onaudioprocess=e=>{if(V.phase!=='listening')return;const x=e.inputBuffer.getChannelData(0);V.parts.push(new Float32Array(x));
-      let sum=0;for(const v of x)sum+=v*v;const rms=Math.sqrt(sum/x.length);V.level=Math.min(1,rms*9);const ms=x.length/V.rate*1000;total+=ms;
-      if(rms>0.025){started=true;voiced+=ms;silence=0;}else if(started){silence+=ms;}
-      if(started&&voiced>MINV&&(silence>SIL||total>MAXT))vEnd();};
+    const capture=voiceCapture(V.rate);
+    V.proc.onaudioprocess=e=>{if(V.phase!=='listening')return;
+      const pcm=new Float32Array(e.inputBuffer.getChannelData(0));
+      let sum=0;for(const v of pcm)sum+=v*v;
+      const rms=Math.sqrt(sum/pcm.length);V.level=Math.min(1,rms*9);
+      const ended=voiceFrame(capture,pcm,rms);V.parts=capture.parts;
+      if(ended)vEnd();};
     V.src.connect(V.proc);V.proc.connect(c.destination);}
   async function vEnd(){if(V.phase!=='listening'||!V.on)return;vVisual('thinking','SOCH RAHA HU…','SOCH');V.level=0;
     const parts=V.parts,rate=V.rate;stopMic();
