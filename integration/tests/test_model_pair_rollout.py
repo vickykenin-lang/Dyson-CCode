@@ -122,3 +122,41 @@ def test_all_approval_payloads_are_native_json_values():
 
     for _, payload, _ in rollout.steps():
         TypeAdapter(JsonValue).validate_python(payload)
+
+
+def test_apply_consumes_native_approval_with_required_actor(tmp_path, monkeypatch):
+    from datetime import UTC, datetime
+
+    from dyson_intelligence.models import Qualification
+
+    state = tmp_path / "state.json"
+    state.write_text(
+        json.dumps([{"step": n, "approval_id": str(uuid4())} for n, _, _ in rollout.steps()])
+    )
+    actors = []
+
+    def consume(approval_id, digest, category, by):
+        actors.append(by)
+
+    core = SimpleNamespace(
+        approval_status=lambda aid: SimpleNamespace(value="approved"),
+        consume_approval=consume,
+        external_action_digest=lambda payload: "digest",
+    )
+    router = Mock()
+    router.route.return_value = [rollout.PRIMARY, rollout.SPEC.model_id]
+    q = Qualification(
+        model_id=rollout.SPEC.model_id,
+        task_class=rollout.TASK,
+        tasks_run=3,
+        tasks_passed=3,
+        p95_latency_ms=1,
+        cost_per_task=Decimal("0.001"),
+        currency="USD",
+        evidence_ref="synthetic-test",
+        run_at=datetime.now(UTC),
+    )
+    monkeypatch.setattr(rollout, "qualify", lambda layer: q)
+    result = rollout.apply(SimpleNamespace(core=core, router=router), state)
+    assert actors == [Component.CORE_RD, Component.CORE_RD]
+    assert result["route"] == [rollout.PRIMARY, rollout.SPEC.model_id]
